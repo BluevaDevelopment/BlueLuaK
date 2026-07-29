@@ -43,7 +43,7 @@ public class ScriptDrivenTest extends TestCase implements ResourceFinder {
 	public static final boolean nocompile = "true".equals(System.getProperty("nocompile"));
 
 	public enum PlatformType {
-		JME, JSE, LUAJIT,
+		JSE, LUAJIT,
 	}
 	
 	private final PlatformType platform;
@@ -65,9 +65,6 @@ public class ScriptDrivenTest extends TestCase implements ResourceFinder {
 		case JSE:
 		case LUAJIT:
 			globals = org.luaj.vm2.lib.jse.JsePlatform.debugGlobals();
-			break;
-		case JME:
-			globals = org.luaj.vm2.lib.jme.JmePlatform.debugGlobals();
 			break;
 		}
 	}
