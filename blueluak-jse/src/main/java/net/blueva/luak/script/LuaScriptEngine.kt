@@ -233,7 +233,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
                 1 -> return Companion.toJava(v.arg1()!!)
                 else -> {
                     val o = arrayOfNulls<Any>(n)
-                    val i = 0
+                    var i = 0
                     while (i < n) {
                         o[i] = Companion.toJava(v.arg(i + 1)!!)
                         ++i
