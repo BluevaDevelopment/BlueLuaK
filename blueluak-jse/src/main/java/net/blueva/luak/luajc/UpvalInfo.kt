@@ -30,7 +30,7 @@ class UpvalInfo {
         this.pi = pi
         this.slot = 0
         this.nvars = 1
-        this.`var` = arrayOf<VarInfo>(VarInfo.Companion.PARAM(0))
+        this.`var` = arrayOf<VarInfo?>(VarInfo.Companion.PARAM(0))
         this.rw = false
     }
 
@@ -39,7 +39,7 @@ class UpvalInfo {
         this.slot = slot
         this.nvars = 0
         this.`var` = null
-        includeVarAndPosteriorVars(pi.vars[slot][pc])
+        includeVarAndPosteriorVars(pi.vars[slot]!![pc])
         for (i in 0..<nvars) `var`!![i]!!.allocupvalue = testIsAllocUpvalue(`var`!![i])
         this.rw = nvars > 1
     }
@@ -70,23 +70,26 @@ class UpvalInfo {
         val n = pi.blocklist.size
         while (i < n) {
             val b = pi.blocklist[i]
-            val v = pi.vars[slot][b.pc1]
+            val v = pi.vars[slot]!![b.pc1]
             if (v === prior) {
+                val next = b.next
                 var j = 0
-                val m = if (b.next != null) b.next.size else 0
+                val m = if (next != null) next.size else 0
                 while (j < m) {
-                    val b1 = b.next[j]
-                    val v1 = pi.vars[slot][b1.pc0]
-                    if (v1 !== prior) {
-                        loopDetected = loopDetected or includeVarAndPosteriorVars(v1)
-                        if (v1.isPhiVar()) includePriorVarsIgnoreLoops(v1)
+                    val b1 = next!![j]
+                    if (b1 != null) {
+                        val v1 = pi.vars[slot]!![b1.pc0]
+                        if (v1 !== prior) {
+                            loopDetected = loopDetected or includeVarAndPosteriorVars(v1)
+                            if (v1.isPhiVar()) includePriorVarsIgnoreLoops(v1)
+                        }
                     }
                     j++
                 }
             } else {
                 for (pc in b.pc1 - 1 downTo b.pc0) {
-                    if (pi.vars[slot][pc] === prior) {
-                        loopDetected = loopDetected or includeVarAndPosteriorVars(pi.vars[slot][pc + 1])
+                    if (pi.vars[slot]!![pc] === prior) {
+                        loopDetected = loopDetected or includeVarAndPosteriorVars(pi.vars[slot]!![pc + 1])
                         break
                     }
                 }
@@ -101,20 +104,23 @@ class UpvalInfo {
         val n = pi.blocklist.size
         while (i < n) {
             val b = pi.blocklist[i]
-            val v = pi.vars[slot][b.pc0]
+            val v = pi.vars[slot]!![b.pc0]
             if (v === poster) {
+                val prev = b.prev
                 var j = 0
-                val m = if (b.prev != null) b.prev.size else 0
+                val m = if (prev != null) prev.size else 0
                 while (j < m) {
-                    val b0 = b.prev[j]
-                    val v0 = pi.vars[slot][b0.pc1]
-                    if (v0 !== poster) includeVarAndPosteriorVars(v0)
+                    val b0 = prev!![j]
+                    if (b0 != null) {
+                        val v0 = pi.vars[slot]!![b0.pc1]
+                        if (v0 !== poster) includeVarAndPosteriorVars(v0)
+                    }
                     j++
                 }
             } else {
                 for (pc in b.pc0 + 1..b.pc1) {
-                    if (pi.vars[slot][pc] === poster) {
-                        includeVarAndPosteriorVars(pi.vars[slot][pc - 1])
+                    if (pi.vars[slot]!![pc] === poster) {
+                        includeVarAndPosteriorVars(pi.vars[slot]!![pc - 1])
                         break
                     }
                 }
@@ -148,17 +154,21 @@ class UpvalInfo {
     private fun testIsAllocUpvalue(v: VarInfo?): Boolean {
         var v = v
         if (v!!.pc < 0) return true
-        val b = pi.blocks[v.pc]
-        if (v.pc > b.pc0) return pi.vars[slot][v.pc - 1].upvalue !== this
-        if (b.prev == null) {
+        val b = pi.blocks[v.pc]!!
+        if (v.pc > b.pc0) return pi.vars[slot]!![v.pc - 1].upvalue !== this
+        val prev = b.prev
+        if (prev == null) {
             v = pi.params[slot]
             if (v != null && v.upvalue !== this) return true
         } else {
             var i = 0
-            val n = b.prev.size
+            val n = prev.size
             while (i < n) {
-                v = pi.vars[slot][b.prev[i].pc1]
-                if (v != null && v.upvalue !== this) return true
+                val bp = prev[i]
+                if (bp != null) {
+                    v = pi.vars[slot]!![bp.pc1]
+                    if (v != null && v.upvalue !== this) return true
+                }
                 i++
             }
         }

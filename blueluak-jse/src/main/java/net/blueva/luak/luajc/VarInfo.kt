@@ -27,9 +27,6 @@ open class VarInfo(// where assigned
     var isreferenced: Boolean = false // true if this variable is refenced by some
 
     // opcode
-    init {
-        this.pc = pc
-    }
 
     override fun toString(): String {
         return if (slot < 0) "x.x" else (slot.toString() + "." + pc)
@@ -45,12 +42,13 @@ open class VarInfo(// where assigned
         return null
     }
 
-    protected open fun collectUniqueValues(visitedBlocks: MutableSet<*>?, vars: MutableSet<*>) {
+    protected open fun collectUniqueValues(visitedBlocks: MutableSet<Any?>?, vars: MutableSet<Any?>) {
         vars.add(this)
     }
 
-    open val isPhiVar: Boolean
-        get() = false
+    open fun isPhiVar(): Boolean {
+        return false
+    }
 
     private class ParamVarInfo(slot: Int, pc: Int) : VarInfo(slot, pc) {
         override fun toString(): String {
@@ -65,7 +63,7 @@ open class VarInfo(// where assigned
     }
 
     private class PhiVarInfo(private val pi: ProtoInfo, slot: Int, pc: Int) : VarInfo(slot, pc) {
-        var values: Array<VarInfo?>?
+        var values: Array<VarInfo?>? = null
 
         override fun isPhiVar(): Boolean {
             return true
@@ -87,12 +85,12 @@ open class VarInfo(// where assigned
         }
 
         override fun resolvePhiVariableValues(): VarInfo? {
-            val visitedBlocks: MutableSet<*> = HashSet<Any?>()
-            val vars: MutableSet<*> = HashSet<Any?>()
+            val visitedBlocks: MutableSet<Any?> = HashSet<Any?>()
+            val vars: MutableSet<Any?> = HashSet<Any?>()
             this.collectUniqueValues(visitedBlocks, vars)
             if (vars.contains(INVALID)) return INVALID
             val n = vars.size
-            val it: MutableIterator<*> = vars.iterator()
+            val it: MutableIterator<Any?> = vars.iterator()
             if (n == 1) {
                 val v = it.next() as VarInfo
                 v.isreferenced = v.isreferenced or this.isreferenced
@@ -106,16 +104,17 @@ open class VarInfo(// where assigned
             return null
         }
 
-        override fun collectUniqueValues(visitedBlocks: MutableSet<*>, vars: MutableSet<*>) {
-            val b = pi.blocks[pc]
+        override fun collectUniqueValues(visitedBlocks: MutableSet<Any?>?, vars: MutableSet<Any?>) {
+            val b = pi.blocks[pc]!!
             if (pc == 0) vars.add(pi.params[slot])
+            val prev = b.prev
             var i = 0
-            val n = if (b.prev != null) b.prev.size else 0
+            val n = if (prev != null) prev.size else 0
             while (i < n) {
-                val bp = b.prev[i]
-                if (!visitedBlocks.contains(bp)) {
+                val bp = prev!![i]
+                if (bp != null && visitedBlocks != null && !visitedBlocks.contains(bp)) {
                     visitedBlocks.add(bp)
-                    val v = pi.vars[slot][bp.pc1]
+                    val v = pi.vars[slot]!![bp.pc1]
                     if (v != null) v.collectUniqueValues(visitedBlocks, vars)
                 }
                 i++

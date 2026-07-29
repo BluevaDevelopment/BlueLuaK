@@ -24,7 +24,7 @@ import java.util.*
 /**
  * Compiler for lua files to compile lua sources or lua binaries into java classes.
  */
-class luajc private constructor(args: Array<String?>) {
+class LuaJcMain private constructor(args: Array<String>) {
     private var srcdir: String? = "."
     private var destdir: String? = "."
     private var genmain = false
@@ -33,13 +33,13 @@ class luajc private constructor(args: Array<String?>) {
     private var loadclasses = false
     private var encoding: String? = null
     private var pkgprefix: String? = null
-    private val files: MutableList<*> = ArrayList<Any?>()
+    private val files: MutableList<InputFile> = ArrayList<InputFile>()
     private val globals: Globals
 
     init {
         // process args
 
-        val seeds: MutableList<*> = ArrayList<Any?>()
+        val seeds: MutableList<String?> = ArrayList<String?>()
 
 
         // get stateful args
@@ -138,7 +138,7 @@ class luajc private constructor(args: Array<String?>) {
                 f,
                 (if (javapackage != null) javapackage + "." + f.getName() else f.getName())
             )
-            else if (f.isFile() && f.getName().endsWith(".lua")) files.add(luajc.InputFile(dir, f, javapackage))
+            else if (f.isFile() && f.getName().endsWith(".lua")) files.add(this.InputFile(dir, f, javapackage))
         }
     }
 
@@ -152,8 +152,8 @@ class luajc private constructor(args: Array<String?>) {
     }
 
     internal inner class InputFile(dir: File?, var infile: File, javapackage: String?) {
-        var luachunkname: String?
-        var srcfilename: String?
+        var luachunkname: String
+        var srcfilename: String
         var outdir: File
         var javapackage: String?
 
@@ -249,7 +249,7 @@ class luajc private constructor(args: Array<String?>) {
         @Throws(IOException::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            luajc(args)
+            LuaJcMain(args)
         }
     }
 }
