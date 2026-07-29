@@ -48,39 +48,39 @@ class DefaultLauncher : Launcher {
     }
 
     /** Launches the script with chunk name 'main'  */
-    override fun launch(script: String?, arg: Array<Any?>): Array<Any?> {
+    override fun launch(script: String?, arg: Array<Any?>?): Array<Any?>? {
         return launchChunk(g.load(script, "main"), arg)
     }
 
     /** Launches the script with chunk name 'main' and loading using modes 'bt'  */
-    override fun launch(script: InputStream?, arg: Array<Any?>): Array<Any?> {
+    override fun launch(script: InputStream?, arg: Array<Any?>?): Array<Any?>? {
         return launchChunk(g.load(script, "main", "bt", g), arg)
     }
 
     /** Launches the script with chunk name 'main'  */
-    override fun launch(script: Reader?, arg: Array<Any?>): Array<Any?> {
+    override fun launch(script: Reader?, arg: Array<Any?>?): Array<Any?>? {
         return launchChunk(g.load(script, "main"), arg)
     }
 
-    private fun launchChunk(chunk: LuaValue, arg: Array<Any?>): Array<Any?> {
-        val args: Array<LuaValue?>? = arrayOfNulls<LuaValue>(arg.size)
-        for (i in args!!.indices) args[i] = CoerceJavaToLua.coerce(arg[i])
+    private fun launchChunk(chunk: LuaValue, arg: Array<Any?>?): Array<Any?>? {
+        val args: Array<LuaValue?> = arrayOfNulls<LuaValue>(arg?.size ?: 0)
+        for (i in args.indices) args[i] = CoerceJavaToLua.coerce(arg?.get(i))
         val results = chunk.invoke(LuaValue.varargsOf(args))
 
         val n = results.narg()
-        val return_values: Array<Any?>? = arrayOfNulls<Any>(n)
-        for (i in 0..<n) {
+        val return_values: Array<Any?> = arrayOfNulls<Any>(n)
+        for (i in 0 until n) {
             val r = results.arg(i + 1)
             when (r.type()) {
-                LuaValue.TBOOLEAN -> return_values!![i] = r.toboolean()
-                LuaValue.TNUMBER -> return_values!![i] = r.todouble()
-                LuaValue.TINT -> return_values!![i] = r.toint()
-                LuaValue.TNIL -> return_values!![i] = null
-                LuaValue.TSTRING -> return_values!![i] = r.tojstring()
-                LuaValue.TUSERDATA -> return_values!![i] = r.touserdata()
-                else -> return_values!![i] = r
+                LuaValue.TBOOLEAN -> return_values[i] = r.toboolean()
+                LuaValue.TNUMBER -> return_values[i] = r.todouble()
+                LuaValue.TINT -> return_values[i] = r.toint()
+                LuaValue.TNIL -> return_values[i] = null
+                LuaValue.TSTRING -> return_values[i] = r.tojstring()
+                LuaValue.TUSERDATA -> return_values[i] = r.touserdata()
+                else -> return_values[i] = r
             }
         }
-        return return_values!!
+        return return_values
     }
 }
