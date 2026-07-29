@@ -3,7 +3,7 @@ plugins {
     kotlin("jvm")
 }
 
-val generatedSrc = layout.buildDirectory.dir("generated-src/main/java")
+val generatedSrc = layout.buildDirectory.dir("generated-src/main/kotlin")
 
 val processSources = tasks.register<Copy>("processSources") {
     group = "build"
@@ -18,18 +18,14 @@ val processSources = tasks.register<Copy>("processSources") {
 
 sourceSets {
     main {
-        java {
-            setSrcDirs(listOf(generatedSrc))
-        }
         kotlin {
-            setSrcDirs(listOf("src/main/kotlin"))
+            setSrcDirs(listOf(generatedSrc))
         }
     }
 }
 
-tasks.compileJava {
+tasks.compileKotlin {
     dependsOn(processSources)
-    options.release = 17
 }
 repositories {
     mavenCentral()
