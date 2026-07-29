@@ -40,7 +40,6 @@ This is a first iteration: the README and repository metadata are being moderniz
 |---|---|---|
 | Core VM | [`src/core/`](src/core/) | Platform-neutral Lua VM, compiler, and standard libraries |
 | JSE Runtime | [`src/jse/`](src/jse/) | Java SE platform bindings and `luajava` integration |
-| JME Runtime | [`src/jme/`](src/jme/) | Java ME platform bindings (legacy, under review) |
 | Grammar | [`grammar/`](grammar/) | JavaCC grammars for Lua 5.1 and 5.2 |
 | Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
 | Tests | [`test/`](test/) | JUnit suites and Lua test suites |
@@ -58,7 +57,7 @@ Gradle modules:
 ./gradlew build
 ```
 
-This compiles both Gradle modules and runs the existing JUnit test suite. Some legacy tests still fail under Java 17 (C-based Lua compatibility tests, JME stubs, deprecated APIs); the build succeeds but reports those failures so they can be addressed in follow-up iterations.
+This compiles both Gradle modules and runs the existing JUnit test suite. Some legacy tests still fail under Java 17 (C-based Lua compatibility tests, deprecated APIs); the build succeeds but reports those failures so they can be addressed in follow-up iterations.
 
 Build just one module:
 
@@ -81,7 +80,7 @@ Run tests:
 | Kotlin | 2.1.0 |
 | Build | Gradle (Kotlin DSL) |
 
-The project builds with Gradle. The legacy Ant files (`build.xml`, `build-*.xml`) are still present but deprecated.
+The project builds with Gradle.
 
 ## Development Status
 
@@ -90,9 +89,8 @@ BlueLuaK is in its very first iteration.
 | Area | Status |
 |---|---|
 | README & metadata | Modernized |
-| Build system | Gradle (Ant files kept for reference) |
+| Build system | Gradle (Kotlin DSL) |
 | Kotlin API | Scaffold planned |
 | JSE runtime | Functional, based on LuaJ 3.0.2 |
-| JME runtime | Legacy, under review for removal |
 | Lua version | 5.2 (targeting migration toward current Lua 5.5) |
 
