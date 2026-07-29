@@ -1,5 +1,6 @@
 plugins {
     java
+    kotlin("jvm")
 }
 
 val generatedSrc = layout.buildDirectory.dir("generated-src/main/java")
@@ -20,10 +21,22 @@ sourceSets {
         java {
             setSrcDirs(listOf(generatedSrc))
         }
+        kotlin {
+            setSrcDirs(listOf("src/main/kotlin"))
+        }
     }
 }
 
 tasks.compileJava {
     dependsOn(processSources)
     options.release = 17
+}
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testImplementation(kotlin("test"))
+}
+kotlin {
+    jvmToolchain(17)
 }

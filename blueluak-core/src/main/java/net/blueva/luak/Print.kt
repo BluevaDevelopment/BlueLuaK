@@ -1,0 +1,442 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Based on LuaJ (https://luaj.org)
+ *  Original work Copyright (c) 2009 Luaj.org
+ *  Modifications Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
+package net.blueva.luak
+
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
+
+/**
+ * Debug helper class to pretty-print lua bytecodes.
+ * @see Prototype
+ * 
+ * @see LuaClosure
+ */
+class Print : Lua() {
+    private fun _assert(b: Boolean) {
+        if (!b) throw NullPointerException("_assert failed")
+    }
+
+    companion object {
+        /** opcode names  */
+        private val STRING_FOR_NULL = "null"
+        var ps: PrintStream = System.out
+
+        /** String names for each lua opcode value.  */
+        val OPNAMES: Array<String?> = arrayOf<String?>(
+            "MOVE",
+            "LOADK",
+            "LOADKX",
+            "LOADBOOL",
+            "LOADNIL",
+            "GETUPVAL",
+            "GETTABUP",
+            "GETTABLE",
+            "SETTABUP",
+            "SETUPVAL",
+            "SETTABLE",
+            "NEWTABLE",
+            "SELF",
+            "ADD",
+            "SUB",
+            "MUL",
+            "DIV",
+            "MOD",
+            "POW",
+            "UNM",
+            "NOT",
+            "LEN",
+            "CONCAT",
+            "JMP",
+            "EQ",
+            "LT",
+            "LE",
+            "TEST",
+            "TESTSET",
+            "CALL",
+            "TAILCALL",
+            "RETURN",
+            "FORLOOP",
+            "FORPREP",
+            "TFORCALL",
+            "TFORLOOP",
+            "SETLIST",
+            "CLOSURE",
+            "VARARG",
+            "EXTRAARG",
+            null,
+        )
+
+
+        fun printString(ps: PrintStream, s: LuaString) {
+            ps.print('"')
+            var i = 0
+            val n: Int = s.m_length
+            while (i < n) {
+                val c: Int = s.m_bytes[s.m_offset + i]
+                if (c >= ' '.code && c <= '~'.code && c != '\"'.code && c != '\\'.code) ps.print(c.toChar())
+                else {
+                    when (c) {
+                        '"' -> ps.print("\\\"")
+                        '\\' -> ps.print("\\\\")
+                        0x0007 -> ps.print("\\a")
+                        '\b' -> ps.print("\\b")
+                        '\f' -> ps.print("\\f")
+                        '\t' -> ps.print("\\t")
+                        '\r' -> ps.print("\\r")
+                        '\n' -> ps.print("\\n")
+                        0x000B -> ps.print("\\v")
+                        else -> {
+                            ps.print('\\')
+                            ps.print(Integer.toString(1000 + 0xff and c).substring(1))
+                        }
+                    }
+                }
+                i++
+            }
+            ps.print('"')
+        }
+
+        fun printValue(ps: PrintStream, v: LuaValue?) {
+            if (v == null) {
+                ps.print("null")
+                return
+            }
+            when (v.type()) {
+                LuaValue.TSTRING -> net.blueva.luak.Print.Companion.printString(ps, v as LuaString)
+                else -> ps.print(v.tojstring())
+
+            }
+        }
+
+        fun printConstant(ps: PrintStream, f: Prototype, i: Int) {
+            net.blueva.luak.Print.Companion.printValue(
+                ps,
+                if (i < f.k.length) f.k[i] else LuaValue.valueOf("UNKNOWN_CONST_" + i)
+            )
+        }
+
+        fun printUpvalue(ps: PrintStream, u: Upvaldesc) {
+            ps.print(u.idx + " ")
+            net.blueva.luak.Print.Companion.printValue(ps, u.name)
+        }
+
+        /**
+         * Print the code in a prototype
+         * @param f the [Prototype]
+         */
+        fun printCode(f: Prototype) {
+            val code: IntArray = f.code
+            var pc: Int
+            val n = code.size
+            pc = 0
+            while (pc < n) {
+                pc = net.blueva.luak.Print.Companion.printOpCode(f, pc)
+                net.blueva.luak.Print.Companion.ps.println()
+                pc++
+            }
+        }
+
+        /**
+         * Print an opcode in a prototype
+         * @param f the [Prototype]
+         * @param pc the program counter to look up and print
+         * @return pc same as above or changed
+         */
+        fun printOpCode(f: Prototype, pc: Int): Int {
+            return net.blueva.luak.Print.Companion.printOpCode(net.blueva.luak.Print.Companion.ps, f, pc)
+        }
+
+        /**
+         * Print an opcode in a prototype
+         * @param ps the [PrintStream] to print to
+         * @param f the [Prototype]
+         * @param pc the program counter to look up and print
+         * @return pc same as above or changed
+         */
+        fun printOpCode(ps: PrintStream, f: Prototype, pc: Int): Int {
+            var pc = pc
+            val code: IntArray = f.code
+            val i = code[pc]
+            val o: Int = GET_OPCODE(i)
+            val a: Int = GETARG_A(i)
+            val b: Int = GETARG_B(i)
+            val c: Int = GETARG_C(i)
+            val bx: Int = GETARG_Bx(i)
+            val sbx: Int = GETARG_sBx(i)
+            val line: Int = net.blueva.luak.Print.Companion.getline(f, pc)
+            ps.print("  " + (pc + 1) + "  ")
+            if (line > 0) ps.print("[" + line + "]  ")
+            else ps.print("[-]  ")
+            if (o >= net.blueva.luak.Print.Companion.OPNAMES.size - 1) {
+                ps.print("UNKNOWN_OP_" + o + "  ")
+            } else {
+                ps.print(net.blueva.luak.Print.Companion.OPNAMES[o].toString() + "  ")
+                when (getOpMode(o)) {
+                    iABC -> {
+                        ps.print(a)
+                        if (getBMode(o) !== OpArgN) ps.print(" " + (if (ISK(b)) (-1 - INDEXK(b)) else b))
+                        if (getCMode(o) !== OpArgN) ps.print(" " + (if (ISK(c)) (-1 - INDEXK(c)) else c))
+                    }
+
+                    iABx -> if (getBMode(o) === OpArgK) {
+                        ps.print(a.toString() + " " + (-1 - bx))
+                    } else {
+                        ps.print(a.toString() + " " + (bx))
+                    }
+
+                    iAsBx -> if (o == OP_JMP) ps.print(sbx)
+                    else ps.print(a.toString() + " " + sbx)
+                }
+                when (o) {
+                    OP_LOADK -> {
+                        ps.print("  ; ")
+                        net.blueva.luak.Print.Companion.printConstant(ps, f, bx)
+                    }
+
+                    OP_GETUPVAL, OP_SETUPVAL -> {
+                        ps.print("  ; ")
+                        if (b < f.upvalues.length) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[b])
+                        } else {
+                            ps.print("UNKNOWN_UPVALUE_" + b)
+                        }
+                    }
+
+                    OP_GETTABUP -> {
+                        ps.print("  ; ")
+                        if (b < f.upvalues.length) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[b])
+                        } else {
+                            ps.print("UNKNOWN_UPVALUE_" + b)
+                        }
+                        ps.print(" ")
+                        if (ISK(c)) net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(c))
+                        else ps.print("-")
+                    }
+
+                    OP_SETTABUP -> {
+                        ps.print("  ; ")
+                        if (a < f.upvalues.length) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[a])
+                        } else {
+                            ps.print("UNKNOWN_UPVALUE_" + a)
+                        }
+                        ps.print(" ")
+                        if (ISK(b)) net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(b))
+                        else ps.print("-")
+                        ps.print(" ")
+                        if (ISK(c)) net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(c))
+                        else ps.print("-")
+                    }
+
+                    OP_GETTABLE, OP_SELF -> if (ISK(c)) {
+                        ps.print("  ; ")
+                        net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(c))
+                    }
+
+                    OP_SETTABLE, OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_POW, OP_EQ, OP_LT, OP_LE -> if (ISK(b) || ISK(c)) {
+                        ps.print("  ; ")
+                        if (ISK(b)) net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(b))
+                        else ps.print("-")
+                        ps.print(" ")
+                        if (ISK(c)) net.blueva.luak.Print.Companion.printConstant(ps, f, INDEXK(c))
+                        else ps.print("-")
+                    }
+
+                    OP_JMP, OP_FORLOOP, OP_FORPREP -> ps.print("  ; to " + (sbx + pc + 2))
+                    OP_CLOSURE -> if (bx < f.p.length) {
+                        ps.print("  ; " + f.p[bx].getClass().getName())
+                    } else {
+                        ps.print("  ; UNKNOWN_PROTYPE_" + bx)
+                    }
+
+                    OP_SETLIST -> if (c == 0) ps.print("  ; " + code[++pc] + " (stored in the next OP)")
+                    else ps.print("  ; " + c)
+
+                    OP_VARARG -> ps.print("  ; is_vararg=" + f.is_vararg)
+                    else -> {}
+                }
+            }
+            return pc
+        }
+
+        private fun getline(f: Prototype, pc: Int): Int {
+            return if (pc > 0 && f.lineinfo != null && pc < f.lineinfo.length) f.lineinfo[pc] else -1
+        }
+
+        fun printHeader(f: Prototype) {
+            var s: String = String.valueOf(f.source)
+            if (s.startsWith("@") || s.startsWith("=")) s = s.substring(1)
+            else if ("\u001bLua".equals(s)) s = "(bstring)"
+            else s = "(string)"
+            val a = if (f.linedefined === 0) "main" else "function"
+            net.blueva.luak.Print.Companion.ps.print(
+                ("\n%" + a + " <" + s + ":" + f.linedefined + ","
+                        + f.lastlinedefined + "> (" + f.code.length + " instructions, "
+                        + f.code.length * 4 + " bytes at " + net.blueva.luak.Print.Companion.id(f) + ")\n")
+            )
+            net.blueva.luak.Print.Companion.ps.print(
+                (f.numparams + " param, " + f.maxstacksize + " slot, "
+                        + f.upvalues.length + " upvalue, ")
+            )
+            net.blueva.luak.Print.Companion.ps.print(
+                (f.locvars.length + " local, " + f.k.length
+                        + " constant, " + f.p.length + " function\n")
+            )
+        }
+
+        fun printConstants(f: Prototype) {
+            var i: Int
+            val n: Int = f.k.length
+            net.blueva.luak.Print.Companion.ps.print("constants (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
+            i = 0
+            while (i < n) {
+                net.blueva.luak.Print.Companion.ps.print("  " + (i + 1) + "  ")
+                net.blueva.luak.Print.Companion.printValue(net.blueva.luak.Print.Companion.ps, f.k[i])
+                net.blueva.luak.Print.Companion.ps.print("\n")
+                i++
+            }
+        }
+
+        fun printLocals(f: Prototype) {
+            var i: Int
+            val n: Int = f.locvars.length
+            net.blueva.luak.Print.Companion.ps.print("locals (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
+            i = 0
+            while (i < n) {
+                net.blueva.luak.Print.Companion.ps.println("  " + i + "  " + f.locvars[i].varname + " " + (f.locvars[i].startpc + 1) + " " + (f.locvars[i].endpc + 1))
+                i++
+            }
+        }
+
+        fun printUpValues(f: Prototype) {
+            var i: Int
+            val n: Int = f.upvalues.length
+            net.blueva.luak.Print.Companion.ps.print("upvalues (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
+            i = 0
+            while (i < n) {
+                net.blueva.luak.Print.Companion.ps.print("  " + i + "  " + f.upvalues[i] + "\n")
+                i++
+            }
+        }
+
+        /** Pretty-prints contents of a Prototype.
+         * 
+         * @param prototype Prototype to print.
+         */
+        fun print(prototype: Prototype) {
+            net.blueva.luak.Print.Companion.printFunction(prototype, true)
+        }
+
+        /** Pretty-prints contents of a Prototype in short or long form.
+         * 
+         * @param prototype Prototype to print.
+         * @param full true to print all fields, false to print short form.
+         */
+        fun printFunction(prototype: Prototype, full: Boolean) {
+            var i: Int
+            val n: Int = prototype.p.length
+            net.blueva.luak.Print.Companion.printHeader(prototype)
+            net.blueva.luak.Print.Companion.printCode(prototype)
+            if (full) {
+                net.blueva.luak.Print.Companion.printConstants(prototype)
+                net.blueva.luak.Print.Companion.printLocals(prototype)
+                net.blueva.luak.Print.Companion.printUpValues(prototype)
+            }
+            i = 0
+            while (i < n) {
+                net.blueva.luak.Print.Companion.printFunction(prototype.p[i], full)
+                i++
+            }
+        }
+
+        private fun format(s: String, maxcols: Int) {
+            val n: Int = s.length()
+            if (n > maxcols) net.blueva.luak.Print.Companion.ps.print(s.substring(0, maxcols))
+            else {
+                net.blueva.luak.Print.Companion.ps.print(s)
+                var i = maxcols - n
+                while (--i >= 0) {
+                    net.blueva.luak.Print.Companion.ps.print(' ')
+                }
+            }
+        }
+
+        private fun id(f: Prototype?): String {
+            return "Proto"
+        }
+
+        /**
+         * Print the state of a [LuaClosure] that is being executed
+         * @param cl the [LuaClosure]
+         * @param pc the program counter
+         * @param stack the stack of [LuaValue]
+         * @param top the top of the stack
+         * @param varargs any [Varargs] value that may apply
+         */
+        fun printState(cl: LuaClosure, pc: Int, stack: Array<LuaValue?>, top: Int, varargs: Varargs?) {
+            // print opcode into buffer
+            val previous: PrintStream = net.blueva.luak.Print.Companion.ps
+            val baos: ByteArrayOutputStream = ByteArrayOutputStream()
+            net.blueva.luak.Print.Companion.ps = PrintStream(baos)
+            net.blueva.luak.Print.Companion.printOpCode(cl.p, pc)
+            net.blueva.luak.Print.Companion.ps.flush()
+            net.blueva.luak.Print.Companion.ps.close()
+            net.blueva.luak.Print.Companion.ps = previous
+            net.blueva.luak.Print.Companion.format(baos.toString(), 50)
+            net.blueva.luak.Print.Companion.printStack(stack, top, varargs)
+            net.blueva.luak.Print.Companion.ps.println()
+        }
+
+        fun printStack(stack: Array<LuaValue?>, top: Int, varargs: Varargs?) {
+            // print stack
+            net.blueva.luak.Print.Companion.ps.print('[')
+            for (i in stack.indices) {
+                val v: LuaValue? = stack[i]
+                if (v == null) net.blueva.luak.Print.Companion.ps.print(net.blueva.luak.Print.Companion.STRING_FOR_NULL)
+                else when (v.type()) {
+                    LuaValue.TSTRING -> {
+                        val s: LuaString = v.checkstring()
+                        net.blueva.luak.Print.Companion.ps.print(
+                            if (s.length() < 48) s.tojstring() else s.substring(
+                                0,
+                                32
+                            ).tojstring() + "...+" + (s.length() - 32) + "b"
+                        )
+                    }
+
+                    LuaValue.TFUNCTION -> net.blueva.luak.Print.Companion.ps.print(v.tojstring())
+                    LuaValue.TUSERDATA -> {
+                        val o: Object? = v.touserdata()
+                        if (o != null) {
+                            var n: String = o.getClass().getName()
+                            n = n.substring(n.lastIndexOf('.') + 1)
+                            net.blueva.luak.Print.Companion.ps.print(n.toString() + ": " + Integer.toHexString(o.hashCode()))
+                        } else {
+                            net.blueva.luak.Print.Companion.ps.print(v.toString())
+                        }
+                    }
+
+                    else -> net.blueva.luak.Print.Companion.ps.print(v.tojstring())
+                }
+                if (i + 1 == top) net.blueva.luak.Print.Companion.ps.print(']')
+                net.blueva.luak.Print.Companion.ps.print(" | ")
+            }
+            net.blueva.luak.Print.Companion.ps.print(varargs)
+        }
+    }
+}

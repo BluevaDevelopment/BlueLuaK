@@ -1,5 +1,6 @@
 plugins {
     java
+    kotlin("jvm")
 }
 
 dependencies {
@@ -7,6 +8,7 @@ dependencies {
     implementation("org.apache.bcel:bcel:5.2")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation(kotlin("test"))
 }
 
 tasks.compileJava {
@@ -23,4 +25,10 @@ tasks.test {
     testLogging {
         events("failed")
     }
+}
+repositories {
+    mavenCentral()
+}
+kotlin {
+    jvmToolchain(17)
 }

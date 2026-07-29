@@ -1,0 +1,172 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Based on LuaJ (https://luaj.org)
+ *  Original work Copyright (c) 2009 Luaj.org
+ *  Modifications Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
+package net.blueva.luak.compiler
+
+import net.blueva.luak.LocVars
+import net.blueva.luak.Lua
+import net.blueva.luak.LuaError
+import net.blueva.luak.LuaString
+import net.blueva.luak.LuaValue
+import net.blueva.luak.Prototype
+import net.blueva.luak.Upvaldesc
+
+/**
+ * Constants used by the LuaC compiler and related classes.
+ * 
+ * @see LuaC
+ * 
+ * @see FuncState
+ */
+object Constants : Lua() {
+    /** Maximum stack size of a luaj vm interpreter instance.  */
+    const val MAXSTACK: Int = 250
+
+    const val LUAI_MAXUPVAL: Int = 0xff
+    const val LUAI_MAXVARS: Int = 200
+    val NO_REG: Int = MAXARG_A
+
+
+    /* OpMode - basic instruction format */
+    const val iABC: Int = 0
+    const val iABx: Int = 1
+    const val iAsBx: Int = 2
+
+    /* OpArgMask */
+    const val OpArgN: Int = 0 /* argument is not used */
+    const val OpArgU: Int = 1 /* argument is used */
+    const val OpArgR: Int = 2 /* argument is a register or a jump offset */
+    const val OpArgK: Int = 3 /* argument is a constant or register/constant */
+
+
+    internal fun _assert(b: Boolean) {
+        if (!b) throw LuaError("compiler assert failed")
+    }
+
+    fun SET_OPCODE(i: InstructionPtr, o: Int) {
+        i.set((i.get() and (MASK_NOT_OP)) or ((o shl POS_OP) and MASK_OP))
+    }
+
+    fun SETARG_A(code: IntArray, index: Int, u: Int) {
+        code[index] = (code[index] and (MASK_NOT_A)) or ((u shl POS_A) and MASK_A)
+    }
+
+    fun SETARG_A(i: InstructionPtr, u: Int) {
+        i.set((i.get() and (MASK_NOT_A)) or ((u shl POS_A) and MASK_A))
+    }
+
+    fun SETARG_B(i: InstructionPtr, u: Int) {
+        i.set((i.get() and (MASK_NOT_B)) or ((u shl POS_B) and MASK_B))
+    }
+
+    fun SETARG_C(i: InstructionPtr, u: Int) {
+        i.set((i.get() and (MASK_NOT_C)) or ((u shl POS_C) and MASK_C))
+    }
+
+    fun SETARG_Bx(i: InstructionPtr, u: Int) {
+        i.set((i.get() and (MASK_NOT_Bx)) or ((u shl POS_Bx) and MASK_Bx))
+    }
+
+    fun SETARG_sBx(i: InstructionPtr, u: Int) {
+        net.blueva.luak.compiler.Constants.SETARG_Bx(i, u + MAXARG_sBx)
+    }
+
+    fun CREATE_ABC(o: Int, a: Int, b: Int, c: Int): Int {
+        return ((o shl POS_OP) and MASK_OP) or
+                ((a shl POS_A) and MASK_A) or
+                ((b shl POS_B) and MASK_B) or
+                ((c shl POS_C) and MASK_C)
+    }
+
+    fun CREATE_ABx(o: Int, a: Int, bc: Int): Int {
+        return ((o shl POS_OP) and MASK_OP) or
+                ((a shl POS_A) and MASK_A) or
+                ((bc shl POS_Bx) and MASK_Bx)
+    }
+
+    fun CREATE_Ax(o: Int, a: Int): Int {
+        return ((o shl POS_OP) and MASK_OP) or
+                ((a shl POS_Ax) and MASK_Ax)
+    }
+
+    // vector reallocation
+    fun realloc(v: Array<LuaValue?>?, n: Int): Array<LuaValue?> {
+        val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: Array<Prototype?>?, n: Int): Array<Prototype?> {
+        val a: Array<Prototype?> = arrayOfNulls<Prototype>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: Array<LuaString?>?, n: Int): Array<LuaString?> {
+        val a: Array<LuaString?> = arrayOfNulls<LuaString>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: Array<LocVars?>?, n: Int): Array<LocVars?> {
+        val a: Array<LocVars?> = arrayOfNulls<LocVars>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: Array<Upvaldesc?>?, n: Int): Array<Upvaldesc?> {
+        val a: Array<Upvaldesc?> = arrayOfNulls<Upvaldesc>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: Array<LexState.Vardesc?>?, n: Int): Array<LexState.Vardesc?> {
+        val a: Array<LexState.Vardesc?> = arrayOfNulls<LexState.Vardesc>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun grow(v: Array<LexState.Labeldesc?>?, min_n: Int): Array<LexState.Labeldesc?> {
+        return if (v == null) arrayOfNulls<LexState.Labeldesc>(2) else if (v.size < min_n) net.blueva.luak.compiler.Constants.realloc(
+            v,
+            v.size * 2
+        ) else v
+    }
+
+    fun realloc(v: Array<LexState.Labeldesc?>?, n: Int): Array<LexState.Labeldesc?> {
+        val a: Array<LexState.Labeldesc?> = arrayOfNulls<LexState.Labeldesc>(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: IntArray?, n: Int): IntArray {
+        val a = IntArray(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: ByteArray?, n: Int): ByteArray {
+        val a = ByteArray(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+
+    fun realloc(v: CharArray?, n: Int): CharArray {
+        val a = CharArray(n)
+        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        return a
+    }
+}

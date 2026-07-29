@@ -1,0 +1,408 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Based on LuaJ (https://luaj.org)
+ *  Original work Copyright (c) 2009 Luaj.org
+ *  Modifications Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
+package net.blueva.luak
+
+import net.blueva.luak.LuaTable.Slot
+import net.blueva.luak.LuaTable.StrongSlot
+import java.lang.ref.WeakReference
+
+/**
+ * Subclass of [LuaTable] that provides weak key and weak value semantics.
+ * 
+ * 
+ * Normally these are not created directly, but indirectly when changing the mode
+ * of a [LuaTable] as lua script executes.
+ * 
+ * 
+ * However, calling the constructors directly when weak tables are required from
+ * Java will reduce overhead.
+ */
+class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, backing: LuaValue?) : Metatable {
+    private val backing: LuaValue?
+
+    /**
+     * Construct a table with weak keys, weak values, or both
+     * @param weakkeys true to let the table have weak keys
+     * @param weakvalues true to let the table have weak values
+     */
+    init {
+        this.backing = backing
+    }
+
+    fun useWeakKeys(): Boolean {
+        return weakkeys
+    }
+
+    fun useWeakValues(): Boolean {
+        return weakvalues
+    }
+
+    fun toLuaValue(): LuaValue? {
+        return backing
+    }
+
+    fun entry(key: LuaValue, value: LuaValue?): Slot? {
+        var value: LuaValue? = value
+        value = value.strongvalue()
+        if (value == null) return null
+        if (weakkeys && !(key.isnumber() || key.isstring() || key.isboolean())) {
+            if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
+                return net.blueva.luak.WeakTable.WeakKeyAndValueSlot(key, value, null)
+            } else {
+                return net.blueva.luak.WeakTable.WeakKeySlot(key, value, null)
+            }
+        }
+        if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
+            return net.blueva.luak.WeakTable.WeakValueSlot(key, value, null)
+        }
+        return LuaTable.defaultEntry(key, value)
+    }
+
+    abstract class WeakSlot protected constructor(key: Object?, value: Object?, next: Slot?) : Slot {
+        protected var key: Object?
+        protected var value: Object?
+        protected var next: Slot?
+
+        init {
+            this.key = key
+            this.value = value
+            this.next = next
+        }
+
+        abstract fun keyindex(hashMask: Int): Int
+
+        abstract fun set(value: LuaValue?): Slot?
+
+        fun first(): StrongSlot? {
+            val key: LuaValue? = strongkey()
+            val value: LuaValue? = strongvalue()
+            if (key != null && value != null) {
+                return NormalEntry(key, value)
+            } else {
+                this.key = null
+                this.value = null
+                return null
+            }
+        }
+
+        fun find(key: LuaValue?): StrongSlot? {
+            val first: StrongSlot? = first()
+            return if (first != null) first.find(key) else null
+        }
+
+        fun keyeq(key: LuaValue?): Boolean {
+            val first: StrongSlot? = first()
+            return (first != null) && first.keyeq(key)
+        }
+
+        fun rest(): Slot? {
+            return next
+        }
+
+        fun arraykey(max: Int): Int {
+            // Integer keys can never be weak.
+            return 0
+        }
+
+        fun set(target: StrongSlot, value: LuaValue?): Slot? {
+            val key: LuaValue? = strongkey()
+            if (key != null && target.find(key) != null) {
+                return set(value)
+            } else if (key != null) {
+                // Our key is still good.
+                next = next.set(target, value)
+                return this
+            } else {
+                // our key was dropped, remove ourselves from the chain.
+                return next.set(target, value)
+            }
+        }
+
+        fun add(entry: Slot?): Slot? {
+            next = if (next != null) next.add(entry) else entry
+            if (strongkey() != null && strongvalue() != null) {
+                return this
+            } else {
+                return next
+            }
+        }
+
+        fun remove(target: StrongSlot): Slot? {
+            val key: LuaValue? = strongkey()
+            if (key == null) {
+                return next.remove(target)
+            } else if (target.keyeq(key)) {
+                this.value = null
+                return this
+            } else {
+                next = next.remove(target)
+                return this
+            }
+        }
+
+        fun relink(rest: Slot?): Slot? {
+            if (strongkey() != null && strongvalue() != null) {
+                if (rest == null && this.next == null) {
+                    return this
+                } else {
+                    return copy(rest)
+                }
+            } else {
+                return rest
+            }
+        }
+
+        fun strongkey(): LuaValue? {
+            return key as LuaValue?
+        }
+
+        fun strongvalue(): LuaValue? {
+            return value as LuaValue?
+        }
+
+        protected abstract fun copy(next: Slot?): WeakSlot?
+    }
+
+    internal class WeakKeySlot : WeakSlot {
+        private val keyhash: Int
+
+        constructor(
+            key: LuaValue,
+            value: LuaValue?,
+            next: Slot?
+        ) : super(net.blueva.luak.WeakTable.Companion.weaken(key), value, next) {
+            keyhash = key.hashCode()
+        }
+
+        protected constructor(copyFrom: WeakKeySlot, next: Slot?) : super(copyFrom.key, copyFrom.value, next) {
+            this.keyhash = copyFrom.keyhash
+        }
+
+        override fun keyindex(mask: Int): Int {
+            return LuaTable.hashmod(keyhash, mask)
+        }
+
+        override fun set(value: LuaValue?): Slot? {
+            this.value = value
+            return this
+        }
+
+        override fun strongkey(): LuaValue? {
+            return net.blueva.luak.WeakTable.Companion.strengthen(key)
+        }
+
+        override fun copy(rest: Slot?): WeakSlot {
+            return net.blueva.luak.WeakTable.WeakKeySlot(this, rest)
+        }
+    }
+
+    internal class WeakValueSlot : WeakSlot {
+        constructor(key: LuaValue?, value: LuaValue, next: Slot?) : super(
+            key,
+            net.blueva.luak.WeakTable.Companion.weaken(value),
+            next
+        )
+
+        protected constructor(copyFrom: WeakValueSlot, next: Slot?) : super(copyFrom.key, copyFrom.value, next)
+
+        override fun keyindex(mask: Int): Int {
+            return LuaTable.hashSlot(strongkey(), mask)
+        }
+
+        override fun set(value: LuaValue): Slot? {
+            this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
+            return this
+        }
+
+        override fun strongvalue(): LuaValue? {
+            return net.blueva.luak.WeakTable.Companion.strengthen(value)
+        }
+
+        override fun copy(next: Slot?): WeakSlot {
+            return net.blueva.luak.WeakTable.WeakValueSlot(this, next)
+        }
+    }
+
+    internal class WeakKeyAndValueSlot : WeakSlot {
+        private val keyhash: Int
+
+        constructor(
+            key: LuaValue,
+            value: LuaValue,
+            next: Slot?
+        ) : super(
+            net.blueva.luak.WeakTable.Companion.weaken(key),
+            net.blueva.luak.WeakTable.Companion.weaken(value),
+            next
+        ) {
+            keyhash = key.hashCode()
+        }
+
+        protected constructor(copyFrom: WeakKeyAndValueSlot, next: Slot?) : super(copyFrom.key, copyFrom.value, next) {
+            keyhash = copyFrom.keyhash
+        }
+
+        override fun keyindex(hashMask: Int): Int {
+            return LuaTable.hashmod(keyhash, hashMask)
+        }
+
+        override fun set(value: LuaValue): Slot? {
+            this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
+            return this
+        }
+
+        override fun strongkey(): LuaValue? {
+            return net.blueva.luak.WeakTable.Companion.strengthen(key)
+        }
+
+        override fun strongvalue(): LuaValue? {
+            return net.blueva.luak.WeakTable.Companion.strengthen(value)
+        }
+
+        override fun copy(next: Slot?): WeakSlot {
+            return net.blueva.luak.WeakTable.WeakKeyAndValueSlot(this, next)
+        }
+    }
+
+    /** Internal class to implement weak values.
+     * @see WeakTable
+     */
+    internal class WeakValue(value: LuaValue?) : LuaValue() {
+        var ref: WeakReference?
+
+        init {
+            ref = WeakReference(value)
+        }
+
+        fun type(): Int {
+            illegal("type", "weak value")
+            return 0
+        }
+
+        fun typename(): String? {
+            illegal("typename", "weak value")
+            return null
+        }
+
+        fun toString(): String? {
+            return "weak<" + ref.get() + ">"
+        }
+
+        fun strongvalue(): LuaValue? {
+            val o: Object? = ref.get()
+            return o as LuaValue?
+        }
+
+        fun raweq(rhs: LuaValue): Boolean {
+            val o: Object? = ref.get()
+            return o != null && rhs.raweq(o as LuaValue)
+        }
+    }
+
+    /** Internal class to implement weak userdata values.
+     * @see WeakTable
+     */
+    internal class WeakUserdata private constructor(value: LuaValue) : WeakValue(value) {
+        private val ob: WeakReference
+        private val mt: LuaValue?
+
+        init {
+            ob = WeakReference(value.touserdata())
+            mt = value.getmetatable()
+        }
+
+        override fun strongvalue(): LuaValue? {
+            val u: Object? = ref.get()
+            if (u != null) return u as LuaValue
+            val o: Object? = ob.get()
+            if (o != null) {
+                val ud: LuaValue? = LuaValue.userdataOf(o, mt)
+                ref = WeakReference(ud)
+                return ud
+            } else {
+                return null
+            }
+        }
+    }
+
+    fun wrap(value: LuaValue): LuaValue? {
+        return if (weakvalues) net.blueva.luak.WeakTable.Companion.weaken(value) else value
+    }
+
+    fun arrayget(array: Array<LuaValue?>, index: Int): LuaValue? {
+        var value: LuaValue? = array[index]
+        if (value != null) {
+            value = net.blueva.luak.WeakTable.Companion.strengthen(value)
+            if (value == null) {
+                array[index] = null
+            }
+        }
+        return value
+    }
+
+    companion object {
+        fun make(weakkeys: Boolean, weakvalues: Boolean): LuaTable {
+            val mode: LuaString?
+            if (weakkeys && weakvalues) {
+                mode = LuaString.valueOf("kv")
+            } else if (weakkeys) {
+                mode = LuaString.valueOf("k")
+            } else if (weakvalues) {
+                mode = LuaString.valueOf("v")
+            } else {
+                return LuaTable.tableOf()
+            }
+            val table: LuaTable = LuaTable.tableOf()
+            val mt: LuaTable? = LuaTable.tableOf(arrayOf<LuaValue?>(LuaValue.MODE, mode))
+            table.setmetatable(mt)
+            return table
+        }
+
+        /**
+         * Self-sent message to convert a value to its weak counterpart
+         * @param value value to convert
+         * @return [LuaValue] that is a strong or weak reference, depending on type of `value`
+         */
+        protected fun weaken(value: LuaValue): LuaValue? {
+            when (value.type()) {
+                LuaValue.TFUNCTION, LuaValue.TTHREAD, LuaValue.TTABLE -> return net.blueva.luak.WeakTable.WeakValue(
+                    value
+                )
+
+                LuaValue.TUSERDATA -> return net.blueva.luak.WeakTable.WeakUserdata(value)
+                else -> return value
+            }
+        }
+
+        /**
+         * Unwrap a LuaValue from a WeakReference and/or WeakUserdata.
+         * @param ref reference to convert
+         * @return LuaValue or null
+         * @see .weaken
+         */
+        protected fun strengthen(ref: Object): LuaValue? {
+            var ref: Object = ref
+            if (ref is WeakReference) {
+                ref = (ref as WeakReference).get()
+            }
+            if (ref is WeakValue) {
+                return ref.strongvalue()
+            }
+            return ref as LuaValue?
+        }
+    }
+}
