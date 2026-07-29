@@ -1,6 +1,6 @@
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.TwoArgFunction;
+import net.blueva.luak.LuaValue;
+import net.blueva.luak.lib.OneArgFunction;
+import net.blueva.luak.lib.TwoArgFunction;
 
 /**
  * Sample library that can be called via luaj's require() implementation.

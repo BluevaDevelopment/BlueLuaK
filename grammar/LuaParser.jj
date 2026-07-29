@@ -32,13 +32,13 @@ options {
   DEBUG_LOOKAHEAD = false;
   DEBUG_PARSER = false;
   DEBUG_TOKEN_MANAGER = false;
-  OUTPUT_DIRECTORY = "src/jse/org/luaj/vm2/parser";
+  OUTPUT_DIRECTORY = "blueluak-jse/src/main/java/net/blueva/luak/parser";
 }
 
 PARSER_BEGIN(LuaParser)
-package org.luaj.vm2.parser;
-import org.luaj.vm2.*;
-import org.luaj.vm2.ast.*;
+package net.blueva.luak.parser;
+import net.blueva.luak.*;
+import net.blueva.luak.ast.*;
 import java.util.*;
 
 public class LuaParser {

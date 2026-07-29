@@ -1,21 +1,21 @@
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LoadState;
-import org.luaj.vm2.LuaBoolean;
-import org.luaj.vm2.LuaString;
-import org.luaj.vm2.LuaTable;
-import org.luaj.vm2.LuaThread;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
-import org.luaj.vm2.compiler.LuaC;
-import org.luaj.vm2.lib.Bit32Lib;
-import org.luaj.vm2.lib.DebugLib;
-import org.luaj.vm2.lib.PackageLib;
-import org.luaj.vm2.lib.TableLib;
-import org.luaj.vm2.lib.TwoArgFunction;
-import org.luaj.vm2.lib.ZeroArgFunction;
-import org.luaj.vm2.lib.jse.JseBaseLib;
-import org.luaj.vm2.lib.jse.JseMathLib;
-import org.luaj.vm2.lib.jse.JseStringLib;
+import net.blueva.luak.Globals;
+import net.blueva.luak.LoadState;
+import net.blueva.luak.LuaBoolean;
+import net.blueva.luak.LuaString;
+import net.blueva.luak.LuaTable;
+import net.blueva.luak.LuaThread;
+import net.blueva.luak.LuaValue;
+import net.blueva.luak.Varargs;
+import net.blueva.luak.compiler.LuaC;
+import net.blueva.luak.lib.Bit32Lib;
+import net.blueva.luak.lib.DebugLib;
+import net.blueva.luak.lib.PackageLib;
+import net.blueva.luak.lib.TableLib;
+import net.blueva.luak.lib.TwoArgFunction;
+import net.blueva.luak.lib.ZeroArgFunction;
+import net.blueva.luak.lib.jse.JseBaseLib;
+import net.blueva.luak.lib.jse.JseMathLib;
+import net.blueva.luak.lib.jse.JseStringLib;
 
 /** Simple program that illustrates basic sand-boxing of client scripts
  * in a server environment.

@@ -11,8 +11,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.lib.OneArgFunction;
+import net.blueva.luak.LuaValue;
+import net.blueva.luak.lib.OneArgFunction;
 
 /** Sample code that uses the JSE-223 pluggable scripting language interface
  * to instantiate and use luaj. 
@@ -44,7 +44,7 @@ public class ScriptEngineSample {
     	// the lua-to-java bytecode compiler, which requires the bcel library 
     	// to be on the class path.
     	// This can also be set on the command line using -Dorg.luaj.luajc=true
-        // org.luaj.vm2.luajc.LuaJC.install();
+        // net.blueva.luak.luajc.LuaJC.install();
     	
         ScriptEngineManager sem = new ScriptEngineManager();
         ScriptEngine e = sem.getEngineByName("luaj");

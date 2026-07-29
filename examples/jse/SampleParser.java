@@ -1,10 +1,10 @@
 import java.io.*;
 
-import org.luaj.vm2.ast.*;
-import org.luaj.vm2.ast.Exp.AnonFuncDef;
-import org.luaj.vm2.ast.Stat.FuncDef;
-import org.luaj.vm2.ast.Stat.LocalFuncDef;
-import org.luaj.vm2.parser.*;
+import net.blueva.luak.ast.*;
+import net.blueva.luak.ast.Exp.AnonFuncDef;
+import net.blueva.luak.ast.Stat.FuncDef;
+import net.blueva.luak.ast.Stat.LocalFuncDef;
+import net.blueva.luak.parser.*;
 
 /** 
  * Sample luaj program that uses the LuaParser class for parsing, and intercepts the 

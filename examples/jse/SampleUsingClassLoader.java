@@ -1,11 +1,11 @@
 import java.io.InputStream;
 import java.io.Reader;
 
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.lib.jse.JsePlatform;
-import org.luaj.vm2.server.Launcher;
-import org.luaj.vm2.server.LuajClassLoader;
+import net.blueva.luak.Globals;
+import net.blueva.luak.LuaValue;
+import net.blueva.luak.lib.jse.JsePlatform;
+import net.blueva.luak.server.Launcher;
+import net.blueva.luak.server.LuajClassLoader;
 
 /** Example of using {@link LuajClassLoader} to launch scripts that are blocked from
  * interfering with globals from other scripts including shared static metatables.

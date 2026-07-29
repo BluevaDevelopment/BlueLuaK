@@ -1,7 +1,7 @@
 
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.lib.jse.JsePlatform;
+import net.blueva.luak.Globals;
+import net.blueva.luak.LuaValue;
+import net.blueva.luak.lib.jse.JsePlatform;
 
 /** Simple program showing the minimal Java program to launch a script.
  * 

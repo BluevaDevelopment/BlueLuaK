@@ -38,11 +38,11 @@ This is a first iteration: the README and repository metadata are being moderniz
 
 | Component | Path | Purpose |
 |---|---|---|
-| Core VM | [`src/core/`](src/core/) | Platform-neutral Lua VM, compiler, and standard libraries |
-| JSE Runtime | [`src/jse/`](src/jse/) | Java SE platform bindings and `luajava` integration |
-| Grammar | [`grammar/`](grammar/) | JavaCC grammars for Lua 5.1 and 5.2 |
+| Core VM | [`blueluak-core/src/main/java/net/blueva/luak/`](blueluak-core/src/main/java/net/blueva/luak/) | Platform-neutral Lua VM, compiler, and standard libraries |
+| JSE Runtime | [`blueluak-jse/src/main/java/net/blueva/luak/`](blueluak-jse/src/main/java/net/blueva/luak/) | Java SE platform bindings, parser, and `luajava` integration |
+| Grammar | [`grammar/`](grammar/) | JavaCC grammar for the Lua parser |
 | Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
-| Tests | [`test/`](test/) | JUnit suites and Lua test suites |
+| Tests | [`blueluak-jse/src/test/java/net/blueva/luak/`](blueluak-jse/src/test/java/net/blueva/luak/) | JUnit suites and Lua test suites |
 
 Gradle modules:
 
@@ -50,6 +50,8 @@ Gradle modules:
 |---|---|---|
 | `blueluak-core` | [`blueluak-core/`](blueluak-core/) | Core VM jar |
 | `blueluak-jse` | [`blueluak-jse/`](blueluak-jse/) | JSE runtime jar |
+
+All Java packages have been moved from `org.luaj.vm2` to `net.blueva.luak`.
 
 ## Building
 

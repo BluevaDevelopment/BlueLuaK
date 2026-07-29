@@ -1,7 +1,7 @@
 import java.io.IOException;
 
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.lib.jse.JsePlatform;
+import net.blueva.luak.Globals;
+import net.blueva.luak.lib.jse.JsePlatform;
 
 /** Simple toy program illustrating how to run Luaj in multiple threads. 
  * 

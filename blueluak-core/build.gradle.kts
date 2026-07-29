@@ -8,7 +8,7 @@ val processSources = tasks.register<Copy>("processSources") {
     group = "build"
     description = "Copies and filters core sources to inject the project version."
 
-    from("../src/core")
+    from("src/main/java")
     into(generatedSrc)
     filter { line ->
         line.replace("\"Luaj 0.0\"", "\"BlueLuaK ${project.version}\"")
@@ -18,7 +18,7 @@ val processSources = tasks.register<Copy>("processSources") {
 sourceSets {
     main {
         java {
-            srcDir(generatedSrc)
+            setSrcDirs(listOf(generatedSrc))
         }
     }
 }

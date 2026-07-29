@@ -9,26 +9,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir("../src/jse")
-        }
-        resources {
-            srcDirs("../src/jse")
-            include("META-INF/services/**")
-        }
-    }
-    test {
-        java {
-            srcDir("../test/junit")
-        }
-        resources {
-            srcDir("../test/lua")
-        }
-    }
-}
-
 tasks.compileJava {
     options.release = 17
 }
