@@ -45,15 +45,43 @@ This is a first iteration: the README and repository metadata are being moderniz
 | Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
 | Tests | [`test/`](test/) | JUnit suites and Lua test suites |
 
+Gradle modules:
+
+| Module | Path | Output |
+|---|---|---|
+| `blueluak-core` | [`blueluak-core/`](blueluak-core/) | Core VM jar |
+| `blueluak-jse` | [`blueluak-jse/`](blueluak-jse/) | JSE runtime jar |
+
+## Building
+
+```bash
+./gradlew build
+```
+
+This compiles both Gradle modules and runs the existing JUnit test suite. Some legacy tests still fail under Java 17 (C-based Lua compatibility tests, JME stubs, deprecated APIs); the build succeeds but reports those failures so they can be addressed in follow-up iterations.
+
+Build just one module:
+
+```bash
+./gradlew :blueluak-core:build
+./gradlew :blueluak-jse:build
+```
+
+Run tests:
+
+```bash
+./gradlew test
+```
+
 ## Requirements
 
 | Component | Requirement |
 |---|---|
 | Java | 17 or later |
 | Kotlin | 2.1.0 |
-| Build | Ant (Gradle migration planned) |
+| Build | Gradle (Kotlin DSL) |
 
-The project currently builds with Ant (`build.xml`). A Gradle-based build with Kotlin DSL is part of the planned Kotlin migration.
+The project builds with Gradle. The legacy Ant files (`build.xml`, `build-*.xml`) are still present but deprecated.
 
 ## Development Status
 
@@ -62,7 +90,7 @@ BlueLuaK is in its very first iteration.
 | Area | Status |
 |---|---|
 | README & metadata | Modernized |
-| Build system | Ant (legacy) → Gradle migration planned |
+| Build system | Gradle (Ant files kept for reference) |
 | Kotlin API | Scaffold planned |
 | JSE runtime | Functional, based on LuaJ 3.0.2 |
 | JME runtime | Legacy, under review for removal |

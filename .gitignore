@@ -2,7 +2,8 @@
 bin/
 target/
 build/
-lib/
+.gradle/
+/lib/
 jit/
 
 # Generated archives
