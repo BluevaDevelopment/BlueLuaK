@@ -1,8 +1,11 @@
+# Build outputs
 bin/
 target/
 build/
 lib/
 jit/
+
+# Generated archives
 *.ser
 *.gz
 *.jar
@@ -11,5 +14,24 @@ jit/
 *.tar
 *.txt
 *.zip
-docs
 *.0
+
+# OS
+.DS_Store
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Legacy J2ME
+wtk.xml
+
+# Private planning docs
+docs/roadmap.md
+AGENTS.md
+CLAUDE.md
