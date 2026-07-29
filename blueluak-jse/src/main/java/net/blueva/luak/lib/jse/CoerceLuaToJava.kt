@@ -80,10 +80,10 @@ object CoerceLuaToJava {
      */
 	@JvmStatic
     fun coerce(value: LuaValue?, clazz: Class<*>): Any? {
-        return getCoercion(clazz).coerce(value)
+        return getCoercion(clazz).coerce(value!!)
     }
 
-    val COERCIONS: MutableMap<*, *> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
+    val COERCIONS: MutableMap<Class<*>, Any?> = Collections.synchronizedMap<Class<*>, Any?>(HashMap<Class<*>, Any?>())
 
     /**
      * Determine levels of inheritance between a base class and a subclass
@@ -135,7 +135,7 @@ object CoerceLuaToJava {
     }
 
     @JvmStatic
-    fun getCoercion(c: Class<*>): Coercion {
+    internal fun getCoercion(c: Class<*>): Coercion {
         var co = COERCIONS.get(c) as Coercion?
         if (co != null) {
             return co
@@ -151,8 +151,8 @@ object CoerceLuaToJava {
     }
 
     internal interface Coercion {
-        fun score(value: LuaValue?): Int
-        fun coerce(value: LuaValue?): Any?
+        fun score(value: LuaValue): Int
+        fun coerce(value: LuaValue): Any?
     }
 
     internal class BoolCoercion : Coercion {
@@ -273,7 +273,7 @@ object CoerceLuaToJava {
             const val TARGET_TYPE_LONG: Int = 4
             const val TARGET_TYPE_FLOAT: Int = 5
             const val TARGET_TYPE_DOUBLE: Int = 6
-            val TYPE_NAMES: Array<String> = arrayOf<String>("byte", "char", "short", "int", "long", "float", "double")
+            val TYPE_NAMES: kotlin.Array<String> = arrayOf<String>("byte", "char", "short", "int", "long", "float", "double")
         }
     }
 

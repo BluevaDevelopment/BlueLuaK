@@ -57,7 +57,7 @@ import java.util.*
  * @see LuajavaLib
  */
 object CoerceJavaToLua {
-    val COERCIONS: MutableMap<*, *> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
+    val COERCIONS: MutableMap<Class<*>, Any?> = Collections.synchronizedMap<Class<*>, Any?>(HashMap<Class<*>, Any?>())
 
     init {
         val boolCoercion: Coercion = BoolCoercion()
@@ -114,11 +114,11 @@ object CoerceJavaToLua {
         return c.coerce(o)
     }
 
-    val instanceCoercion: Coercion = InstanceCoercion()
+    private val instanceCoercion: Coercion = InstanceCoercion()
 
-    val arrayCoercion: Coercion = ArrayCoercion()
+    private val arrayCoercion: Coercion = ArrayCoercion()
 
-    val luaCoercion: Coercion = LuaCoercion()
+    private val luaCoercion: Coercion = LuaCoercion()
 
     internal interface Coercion {
         fun coerce(javaValue: Any?): LuaValue?
@@ -153,7 +153,7 @@ object CoerceJavaToLua {
     }
 
     private class StringCoercion : Coercion {
-        override fun coerce(javaValue: Any): LuaValue {
+        override fun coerce(javaValue: Any?): LuaValue? {
             return LuaString.valueOf(javaValue.toString())
         }
     }

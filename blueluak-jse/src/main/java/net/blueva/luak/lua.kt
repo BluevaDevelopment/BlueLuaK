@@ -59,7 +59,7 @@ object lua {
         var processing = true
         var nodebug = false
         var luajc = false
-        var libs: Vector<*>? = null
+        var libs: Vector<String>? = null
         try {
             // stateful argument processing
             run {
@@ -77,7 +77,7 @@ object lua {
                             'b' -> luajc = true
                             'l' -> {
                                 if (++i >= args.size) lua.usageExit()
-                                libs = if (libs != null) libs else Vector<Any?>()
+                                libs = libs ?: Vector<String>()
                                 libs.addElement(args[i])
                             }
 
@@ -108,7 +108,7 @@ object lua {
 
             // new lua state
             globals = if (nodebug) JsePlatform.standardGlobals() else JsePlatform.debugGlobals()
-            if (luajc) LuaJC.install(globals)
+            if (luajc) LuaJC.install(globals!!)
             run {
                 var i = 0
                 val n = if (libs != null) libs.size else 0
@@ -168,7 +168,7 @@ object lua {
     }
 
     @Throws(IOException::class)
-    private fun processScript(script: InputStream, chunkname: String?, args: Array<String?>?, firstarg: Int) {
+    private fun processScript(script: InputStream, chunkname: String?, args: Array<String>?, firstarg: Int) {
         var script = script
         try {
             var c: LuaValue
@@ -189,7 +189,7 @@ object lua {
         }
     }
 
-    private fun setGlobalArg(chunkname: String?, args: Array<String?>?, i: Int, globals: LuaValue): Varargs? {
+    private fun setGlobalArg(chunkname: String?, args: Array<String>?, i: Int, globals: LuaValue): Varargs? {
         if (args == null) return LuaValue.NONE
         val arg = LuaValue.tableOf()
         for (j in args.indices) arg.set(j - i, LuaValue.valueOf(args[j]))
