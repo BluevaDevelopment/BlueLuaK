@@ -10,6 +10,7 @@ jit/
 *.ser
 *.gz
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.lua
 *.out
 *.tar
