@@ -51,9 +51,9 @@ This is a first iteration: the README and repository metadata are being moderniz
 |---|---|
 | Java | 17 or later |
 | Kotlin | 2.1.0 |
-| Build | Gradle (migration in progress) |
+| Build | Ant (Gradle migration planned) |
 
-The original project used Ant. A Gradle-based build is being introduced as part of the Kotlin migration.
+The project currently builds with Ant (`build.xml`). A Gradle-based build with Kotlin DSL is part of the planned Kotlin migration.
 
 ## Development Status
 
