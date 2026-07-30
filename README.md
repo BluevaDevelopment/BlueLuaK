@@ -41,7 +41,7 @@ This is a first iteration: the README and repository metadata are being moderniz
 |---|---|---|
 | Core VM | [`blueluak-core/src/main/java/net/blueva/luak/`](blueluak-core/src/main/java/net/blueva/luak/) | Platform-neutral Lua VM, compiler, and standard libraries |
 | JVM Runtime | [`blueluak-jvm/src/main/java/net/blueva/luak/`](blueluak-jvm/src/main/java/net/blueva/luak/) | Java SE platform bindings, parser, and `luajava` integration |
-| Grammar | [`grammar/`](grammar/) | JavaCC grammar for the Lua parser |
+| Grammar | [`grammar/`](grammar/) | ANTLR Kotlin lexer and parser grammars for Lua 5.2 |
 | Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
 | Tests | [`blueluak-jvm/src/test/java/net/blueva/luak/`](blueluak-jvm/src/test/java/net/blueva/luak/) | JUnit suites and Lua test suites |
 
