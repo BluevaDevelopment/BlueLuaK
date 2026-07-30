@@ -1,3 +1,17 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
 package net.blueva.luak.compiler
 
 import junit.framework.TestCase
@@ -15,8 +29,8 @@ abstract class AbstractUnitTests(zipdir: String?, zipfile: String, dir: String) 
     private var globals: Globals? = null
 
     init {
-        var zip: URL? = null
-        zip = javaClass.getResource(zipfile)
+        val resourcePath = "/" + zipdir.orEmpty().trim('/') + "/" + zipfile
+        var zip: URL? = javaClass.getResource(resourcePath)
         if (zip == null) {
             val file = File(zipdir + "/" + zipfile)
             try {
