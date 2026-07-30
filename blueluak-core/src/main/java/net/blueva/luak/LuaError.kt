@@ -37,11 +37,11 @@ package net.blueva.luak
  * was not supplied.
  */
 class LuaError : RuntimeException {
-    protected var level: Int
+    internal var level: Int
 
-    protected var fileline: String? = null
+    internal var fileline: String? = null
 
-    protected var traceback: String? = null
+    internal var traceback: String? = null
 
     /**
      * Get the cause, if any.

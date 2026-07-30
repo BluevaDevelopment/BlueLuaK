@@ -1363,7 +1363,7 @@ open class LuaTable : LuaValue, Metatable {
             }
         }
 
-        protected fun defaultEntry(key: LuaValue, value: LuaValue): Entry {
+        internal fun defaultEntry(key: LuaValue, value: LuaValue): Entry {
             if (key.isinttype()) {
                 return net.blueva.luak.LuaTable.IntKeyEntry(key.toint(), value)
             } else if (value.type() === TNUMBER) {
