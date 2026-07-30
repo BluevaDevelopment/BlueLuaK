@@ -718,8 +718,8 @@ abstract class Varargs {
      * @see LuaValue.varargsOf
      * @see LuaValue.varargsOf
      */
-    internal class ArrayVarargs(v: Array<LuaValue?>, r: Varargs) : Varargs() {
-        private val v: Array<LuaValue?>
+    internal class ArrayVarargs(v: Array<out LuaValue?>, r: Varargs) : Varargs() {
+        private val v: Array<out LuaValue?>
         private val r: Varargs
 
         /** Construct a Varargs from an array of LuaValue.
@@ -773,7 +773,7 @@ abstract class Varargs {
      */
     internal class ArrayPartVarargs : Varargs {
         private val offset: Int
-        private val v: Array<LuaValue?>
+        private val v: Array<out LuaValue?>
         private val length: Int
         private val more: Varargs
 
@@ -785,7 +785,7 @@ abstract class Varargs {
          * 
          * @see LuaValue.varargsOf
          */
-        constructor(v: Array<LuaValue?>, offset: Int, length: Int) {
+        constructor(v: Array<out LuaValue?>, offset: Int, length: Int) {
             this.v = v
             this.offset = offset
             this.length = length
@@ -800,7 +800,7 @@ abstract class Varargs {
          * 
          * @see LuaValue.varargsOf
          */
-        constructor(v: Array<LuaValue?>, offset: Int, length: Int, more: Varargs) {
+        constructor(v: Array<out LuaValue?>, offset: Int, length: Int, more: Varargs) {
             this.v = v
             this.offset = offset
             this.length = length

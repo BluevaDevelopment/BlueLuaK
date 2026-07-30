@@ -4136,7 +4136,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<LuaValue?>): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>): Varargs? {
             when (v.size) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE
                 1 -> return v[0]
@@ -4153,7 +4153,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<LuaValue?>, r: Varargs): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, r: Varargs): Varargs? {
             when (v.size) {
                 0 -> return r
                 1 -> return if (r.narg() > 0) PairVarargs(v[0], r) as Varargs else v[0] as Varargs?
@@ -4171,7 +4171,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<LuaValue?>, offset: Int, length: Int): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int): Varargs? {
             when (length) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE
                 1 -> return v[offset]
@@ -4193,7 +4193,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<LuaValue?>, offset: Int, length: Int, more: Varargs): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int, more: Varargs): Varargs? {
             when (length) {
                 0 -> return more
                 1 -> return if (more.narg() > 0) PairVarargs(v[offset], more) as Varargs else v[offset] as Varargs?
