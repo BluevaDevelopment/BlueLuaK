@@ -256,7 +256,7 @@ class PackageLib : TwoArgFunction() {
             var e = -1
             val n: Int = path.length()
             var sb: StringBuffer? = null
-            name = name.replace(sep.charAt(0), rep.charAt(0))
+            name = name.replace(sep[0], rep[0])
             while (e < n) {
                 // find next template
 
@@ -345,11 +345,11 @@ class PackageLib : TwoArgFunction() {
             var j = n
             if (filename.endsWith(".lua")) j -= 4
             for (k in 0..<j) {
-                var c: Char = filename.charAt(k)
+                var c: Char = filename[k]
                 if ((!net.blueva.luak.lib.PackageLib.Companion.isClassnamePart(c)) || (c == '/') || (c == '\\')) {
                     val sb: StringBuffer = StringBuffer(j)
                     for (i in 0..<j) {
-                        c = filename.charAt(i)
+                        c = filename[i]
                         sb.append(
                             if (net.blueva.luak.lib.PackageLib.Companion.isClassnamePart(c)) c else if ((c == '/') || (c == '\\')) '.' else '_'
                         )

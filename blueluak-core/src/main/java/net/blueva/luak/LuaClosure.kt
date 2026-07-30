@@ -93,10 +93,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         globals = if (env is Globals) env as Globals? else null
     }
 
-    override fun initupvalue1(env: LuaValue?) {        if (p.upvalues == null || p.upvalues.length === 0) this.upValues =
+    override fun initupvalue1(env: LuaValue?) {        if (p.upvalues == null || p.upvalues.size === 0) this.upValues =
             net.blueva.luak.LuaClosure.Companion.NOUPVALUES
         else {
-            this.upValues = arrayOfNulls<UpValue>(p.upvalues.length)
+            this.upValues = arrayOfNulls<UpValue>(p.upvalues.size)
             this.upValues[0] = UpValue(arrayOf<LuaValue?>(env), 0)
         }
     }
@@ -207,7 +207,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
         // upvalues are only possible when closures create closures
         // TODO: use linked list.
-        val openups: Array<UpValue?>? = if (p.p.length > 0) arrayOfNulls<UpValue>(stack.size) else null
+        val openups: Array<UpValue?>? = if (p.p.size > 0) arrayOfNulls<UpValue>(stack.size) else null
 
 
         // allow for debug hooks
@@ -245,7 +245,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             val op = i and 0x3f
                             throw LuaError(
                                 "OP_EXTRAARG expected after OP_LOADKX, got " +
-                                        (if (op < Print.OPNAMES.length - 1) Print.OPNAMES[op] else "UNKNOWN_OP_" + op)
+                                        (if (op < Print.OPNAMES.size - 1) Print.OPNAMES[op] else "UNKNOWN_OP_" + op)
                             )
                         }
                         stack[a] = k[i ushr 6]
@@ -766,7 +766,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
             if (frame == null) {
                 file = if (p.source != null) p.source.tojstring() else "?"
-                line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo.length) p.lineinfo[pc] else -1
+                line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo.size) p.lineinfo[pc] else -1
             }
         }
         le.fileline = file.toString() + ":" + line

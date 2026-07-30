@@ -766,7 +766,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     fun registerlocalvar(varname: LuaString?): Int {
         val fs: FuncState = this.fs
         val f: Prototype = fs.f
-        if (f.locvars == null || fs.nlocvars + 1 > f.locvars.length) f.locvars = realloc(f.locvars, fs.nlocvars * 2 + 1)
+        if (f.locvars == null || fs.nlocvars + 1 > f.locvars.size) f.locvars = realloc(f.locvars, fs.nlocvars * 2 + 1)
         f.locvars[fs.nlocvars] = LocVars(varname, 0, 0)
         return fs.nlocvars++
     }
@@ -939,7 +939,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     fun addprototype(): Prototype? {
         val clp: Prototype?
         val f: Prototype = fs.f /* prototype of current function */
-        if (f.p == null || fs.np >= f.p.length) {
+        if (f.p == null || fs.np >= f.p.size) {
             f.p = realloc(f.p, Math.max(1, fs.np * 2))
         }
         clp = Prototype()
