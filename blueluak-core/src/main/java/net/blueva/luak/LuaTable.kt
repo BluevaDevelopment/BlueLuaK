@@ -194,7 +194,7 @@ open class LuaTable : LuaValue, Metatable {
     override fun setmetatable(metatable: LuaValue?): LuaValue? {
         val hadWeakKeys = m_metatable != null && m_metatable!!.useWeakKeys()
         val hadWeakValues = m_metatable != null && m_metatable!!.useWeakValues()
-        m_metatable = metatableOf(metatable)
+        m_metatable = LuaValue.metatableOf(metatable)
         if ((hadWeakKeys != (m_metatable != null && m_metatable!!.useWeakKeys())) ||
             (hadWeakValues != (m_metatable != null && m_metatable!!.useWeakValues()))
         ) {
@@ -206,12 +206,12 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun get(key: Int): LuaValue {
         val v: LuaValue = rawget(key)
-        return if (v.isnil() && m_metatable != null) gettable(this, valueOf(key)) else v
+        return if (v.isnil() && m_metatable != null) LuaValue.gettable(this, valueOf(key)) else v
     }
 
     override fun get(key: LuaValue): LuaValue {
         val v: LuaValue = rawget(key)
-        return if (v.isnil() && m_metatable != null) gettable(this, key) else v
+        return if (v.isnil() && m_metatable != null) LuaValue.gettable(this, key) else v
     }
 
     override fun rawget(key: Int): LuaValue {
@@ -251,7 +251,7 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     fun set(key: Int, value: LuaValue) {
-        if (m_metatable == null || !rawget(key).isnil() || !settable(this, LuaInteger.valueOf(key), value)) rawset(
+        if (m_metatable == null || !rawget(key).isnil() || !LuaValue.settable(this, LuaInteger.valueOf(key), value)) rawset(
             key,
             value
         )
@@ -260,7 +260,7 @@ open class LuaTable : LuaValue, Metatable {
     /** caller must ensure key is not nil  */
     fun set(key: LuaValue, value: LuaValue) {
         if (key == null || !key.isvalidkey() && !metatag(NEWINDEX).isfunction()) throw LuaError("value ('" + key + "') can not be used as a table index")
-        if (m_metatable == null || !rawget(key).isnil() || !settable(this, key, value)) rawset(key, value)
+        if (m_metatable == null || !rawget(key).isnil() || !LuaValue.settable(this, key, value)) rawset(key, value)
     }
 
     fun rawset(key: Int, value: LuaValue) {

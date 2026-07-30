@@ -94,11 +94,11 @@ class LuaUserdata : LuaValue {
     }
 
     fun get(key: LuaValue?): LuaValue {
-        return if (m_metatable != null) gettable(this, (key)!!) else NIL
+        return if (m_metatable != null) LuaValue.gettable(this, (key)!!) else NIL
     }
 
     override fun set(key: LuaValue?, value: LuaValue?) {
-        if (m_metatable == null || !settable(this, key, value)) error("cannot set " + key + " for userdata")
+        if (m_metatable == null || !LuaValue.settable(this, key, value)) error("cannot set " + key + " for userdata")
     }
 
     override fun equals(`val`: Object?): Boolean {

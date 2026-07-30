@@ -4056,7 +4056,7 @@ open class LuaValue : Varargs() {
          * @throws LuaError if there is a loop in metatag processing
          */
         /** get value from metatable operations, or NIL if not defined by metatables  */
-        protected fun gettable(t: LuaValue, key: LuaValue): LuaValue {
+        internal fun gettable(t: LuaValue, key: LuaValue): LuaValue {
             var t = t
             var tm: LuaValue?
             var loop = 0
@@ -4084,7 +4084,7 @@ open class LuaValue : Varargs() {
          * @throws LuaError if there is a loop in metatag processing
          * @return true if assignment or metatag processing succeeded, false otherwise
          */
-        protected fun settable(t: LuaValue, key: LuaValue?, value: LuaValue?): Boolean {
+        internal fun settable(t: LuaValue, key: LuaValue?, value: LuaValue?): Boolean {
             var t = t
             var tm: LuaValue?
             var loop = 0
@@ -4110,7 +4110,7 @@ open class LuaValue : Varargs() {
         }
 
         /** Construct a Metatable instance from the given LuaValue  */
-        protected fun metatableOf(mt: LuaValue?): Metatable? {
+        internal fun metatableOf(mt: LuaValue?): Metatable? {
             if (mt != null && mt.istable()) {
                 val mode: LuaValue = mt.rawget(net.blueva.luak.LuaValue.Companion.MODE)
                 if (mode.isstring()) {
