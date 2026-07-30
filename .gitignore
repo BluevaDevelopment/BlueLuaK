@@ -3,6 +3,8 @@ bin/
 target/
 build/
 .gradle/
+.kotlin/
+kotlin-js-store/
 /lib/
 jit/
 
@@ -15,6 +17,7 @@ jit/
 *.out
 *.tar
 *.txt
+*.log
 *.zip
 *.0
 
@@ -37,3 +40,4 @@ wtk.xml
 docs/roadmap.md
 AGENTS.md
 CLAUDE.md
+.local/
