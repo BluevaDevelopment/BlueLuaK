@@ -88,18 +88,18 @@ class LuaJC protected constructor() : Globals.Loader {
         genmain: Boolean
     ): Hashtable<*, *> {
         val luaname: String = toStandardLuaFileName(filename)
-        val h: Hashtable<*, *> = Hashtable<Any?, Any?>()
+        val h: Hashtable<Any?, Any?> = Hashtable<Any?, Any?>()
         val gen = JavaGen(p, classname, luaname, genmain)
         insert(h, gen)
         return h
     }
 
-    private fun insert(h: Hashtable<*, *>, gen: JavaGen) {
+    private fun insert(h: Hashtable<Any?, Any?>, gen: JavaGen) {
         h.put(gen.classname, gen.bytecode)
         var i = 0
         val n = if (gen.inners != null) gen.inners.size else 0
         while (i < n) {
-            insert(h, gen.inners[i])
+            insert(h, gen.inners!![i]!!)
             i++
         }
     }

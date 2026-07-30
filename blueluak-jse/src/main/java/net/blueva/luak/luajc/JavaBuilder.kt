@@ -58,7 +58,7 @@ class JavaBuilder(// basic info
         if (superclassType == SUPERTYPE_VARARGS) {
             slot = 0
             while (slot < p.numparams) {
-                if (pi.isInitialValueUsed(slot)) {
+                if (pi.isInitialValueUsed(slot) == true) {
                     append(ALOAD(1))
                     append(PUSH(cp, slot + 1))
                     append(
@@ -83,7 +83,7 @@ class JavaBuilder(// basic info
             slot = 0
             while (slot < p.numparams) {
                 this.plainSlotVars.put(slot, 1 + slot)
-                if (pi.isUpvalueCreate(-1, slot)) {
+                if (pi.isUpvalueCreate(-1, slot) == true) {
                     append(ALOAD(1 + slot))
                     storeLocal(-1, slot)
                 }
@@ -95,7 +95,7 @@ class JavaBuilder(// basic info
         // nil parameters 
         // TODO: remove this for lua 5.2, not needed
         while (slot < p.maxstacksize) {
-            if (pi.isInitialValueUsed(slot)) {
+            if (pi.isInitialValueUsed(slot) == true) {
                 loadNil()
                 storeLocal(-1, slot)
             }
@@ -139,7 +139,7 @@ class JavaBuilder(// basic info
                 STR_LUAVALUE,  // method, defining class
                 main, cp
             )
-            val isrw = pi.isReadWriteUpvalue(pi.upvals[0])
+            val isrw = pi.isReadWriteUpvalue(pi.upvals!![0]!!) == true
             append(InstructionConstants.THIS)
             append(ALOAD(1))
             if (isrw) {
@@ -257,7 +257,7 @@ class JavaBuilder(// basic info
     }
 
     fun loadLocal(pc: Int, slot: Int) {
-        val isupval = pi.isUpvalueRefer(pc, slot)
+        val isupval = pi.isUpvalueRefer(pc, slot) == true
         val index = findSlotIndex(slot, isupval)
         append(ALOAD(index))
         if (isupval) {
@@ -267,10 +267,10 @@ class JavaBuilder(// basic info
     }
 
     fun storeLocal(pc: Int, slot: Int) {
-        val isupval = pi.isUpvalueAssign(pc, slot)
+        val isupval = pi.isUpvalueAssign(pc, slot) == true
         val index = findSlotIndex(slot, isupval)
         if (isupval) {
-            val isupcreate = pi.isUpvalueCreate(pc, slot)
+            val isupcreate = pi.isUpvalueCreate(pc, slot) == true
             if (isupcreate) {
                 append(
                     factory.createInvoke(
@@ -298,7 +298,7 @@ class JavaBuilder(// basic info
     fun createUpvalues(pc: Int, firstslot: Int, numslots: Int) {
         for (i in 0..<numslots) {
             val slot = firstslot + i
-            val isupcreate = pi.isUpvalueCreate(pc, slot)
+            val isupcreate = pi.isUpvalueCreate(pc, slot) == true
             if (isupcreate) {
                 val index = findSlotIndex(slot, true)
                 append(
@@ -316,7 +316,7 @@ class JavaBuilder(// basic info
     }
 
     fun convertToUpvalue(pc: Int, slot: Int) {
-        val isupassign = pi.isUpvalueAssign(pc, slot)
+        val isupassign = pi.isUpvalueAssign(pc, slot) == true
         if (isupassign) {
             val index = findSlotIndex(slot, false)
             append(ALOAD(index))
@@ -335,7 +335,7 @@ class JavaBuilder(// basic info
     }
 
     fun loadUpvalue(upindex: Int) {
-        val isrw = pi.isReadWriteUpvalue(pi.upvals[upindex])
+        val isrw = pi.isReadWriteUpvalue(pi.upvals!![upindex]!!) == true
         append(InstructionConstants.THIS)
         if (isrw) {
             append(factory.createFieldAccess(classname, upvalueName(upindex), TYPE_LOCALUPVALUE, Constants.GETFIELD))
@@ -347,7 +347,7 @@ class JavaBuilder(// basic info
     }
 
     fun storeUpvalue(pc: Int, upindex: Int, slot: Int) {
-        val isrw = pi.isReadWriteUpvalue(pi.upvals[upindex])
+        val isrw = pi.isReadWriteUpvalue(pi.upvals!![upindex]!!) == true
         append(InstructionConstants.THIS)
         if (isrw) {
             append(factory.createFieldAccess(classname, upvalueName(upindex), TYPE_LOCALUPVALUE, Constants.GETFIELD))
@@ -409,18 +409,17 @@ class JavaBuilder(// basic info
         append(factory.createInvoke(STR_VARARGS, "subargs", TYPE_VARARGS, ARG_TYPES_INT, Constants.INVOKEVIRTUAL))
     }
 
-    val table: Unit
-        get() {
-            append(
-                factory.createInvoke(
-                    STR_LUAVALUE,
-                    "get",
-                    TYPE_LUAVALUE,
-                    ARG_TYPES_LUAVALUE,
-                    Constants.INVOKEVIRTUAL
-                )
+    fun getTable() {
+        append(
+            factory.createInvoke(
+                STR_LUAVALUE,
+                "get",
+                TYPE_LUAVALUE,
+                ARG_TYPES_LUAVALUE,
+                Constants.INVOKEVIRTUAL
             )
-        }
+        )
+    }
 
     fun setTable() {
         append(
@@ -482,18 +481,17 @@ class JavaBuilder(// basic info
         append(factory.createInvoke(STR_BUFFER, "tostring", TYPE_LUASTRING, Type.NO_ARGS, Constants.INVOKEVIRTUAL))
     }
 
-    val isNil: Unit
-        get() {
-            append(
-                factory.createInvoke(
-                    STR_LUAVALUE,
-                    "isnil",
-                    Type.BOOLEAN,
-                    Type.NO_ARGS,
-                    Constants.INVOKEVIRTUAL
-                )
+    fun isNil() {
+        append(
+            factory.createInvoke(
+                STR_LUAVALUE,
+                "isnil",
+                Type.BOOLEAN,
+                Type.NO_ARGS,
+                Constants.INVOKEVIRTUAL
             )
-        }
+        )
+    }
 
     fun testForLoop() {
         append(
@@ -704,7 +702,7 @@ class JavaBuilder(// basic info
     }
 
     fun closureInitUpvalueFromUpvalue(protoname: String?, newup: Int, upindex: Int) {
-        val isrw = pi.isReadWriteUpvalue(pi.upvals[upindex])
+        val isrw = pi.isReadWriteUpvalue(pi.upvals!![upindex]!!) == true
         val uptype = if (isrw) TYPE_LOCALUPVALUE as Type else TYPE_LUAVALUE as Type
         val srcname: String = upvalueName(upindex)
         val destname: String = upvalueName(newup)
@@ -714,7 +712,7 @@ class JavaBuilder(// basic info
     }
 
     fun closureInitUpvalueFromLocal(protoname: String?, newup: Int, pc: Int, srcslot: Int) {
-        val isrw = pi.isReadWriteUpvalue(pi.vars[srcslot][pc].upvalue)
+        val isrw = pi.isReadWriteUpvalue(pi.vars[srcslot]!![pc]!!.upvalue!!) == true
         val uptype = if (isrw) TYPE_LOCALUPVALUE as Type else TYPE_LUAVALUE as Type
         val destname: String = upvalueName(newup)
         val index = findSlotIndex(srcslot, isrw)
@@ -729,7 +727,7 @@ class JavaBuilder(// basic info
             LuaValue.TNIL -> loadNil()
             LuaValue.TBOOLEAN -> loadBoolean(value.toboolean())
             LuaValue.TNUMBER, LuaValue.TSTRING -> {
-                val name = constants.get(value)
+                var name: String? = constants.get(value)
                 if (name == null) {
                     name =
                         if (value.type() == LuaValue.TNUMBER) if (value.isinttype()) createLuaIntegerField(value.checkint()) else createLuaDoubleField(
@@ -857,7 +855,7 @@ class JavaBuilder(// basic info
 
         // create the fields
         for (i in p.upvalues!!.indices) {
-            val isrw = pi.isReadWriteUpvalue(pi.upvals[i])
+            val isrw = pi.isReadWriteUpvalue(pi.upvals!![i]!!) == true
             val uptype = if (isrw) TYPE_LOCALUPVALUE as Type else TYPE_LUAVALUE as Type
             val fg = FieldGen(0, uptype, upvalueName(i), cp)
             cg.addField(fg.getField())

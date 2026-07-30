@@ -25,8 +25,8 @@ class BasicBlock(
     var pc1: Int
 ) {
     var pc0: Int
-    var prev: Array<BasicBlock?>? // previous basic blocks (0-n of these)
-    var next: Array<BasicBlock?>? // next basic blocks (0, 1, or 2 of these)
+    var prev: Array<BasicBlock?>? = null // previous basic blocks (0-n of these)
+    var next: Array<BasicBlock?>? = null // next basic blocks (0, 1, or 2 of these)
     var islive: Boolean = false // true if this block is used
 
     init {
@@ -190,7 +190,7 @@ class BasicBlock(
 
         fun findLiveBlocks(blocks: Array<BasicBlock?>): Array<BasicBlock?> {
             // add reachable blocks
-            val next: Vector<*> = Vector<Any?>()
+            val next: Vector<BasicBlock?> = Vector<BasicBlock?>()
             next.addElement(blocks[0])
             while (!next.isEmpty()) {
                 val b = next.elementAt(0) as BasicBlock
@@ -208,7 +208,7 @@ class BasicBlock(
 
 
             // create list in natural order
-            val list: Vector<*> = Vector<Any?>()
+            val list: Vector<BasicBlock?> = Vector<BasicBlock?>()
             var i = 0
             while (i < blocks.size) {
                 if (blocks[i]!!.islive) list.addElement(blocks[i])

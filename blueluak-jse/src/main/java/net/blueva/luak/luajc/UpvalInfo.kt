@@ -69,20 +69,18 @@ class UpvalInfo {
         var i = 0
         val n = pi.blocklist.size
         while (i < n) {
-            val b = pi.blocklist[i]
-            val v = pi.vars[slot]!![b.pc1]
+            val b = pi.blocklist[i]!!
+            val v = pi.vars[slot]!![b.pc1]!!
             if (v === prior) {
                 val next = b.next
                 var j = 0
                 val m = if (next != null) next.size else 0
                 while (j < m) {
-                    val b1 = next!![j]
-                    if (b1 != null) {
-                        val v1 = pi.vars[slot]!![b1.pc0]
-                        if (v1 !== prior) {
-                            loopDetected = loopDetected or includeVarAndPosteriorVars(v1)
-                            if (v1.isPhiVar()) includePriorVarsIgnoreLoops(v1)
-                        }
+                    val b1 = next!![j]!!
+                    val v1 = pi.vars[slot]!![b1.pc0]!!
+                    if (v1 !== prior) {
+                        loopDetected = loopDetected or includeVarAndPosteriorVars(v1)
+                        if (v1.isPhiVar()) includePriorVarsIgnoreLoops(v1)
                     }
                     j++
                 }
@@ -103,18 +101,16 @@ class UpvalInfo {
         var i = 0
         val n = pi.blocklist.size
         while (i < n) {
-            val b = pi.blocklist[i]
-            val v = pi.vars[slot]!![b.pc0]
+            val b = pi.blocklist[i]!!
+            val v = pi.vars[slot]!![b.pc0]!!
             if (v === poster) {
                 val prev = b.prev
                 var j = 0
                 val m = if (prev != null) prev.size else 0
                 while (j < m) {
-                    val b0 = prev!![j]
-                    if (b0 != null) {
-                        val v0 = pi.vars[slot]!![b0.pc1]
-                        if (v0 !== poster) includeVarAndPosteriorVars(v0)
-                    }
+                    val b0 = prev!![j]!!
+                    val v0 = pi.vars[slot]!![b0.pc1]!!
+                    if (v0 !== poster) includeVarAndPosteriorVars(v0)
                     j++
                 }
             } else {
@@ -155,7 +151,7 @@ class UpvalInfo {
         var v = v
         if (v!!.pc < 0) return true
         val b = pi.blocks[v.pc]!!
-        if (v.pc > b.pc0) return pi.vars[slot]!![v.pc - 1].upvalue !== this
+        if (v.pc > b.pc0) return pi.vars[slot]!![v.pc - 1]!!.upvalue !== this
         val prev = b.prev
         if (prev == null) {
             v = pi.params[slot]
@@ -164,11 +160,9 @@ class UpvalInfo {
             var i = 0
             val n = prev.size
             while (i < n) {
-                val bp = prev[i]
-                if (bp != null) {
-                    v = pi.vars[slot]!![bp.pc1]
-                    if (v != null && v.upvalue !== this) return true
-                }
+                val bp = prev[i]!!
+                v = pi.vars[slot]!![bp.pc1]!!
+                if (v.upvalue !== this) return true
                 i++
             }
         }

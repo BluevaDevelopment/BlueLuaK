@@ -50,7 +50,7 @@ class JavaLoader : ClassLoader() {
         var i = 0
         val n = if (jg.inners != null) jg.inners.size else 0
         while (i < n) {
-            include(jg.inners[i])
+            include(jg.inners!![i]!!)
             i++
         }
     }

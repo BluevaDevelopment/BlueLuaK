@@ -22,7 +22,6 @@ import net.blueva.luak.Prototype
 import net.blueva.luak.Upvaldesc
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import java.lang.Boolean
 import java.util.*
 import kotlin.Any
 import kotlin.Array
@@ -44,9 +43,9 @@ class ProtoInfo private constructor(// the prototype that this info is about
 ) {
     val subprotos: Array<ProtoInfo?>? // one per enclosed prototype, or null
     val blocks: Array<BasicBlock?> // basic block analysis of code branching
-    val blocklist: Array<BasicBlock> // blocks in breadth-first order
+    val blocklist: Array<BasicBlock?> // blocks in breadth-first order
     val params: Array<VarInfo> // Parameters and initial values of stack variables
-    val vars: Array<Array<VarInfo>?> // Each variable
+    val vars: Array<Array<VarInfo?>?> // Each variable
     val upvals: Array<UpvalInfo?>? // from outer scope
     val openups: Array<Array<UpvalInfo?>?> // per slot, upvalues allocated by this prototype
 
@@ -54,7 +53,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
     constructor(p: Prototype, name: String?) : this(p, name, null)
 
     init {
-        this.upvals = if (u != null) u else arrayOf<UpvalInfo>(UpvalInfo(this))
+        this.upvals = if (u != null) u else arrayOf<UpvalInfo?>(UpvalInfo(this))
         this.subprotos =
             if (prototype.p != null && prototype.p!!.size > 0) arrayOfNulls<ProtoInfo>(prototype.p!!.size) else null
 
@@ -65,11 +64,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
 
         // params are inputs to first block
-        this.params = arrayOfNulls<VarInfo>(prototype.maxstacksize)
-        for (slot in 0..<prototype.maxstacksize) {
-            val v: VarInfo = VarInfo.Companion.PARAM(slot)
-            params[slot] = v
-        }
+        this.params = Array(prototype.maxstacksize) { slot -> VarInfo.Companion.PARAM(slot) }
 
 
         // find variables
@@ -102,7 +97,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
         // basic blocks
         for (i in blocklist.indices) {
-            val b = blocklist[i]
+            val b = blocklist[i]!!
             val pc0 = b.pc0
             sb.append("  block " + b.toString())
             appendOpenUps(sb, -1)
@@ -120,7 +115,10 @@ class ProtoInfo private constructor(// the prototype that this info is about
                 for (j in 0..<prototype.maxstacksize) {
                     val v = vars[j]!![pc]
                     val u =
-                        (if (v == null) "" else if (v.upvalue != null) if (!v.upvalue.rw) "[C] " else (if (v.allocupvalue && v.pc == pc) "[*] " else "[]  ") else "    ")
+                        (if (v == null) "" else {
+                            val vu = v.upvalue
+                            if (vu != null) if (!vu.rw) "[C] " else (if (v.allocupvalue && v.pc == pc) "[*] " else "[]  ") else "    "
+                        })
                     val s: String? = if (v == null) "null   " else v.toString()
                     sb.append(s + u)
                 }
@@ -160,29 +158,29 @@ class ProtoInfo private constructor(// the prototype that this info is about
         }
     }
 
-    private fun findVariables(): Array<Array<VarInfo>?> {
+    private fun findVariables(): Array<Array<VarInfo?>?> {
         // create storage for variables.
 
         val n = prototype.code!!.size
         val m = prototype.maxstacksize
-        val v = arrayOfNulls<Array<VarInfo>>(m)
-        for (i in v.indices) v[i] = arrayOfNulls<VarInfo>(n)
+        val v = Array<Array<VarInfo?>?>(m) { arrayOfNulls<VarInfo?>(n) }
 
 
         // process instructions
         for (bi in blocklist.indices) {
-            val b0 = blocklist[bi]
+            val b0 = blocklist[bi]!!
 
 
             // input from previous blocks
-            val nprev = if (b0.prev != null) b0.prev.size else 0
+            val prev = b0.prev
+            val nprev = if (prev != null) prev.size else 0
             for (slot in 0..<m) {
                 var `var`: VarInfo? = null
                 if (nprev == 0) `var` = params[slot]
-                else if (nprev == 1) `var` = v[slot]!![b0.prev[0].pc1]
+                else if (nprev == 1) `var` = v[slot]!![prev!![0]!!.pc1]
                 else {
                     for (i in 0..<nprev) {
-                        val bp = b0.prev[i]
+                        val bp = prev!![i]!!
                         if (v[slot]!![bp.pc1] === VarInfo.Companion.INVALID) `var` = VarInfo.Companion.INVALID
                     }
                 }
@@ -213,7 +211,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                     Lua.OP_MOVE, Lua.OP_UNM, Lua.OP_NOT, Lua.OP_LEN, Lua.OP_TESTSET -> {
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
-                        v[b]!![pc].isreferenced = true
+                        v[b]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
@@ -221,8 +219,8 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        if (!Lua.ISK(b)) v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        if (!Lua.ISK(b)) v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
@@ -230,16 +228,16 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        v[a]!![pc].isreferenced = true
-                        if (!Lua.ISK(b)) v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        v[a]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(b)) v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                     }
 
                     Lua.OP_SETTABUP -> {
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        if (!Lua.ISK(b)) v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        if (!Lua.ISK(b)) v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                     }
 
                     Lua.OP_CONCAT -> {
@@ -247,7 +245,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
                         while (b <= c) {
-                            v[b]!![pc].isreferenced = true
+                            v[b]!![pc]!!.isreferenced = true
                             b++
                         }
                         v[a]!![pc] = VarInfo(a, pc)
@@ -255,7 +253,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
                     Lua.OP_FORPREP -> {
                         a = Lua.GETARG_A(ins)
-                        v[a + 2]!![pc].isreferenced = true
+                        v[a + 2]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
@@ -263,15 +261,15 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
                     Lua.OP_GETTABUP -> {
                         a = Lua.GETARG_A(ins)
                         c = Lua.GETARG_C(ins)
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
@@ -279,19 +277,19 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                         v[a + 1]!![pc] = VarInfo(a + 1, pc)
                     }
 
                     Lua.OP_FORLOOP -> {
                         a = Lua.GETARG_A(ins)
-                        v[a]!![pc].isreferenced = true
-                        v[a + 2]!![pc].isreferenced = true
+                        v[a]!![pc]!!.isreferenced = true
+                        v[a + 2]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
-                        v[a]!![pc].isreferenced = true
-                        v[a + 1]!![pc].isreferenced = true
+                        v[a]!![pc]!!.isreferenced = true
+                        v[a + 1]!![pc]!!.isreferenced = true
                         v[a + 3]!![pc] = VarInfo(a + 3, pc)
                     }
 
@@ -307,7 +305,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                     Lua.OP_VARARG -> {
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
-                        val j = 1
+                        var j = 1
                         while (j < b) {
                             v[a]!![pc] = VarInfo(a, pc)
                             j++
@@ -323,14 +321,14 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        v[a]!![pc].isreferenced = true
-                        v[a]!![pc].isreferenced = true
-                        val i = 1
+                        v[a]!![pc]!!.isreferenced = true
+                        v[a]!![pc]!!.isreferenced = true
+                        var i = 1
                         while (i <= b - 1) {
-                            v[a + i]!![pc].isreferenced = true
+                            v[a + i]!![pc]!!.isreferenced = true
                             i++
                         }
-                        val j = 0
+                        var j = 0
                         while (j <= c - 2) {
                             v[a]!![pc] = VarInfo(a, pc)
                             j++
@@ -345,10 +343,10 @@ class ProtoInfo private constructor(// the prototype that this info is about
                     Lua.OP_TFORCALL -> {
                         a = Lua.GETARG_A(ins)
                         c = Lua.GETARG_C(ins)
-                        v[a++]!![pc].isreferenced = true
-                        v[a++]!![pc].isreferenced = true
-                        v[a++]!![pc].isreferenced = true
-                        val j = 0
+                        v[a++]!![pc]!!.isreferenced = true
+                        v[a++]!![pc]!!.isreferenced = true
+                        v[a++]!![pc]!!.isreferenced = true
+                        var j = 0
                         while (j < c) {
                             v[a]!![pc] = VarInfo(a, pc)
                             j++
@@ -362,17 +360,17 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
                     Lua.OP_TFORLOOP -> {
                         a = Lua.GETARG_A(ins)
-                        v[a + 1]!![pc].isreferenced = true
+                        v[a + 1]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
                     Lua.OP_TAILCALL -> {
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
-                        v[a]!![pc].isreferenced = true
-                        val i = 1
+                        v[a]!![pc]!!.isreferenced = true
+                        var i = 1
                         while (i <= b - 1) {
-                            v[a + i]!![pc].isreferenced = true
+                            v[a + i]!![pc]!!.isreferenced = true
                             i++
                         }
                     }
@@ -380,9 +378,9 @@ class ProtoInfo private constructor(// the prototype that this info is about
                     Lua.OP_RETURN -> {
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
-                        val i = 0
+                        var i = 0
                         while (i <= b - 2) {
-                            v[a + i]!![pc].isreferenced = true
+                            v[a + i]!![pc]!!.isreferenced = true
                             i++
                         }
                     }
@@ -395,7 +393,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         var k = 0
                         val nups = upvalues.size
                         while (k < nups) {
-                            if (upvalues[k].instack) v[upvalues[k].idx.toInt()]!![pc].isreferenced = true
+                            if (upvalues[k].instack) v[upvalues[k].idx.toInt()]!![pc]!!.isreferenced = true
                             ++k
                         }
                         v[a]!![pc] = VarInfo(a, pc)
@@ -404,24 +402,24 @@ class ProtoInfo private constructor(// the prototype that this info is about
                     Lua.OP_SETLIST -> {
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_B(ins)
-                        v[a]!![pc].isreferenced = true
-                        val i = 1
+                        v[a]!![pc]!!.isreferenced = true
+                        var i = 1
                         while (i <= b) {
-                            v[a + i]!![pc].isreferenced = true
+                            v[a + i]!![pc]!!.isreferenced = true
                             i++
                         }
                     }
 
                     Lua.OP_SETUPVAL, Lua.OP_TEST -> {
                         a = Lua.GETARG_A(ins)
-                        v[a]!![pc].isreferenced = true
+                        v[a]!![pc]!!.isreferenced = true
                     }
 
                     Lua.OP_EQ, Lua.OP_LT, Lua.OP_LE -> {
                         b = Lua.GETARG_B(ins)
                         c = Lua.GETARG_C(ins)
-                        if (!Lua.ISK(b)) v[b]!![pc].isreferenced = true
-                        if (!Lua.ISK(c)) v[c]!![pc].isreferenced = true
+                        if (!Lua.ISK(b)) v[b]!![pc]!!.isreferenced = true
+                        if (!Lua.ISK(c)) v[c]!![pc]!!.isreferenced = true
                     }
 
                     Lua.OP_JMP -> {
@@ -444,9 +442,9 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
     private fun replaceTrivialPhiVariables() {
         for (i in blocklist.indices) {
-            val b0 = blocklist[i]
+            val b0 = blocklist[i]!!
             for (slot in 0..<prototype.maxstacksize) {
-                val vold = vars[slot]!![b0.pc0]
+                val vold = vars[slot]!![b0.pc0]!!
                 val vnew = vold.resolvePhiVariableValues()
                 if (vnew != null) substituteVariable(slot, vold, vnew)
             }
@@ -457,7 +455,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
         var i = 0
         val n = prototype.code!!.size
         while (i < n) {
-            replaceAll(vars[slot], vars[slot]!!.size, vold, vnew)
+            replaceAll(vars[slot]!!, vars[slot]!!.size, vold, vnew)
             i++
         }
     }
@@ -501,7 +499,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
         var i = 0
         val n = prototype.code!!.size
         while (i < n) {
-            if (vars[slot]!![i] != null && vars[slot]!![i].upvalue === u) openups[slot]!![i] = u
+            if (vars[slot]!![i] != null && vars[slot]!![i]!!.upvalue === u) openups[slot]!![i] = u
             ++i
         }
         return u
@@ -509,20 +507,23 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
     fun isUpvalueAssign(pc: Int, slot: Int): Boolean {
         val v = if (pc < 0) params[slot] else vars[slot]!![pc]
-        return v != null && v.upvalue != null && v.upvalue.rw
+        val vu = v?.upvalue
+        return vu != null && vu.rw
     }
 
     fun isUpvalueCreate(pc: Int, slot: Int): Boolean {
         val v = if (pc < 0) params[slot] else vars[slot]!![pc]
-        return v != null && v.upvalue != null && v.upvalue.rw && v.allocupvalue && pc == v.pc
+        val vu = v?.upvalue
+        return vu != null && vu.rw && v!!.allocupvalue && pc == v.pc
     }
 
     fun isUpvalueRefer(pc: Int, slot: Int): Boolean {
         // special case when both refer and assign in same instruction
         var pc = pc
-        if (pc > 0 && vars[slot]!![pc] != null && vars[slot]!![pc].pc == pc && vars[slot]!![pc - 1] != null) pc -= 1
+        if (pc > 0 && vars[slot]!![pc] != null && vars[slot]!![pc]!!.pc == pc && vars[slot]!![pc - 1] != null) pc -= 1
         val v = if (pc < 0) params[slot] else vars[slot]!![pc]
-        return v != null && v.upvalue != null && v.upvalue.rw
+        val vu = v?.upvalue
+        return vu != null && vu.rw
     }
 
     fun isInitialValueUsed(slot: Int): Boolean {
@@ -538,7 +539,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
         if (prototype.p!!.size <= 0) return null
         // find all the prototype names
         val names = arrayOfNulls<String>(prototype.p!!.size)
-        val used: Hashtable<*, *> = Hashtable<Any?, Any?>()
+        val used: Hashtable<String?, Boolean> = Hashtable<String?, Boolean>()
         val code: IntArray = prototype.code!!
         val n = code.size
         for (pc in 0..<n) {
@@ -572,7 +573,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         name = basename + '$' + count++
                     } while (used.containsKey(name))
                 }
-                used.put(name, Boolean.TRUE)
+                used.put(name, true)
                 names[bx] = name
             }
         }
@@ -580,7 +581,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
     }
 
     companion object {
-        private fun propogateVars(v: Array<Array<VarInfo>?>, pcfrom: Int, pcto: Int) {
+        private fun propogateVars(v: Array<Array<VarInfo?>?>, pcfrom: Int, pcto: Int) {
             var j = 0
             val m = v.size
             while (j < m) {

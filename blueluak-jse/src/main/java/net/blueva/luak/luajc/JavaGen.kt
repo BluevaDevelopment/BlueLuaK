@@ -31,7 +31,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
     val inners: Array<JavaGen?>?
 
     constructor(p: Prototype?, classname: String?, filename: String?, genmain: Boolean) : this(
-        ProtoInfo(p, classname),
+        ProtoInfo(p!!, classname),
         classname,
         filename,
         genmain
@@ -52,7 +52,10 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
         if (pi.subprotos != null) {
             val n = pi.subprotos.size
             inners = arrayOfNulls<JavaGen>(n)
-            for (i in 0..<n) inners[i] = JavaGen(pi.subprotos[i], pi.subprotos[i].name, filename, false)
+            for (i in 0..<n) {
+                val sub = pi.subprotos[i]!!
+                inners[i] = JavaGen(sub, sub.name, filename, false)
+            }
         } else {
             inners = null
         }
@@ -63,13 +66,13 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
         var vresultbase = -1
 
         for (bi in pi.blocklist.indices) {
-            val b0 = pi.blocklist[bi]
+            val b0 = pi.blocklist[bi]!!
 
             // convert upvalues that are phi-variables
             for (slot in 0..<p.maxstacksize) {
                 val pc = b0.pc0
                 val c = pi.isUpvalueCreate(pc, slot)
-                if (c && pi.vars[slot][pc].isPhiVar()) builder.convertToUpvalue(pc, slot)
+                if (c == true && pi.vars[slot]!![pc]!!.isPhiVar()) builder.convertToUpvalue(pc, slot)
             }
 
             for (pc in b0.pc0..b0.pc1) {
@@ -166,7 +169,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                     }
 
                     Lua.OP_CONCAT -> {
-                        val k = b
+                        var k = b
                         while (k <= c) {
                             builder.loadLocal(pc, k)
                             k++
@@ -245,7 +248,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                         var narg = b - 1
                         when (narg) {
                             0, 1, 2, 3 -> {
-                                val i = 1
+                                var i = 1
                                 while (i < b) {
                                     builder.loadLocal(pc, a + i)
                                     i++
@@ -284,7 +287,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                             }
 
                             else -> {
-                                val i = 1
+                                var i = 1
                                 while (i < c) {
                                     if (i + 1 < c) builder.dup()
                                     builder.arg(i)
@@ -352,7 +355,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                         builder.loadLocal(pc, a + 1)
                         builder.loadLocal(pc, a + 2)
                         builder.invoke(2)
-                        val i = 1
+                        var i = 1
                         while (i <= c) {
                             if (i < c) builder.dup()
                             builder.arg(i)
@@ -370,7 +373,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                     }
 
                     Lua.OP_SETLIST -> {
-                        val index0 = (c - 1) * Lua.LFIELDS_PER_FLUSH + 1
+                        var index0 = (c - 1) * Lua.LFIELDS_PER_FLUSH + 1
                         builder.loadLocal(pc, a)
                         if (b == 0) {
                             val nstack = vresultbase - (a + 1)
@@ -388,8 +391,8 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                     Lua.OP_CLOSURE -> {
                         val newp: Prototype = p.p!![bx]!!
                         val nup = newp.upvalues!!.size
-                        val protoname = pi.subprotos[bx].name
-                        builder.closureCreate(protoname)
+                        val protoname = pi.subprotos!![bx]!!.name
+                        builder.closureCreate(protoname!!)
                         if (nup > 0) builder.dup()
                         builder.storeLocal(pc, a)
                         var up = 0
