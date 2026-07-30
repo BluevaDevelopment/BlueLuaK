@@ -69,12 +69,12 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
             return net.blueva.luak.WeakTable.WeakValueSlot(key, value, null)
         }
-        return LuaTable.defaultEntry(key, value)
+        return LuaTable.defaultEntry(key!!, value)
     }
 
-    abstract class WeakSlot protected constructor(key: Object?, value: Object?, next: Slot?) : Slot {
-        protected var key: Object?
-        protected var value: Object?
+    abstract class WeakSlot protected constructor(key: Any?, value: Any?, next: Slot?) : Slot {
+        protected var key: Any?
+        protected var value: Any?
         protected var next: Slot?
 
         init {
@@ -118,9 +118,9 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return 0
         }
 
-        fun set(target: StrongSlot, value: LuaValue?): Slot? {
+        override fun set(target: StrongSlot?, value: LuaValue?): Slot? {
             val key: LuaValue? = strongkey()
-            if (key != null && target.find(key) != null) {
+            if (key != null && target!!.find(key) != null) {
                 return set(value)
             } else if (key != null) {
                 // Our key is still good.
@@ -141,11 +141,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             }
         }
 
-        fun remove(target: StrongSlot): Slot? {
+        override fun remove(target: StrongSlot?): Slot? {
             val key: LuaValue? = strongkey()
             if (key == null) {
                 return next!!.remove(target)
-            } else if (target.keyeq(key)) {
+            } else if (target!!.keyeq(key)) {
                 this.value = null
                 return this
             } else {
@@ -281,8 +281,8 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
     /** Internal class to implement weak values.
      * @see WeakTable
      */
-    internal open class WeakValue(value: LuaValue?) : LuaValue() {
-        var ref: WeakReference<Any>?
+    internal open class WeakValue(value: LuaValue) : LuaValue() {
+        var ref: WeakReference<LuaValue>?
 
         init {
             ref = WeakReference(value)
@@ -302,13 +302,13 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return "weak<" + ref!!.get() + ">"
         }
 
-        override fun strongvalue(): LuaValue {
-            val o: Object? = ref!!.get()
+        override fun strongvalue(): LuaValue? {
+            val o: Any? = ref!!.get()
             return (o as LuaValue?)!!
         }
 
         fun raweq(rhs: LuaValue): Boolean {
-            val o: Object? = ref!!.get()
+            val o: Any? = ref!!.get()
             return o != null && rhs.raweq(o as LuaValue)
         }
     }
@@ -317,18 +317,18 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
      * @see WeakTable
      */
     internal class WeakUserdata internal constructor(value: LuaValue) : WeakValue(value) {
-        private val ob: WeakReference
+        private val ob: WeakReference<Any>
         private val mt: LuaValue?
 
         init {
-            ob = WeakReference(value.touserdata())
+            ob = WeakReference(value.touserdata()!!)
             mt = value.getmetatable()
         }
 
-        override fun strongvalue(): LuaValue {
-            val u: Object? = ref!!.get()
+        override fun strongvalue(): LuaValue? {
+            val u: Any? = ref!!.get()
             if (u != null) return u as LuaValue
-            val o: Object? = ob.get()
+            val o: Any? = ob.get()
             if (o != null) {
                 val ud: LuaValue? = LuaValue.userdataOf(o, mt)
                 ref = WeakReference(ud)
@@ -377,7 +377,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
          * @param value value to convert
          * @return [LuaValue] that is a strong or weak reference, depending on type of `value`
          */
-        protected fun weaken(value: LuaValue): LuaValue? {
+        protected fun weaken(value: LuaValue): LuaValue {
             when (value.type()) {
                 LuaValue.TFUNCTION, LuaValue.TTHREAD, LuaValue.TTABLE -> return net.blueva.luak.WeakTable.WeakValue(
                     value
@@ -394,10 +394,10 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
          * @return LuaValue or null
          * @see .weaken
          */
-        protected fun strengthen(ref: Object): LuaValue? {
-            var ref: Object = ref
-            if (ref is WeakReference) {
-                ref = (ref as WeakReference<*>).get()
+        protected fun strengthen(ref: Any?): LuaValue? {
+            var ref: Any? = ref
+            if (ref is WeakReference<*>) {
+                ref = ref.get()
             }
             if (ref is WeakValue) {
                 return ref.strongvalue()

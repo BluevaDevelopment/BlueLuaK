@@ -429,7 +429,7 @@ open class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    open fun touserdata(): Object? {
+    open fun touserdata(): Any? {
         return null
     }
 
@@ -441,7 +441,7 @@ open class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    open fun touserdata(c: Class<*>?): Object? {
+    open fun touserdata(c: Class<*>?): Any? {
         return null
     }
 
@@ -720,9 +720,9 @@ open class LuaValue : Varargs() {
         return null
     }
 
-    /** Check that optional argument is a userdata and return the Object instance
-     * @param defval Object to return if `this` is nil or none
-     * @return Object instance of the userdata if a [LuaUserdata],
+    /** Check that optional argument is a userdata and return the Any instance
+     * @param defval Any to return if `this` is nil or none
+     * @return Any instance of the userdata if a [LuaUserdata],
      * `defval` if nil or none,
      * throws [LuaError] if some other type
      * @throws LuaError if was not a userdata or nil or none.
@@ -731,16 +731,16 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun optuserdata(defval: Object?): Object? {
+    open fun optuserdata(defval: Any?): Any? {
         argerror("object")
         return null
     }
 
     /** Check that optional argument is a userdata whose instance is of a type
-     * and return the Object instance
+     * and return the Any instance
      * @param c Class to test userdata instance against
-     * @param defval Object to return if `this` is nil or none
-     * @return Object instance of the userdata if a [LuaUserdata] and instance is assignable to `c`,
+     * @param defval Any to return if `this` is nil or none
+     * @return Any instance of the userdata if a [LuaUserdata] and instance is assignable to `c`,
      * `defval` if nil or none,
      * throws [LuaError] if some other type
      * @throws LuaError if was not a userdata whose instance is assignable to `c` or nil or none.
@@ -749,7 +749,7 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun optuserdata(c: Class<*>, defval: Object?): Object? {
+    open fun optuserdata(c: Class<*>, defval: Any?): Any? {
         argerror(c.name)
         return null
     }
@@ -1012,7 +1012,7 @@ open class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    open fun checkuserdata(): Object? {
+    open fun checkuserdata(): Any? {
         argerror("userdata")
         return null
     }
@@ -1025,7 +1025,7 @@ open class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    open fun checkuserdata(c: Class<*>?): Object? {
+    open fun checkuserdata(c: Class<*>?): Any? {
         argerror("userdata")
         return null
     }
@@ -2238,7 +2238,7 @@ open class LuaValue : Varargs() {
     }
 
     // object equality, used for key comparison
-    open fun equals(obj: Object?): Boolean {
+    override fun equals(obj: Any?): Boolean {
         return this === obj
     }
 
@@ -3568,7 +3568,7 @@ open class LuaValue : Varargs() {
      * @return [LuaValue] referred to, or null if it was weak and is no longer referenced.
      * @see WeakTable
      */
-    open fun strongvalue(): LuaValue {
+    open fun strongvalue(): LuaValue? {
         return this
     }
 
@@ -4031,7 +4031,7 @@ open class LuaValue : Varargs() {
          * @param o The java instance to be wrapped as userdata
          * @return [LuaUserdata] value wrapping the java instance.
          */
-        fun userdataOf(o: Object?): LuaUserdata {
+        fun userdataOf(o: Any?): LuaUserdata {
             return LuaUserdata((o)!!)
         }
 
@@ -4041,7 +4041,7 @@ open class LuaValue : Varargs() {
          * @param metatable The metatble to associate with the userdata instance.
          * @return [LuaUserdata] value wrapping the java instance.
          */
-        fun userdataOf(o: Object?, metatable: LuaValue?): LuaUserdata {
+        fun userdataOf(o: Any?, metatable: LuaValue?): LuaUserdata {
             return LuaUserdata((o)!!, metatable)
         }
 

@@ -875,7 +875,7 @@ open class LuaTable : LuaValue, Metatable {
          * Return a Slot with the given value set to nil; must not return null
          * for next() to behave correctly.
          */
-        fun remove(target: StrongSlot?): Slot
+        fun remove(target: StrongSlot?): Slot?
 
         /**
          * Return a Slot with the same first key and value (if still present)
@@ -1176,14 +1176,14 @@ open class LuaTable : LuaValue, Metatable {
      * it can be found by next().
      */
     private class DeadSlot(key: LuaValue, private var next: Slot?) : Slot {
-        private val key: Object
+        private val key: Any
 
         init {
-            this.key = if (net.blueva.luak.LuaTable.Companion.isLargeKey(key)) WeakReference(key) else key as Object
+            this.key = if (net.blueva.luak.LuaTable.Companion.isLargeKey(key)) WeakReference(key) else key as Any
         }
 
         fun key(): LuaValue? {
-            return (if (key is WeakReference) (key as WeakReference<*>).get() else key) as LuaValue?
+            return (if (key is WeakReference<*>) key.get() else key) as LuaValue?
         }
 
         override fun keyindex(hashMask: Int): Int {
