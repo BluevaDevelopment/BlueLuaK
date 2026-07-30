@@ -4058,7 +4058,7 @@ open class LuaValue : Varargs() {
         /** get value from metatable operations, or NIL if not defined by metatables  */
         internal fun gettable(t: LuaValue, key: LuaValue): LuaValue {
             var t = t
-            var tm: LuaValue?
+            var tm: LuaValue? = null
             var loop = 0
             do {
                 if (t.istable()) {
@@ -4086,7 +4086,7 @@ open class LuaValue : Varargs() {
          */
         internal fun settable(t: LuaValue, key: LuaValue?, value: LuaValue?): Boolean {
             var t = t
-            var tm: LuaValue?
+            var tm: LuaValue? = null
             var loop = 0
             do {
                 if (t.istable()) {
