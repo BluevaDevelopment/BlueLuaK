@@ -836,10 +836,10 @@ class LuaString private constructor(
             )
             val hash: Int = net.blueva.luak.LuaString.Companion.hashCode(bytes, off, len)
             val bucket = hash and (net.blueva.luak.LuaString.Companion.RECENT_STRINGS_CACHE_SIZE - 1)
-            val t: LuaString? = net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings[bucket]
+            val t: LuaString? = net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings!![bucket]
             if (t != null && t.m_hashcode == hash && t.byteseq(bytes, off, len)) return t
             val s: LuaString = net.blueva.luak.LuaString.Companion.valueFromCopy(bytes, off, len)
-            net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings[bucket] = s
+            net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings!![bucket] = s
             return s
         }
 
@@ -884,10 +884,10 @@ class LuaString private constructor(
             )
             val hash: Int = net.blueva.luak.LuaString.Companion.hashCode(bytes, off, len)
             val bucket = hash and (net.blueva.luak.LuaString.Companion.RECENT_STRINGS_CACHE_SIZE - 1)
-            val t: LuaString? = net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings[bucket]
+            val t: LuaString? = net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings!![bucket]
             if (t != null && t.m_hashcode == hash && t.byteseq(bytes, off, len)) return t
             val s: LuaString = net.blueva.luak.LuaString(bytes, off, len)
-            net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings[bucket] = s
+            net.blueva.luak.LuaString.RecentShortStrings.recent_short_strings!![bucket] = s
             return s
         }
 

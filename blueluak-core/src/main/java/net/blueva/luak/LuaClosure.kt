@@ -675,7 +675,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_CLOSURE -> {
                         run {
-                            val newp: Prototype = p.p[i ushr 14]
+                            val newp: Prototype = p.p!![i ushr 14]
                             val ncl: LuaClosure = net.blueva.luak.LuaClosure(newp, globals)
                             val uv: Array<Upvaldesc?> = newp.upvalues
                             var j = 0
