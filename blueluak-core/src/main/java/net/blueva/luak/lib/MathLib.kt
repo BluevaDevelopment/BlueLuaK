@@ -88,7 +88,7 @@ open class MathLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
      */
-    open fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    open override fun call(modname: LuaValue?, env: LuaValue): LuaValue {
         val math: LuaTable = LuaTable(0, 30)
         math.set("abs", net.blueva.luak.lib.MathLib.abs())
         math.set("ceil", net.blueva.luak.lib.MathLib.ceil())
@@ -118,19 +118,19 @@ open class MathLib : TwoArgFunction() {
     }
 
     protected abstract class UnaryOp : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
+        override fun call(arg: LuaValue): LuaValue {
             return valueOf(call(arg.checkdouble()))
         }
 
-        protected abstract fun call(d: Double): Double
+        protected abstract override fun call(d: Double): Double
     }
 
     protected abstract class BinaryOp : TwoArgFunction() {
-        fun call(x: LuaValue, y: LuaValue): LuaValue {
+        override fun call(x: LuaValue, y: LuaValue): LuaValue {
             return valueOf(call(x.checkdouble(), y.checkdouble()))
         }
 
-        protected abstract fun call(x: Double, y: Double): Double
+        protected abstract override fun call(x: Double, y: Double): Double
     }
 
     internal class abs : UnaryOp() {
@@ -194,7 +194,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class fmod : TwoArgFunction() {
-        fun call(xv: LuaValue, yv: LuaValue): LuaValue {
+        override fun call(xv: LuaValue, yv: LuaValue): LuaValue {
             if (xv.islong() && yv.islong()) {
                 return valueOf(xv.tolong() % yv.tolong())
             }
@@ -216,8 +216,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class frexp : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val x: Double = args.checkdouble(1)
+        override fun invoke(args: Varargs): Varargs {            val x: Double = args.checkdouble(1)
             if (x == 0.0) return varargsOf(ZERO, ZERO)
             val bits: Long = Double.doubleToLongBits(x)
             val m =
@@ -228,9 +227,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class max : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            var m: LuaValue = args.checkvalue(1)
-            var i = 2
+        override fun invoke(args: Varargs): Varargs {            override var m: LuaValue = args.checkvalue(1)            var i = 2
             val n: Int = args.narg()
             while (i <= n) {
                 val v: LuaValue = args.checkvalue(i)
@@ -242,10 +239,8 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class min : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs? {
-            var m: LuaValue? = args.checkvalue(1)
-            var i = 2
-            val n: Int = args.narg()
+        override fun invoke(args: Varargs): Varargs? {
+            override var m: LuaValue? = args.checkvalue(1)            override var i = 2            val n: Int = args.narg()
             while (i <= n) {
                 val v: LuaValue = args.checkvalue(i)
                 if (v.lt_b(m)) m = v
@@ -256,7 +251,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class modf : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val n: LuaValue = args.arg1()
             /* number is its own integer part, no fractional part */
             if (n.islong()) return varargsOf(n, valueOf(0.0))
@@ -271,17 +266,17 @@ open class MathLib : TwoArgFunction() {
 
     internal class random : LibFunction() {
         var random: Random = Random()
-        fun call(): LuaValue {
+        override fun call(): LuaValue {
             return valueOf(random.nextDouble())
         }
 
-        fun call(a: LuaValue): LuaValue {
+        override fun call(a: LuaValue): LuaValue {
             val m: Int = a.checkint()
             if (m < 1) argerror(1, "interval is empty")
             return valueOf(1 + random.nextInt(m))
         }
 
-        fun call(a: LuaValue, b: LuaValue): LuaValue {
+        override fun call(a: LuaValue, b: LuaValue): LuaValue {
             val m: Int = a.checkint()
             val n: Int = b.checkint()
             if (n < m) argerror(2, "interval is empty")
@@ -290,7 +285,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class randomseed(val random: MathLib.random) : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
+        override fun call(arg: LuaValue): LuaValue {
             val seed: Long = arg.checklong()
             random.random = Random(seed)
             return NONE

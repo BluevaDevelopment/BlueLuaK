@@ -51,21 +51,20 @@ import net.blueva.luak.Varargs
 abstract class ThreeArgFunction
 /** Default constructor  */
     : LibFunction() {
-    abstract fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue?
-
-    fun call(): LuaValue? {
+    abstract override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue?
+    override fun call(): LuaValue? {
         return call(NIL, NIL, NIL)
     }
 
-    fun call(arg: LuaValue?): LuaValue? {
+    override fun call(arg: LuaValue?): LuaValue? {
         return call(arg, NIL, NIL)
     }
 
-    fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
         return call(arg1, arg2, NIL)
     }
 
-    fun invoke(varargs: Varargs): Varargs? {
+    override fun invoke(varargs: Varargs): Varargs? {
         return call(varargs.arg1(), varargs.arg(2), varargs.arg(3))
     }
 }

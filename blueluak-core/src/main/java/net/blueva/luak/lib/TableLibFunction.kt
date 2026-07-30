@@ -19,7 +19,7 @@ package net.blueva.luak.lib
 import net.blueva.luak.LuaValue
 
 open internal class TableLibFunction : LibFunction() {
-    open fun call(): LuaValue {
+    open override fun call(): LuaValue {
         return argerror(1, "table expected, got no value")
     }
 }

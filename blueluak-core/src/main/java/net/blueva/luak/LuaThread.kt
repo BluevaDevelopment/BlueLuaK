@@ -98,27 +98,27 @@ class LuaThread : LuaValue {
         this.globals = globals
     }
 
-    fun type(): Int {
+    override fun type(): Int {
         return LuaValue.TTHREAD
     }
 
-    fun typename(): String? {
+    override fun typename(): String? {
         return "thread"
     }
 
-    fun isthread(): Boolean {
+    override fun isthread(): Boolean {
         return true
     }
 
-    fun optthread(defval: LuaThread?): LuaThread {
+    override fun optthread(defval: LuaThread?): LuaThread {
         return this
     }
 
-    fun checkthread(): LuaThread {
+    override fun checkthread(): LuaThread {
         return this
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return net.blueva.luak.LuaThread.Companion.s_metatable
     }
 
@@ -165,7 +165,7 @@ class LuaThread : LuaValue {
         }
 
         @kotlin.jvm.Synchronized
-        fun run() {
+        override fun run() {
             try {
                 val a: Varargs? = this.args
                 this.args = LuaValue.NONE

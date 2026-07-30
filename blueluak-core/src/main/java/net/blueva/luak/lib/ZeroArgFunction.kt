@@ -49,17 +49,16 @@ import net.blueva.luak.Varargs
 abstract class ZeroArgFunction
 /** Default constructor  */
     : LibFunction() {
-    abstract fun call(): LuaValue?
-
-    fun call(arg: LuaValue?): LuaValue? {
+    abstract override fun call(): LuaValue?
+    override fun call(arg: LuaValue?): LuaValue? {
         return call()
     }
 
-    fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
         return call()
     }
 
-    fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
         return call()
     }
 

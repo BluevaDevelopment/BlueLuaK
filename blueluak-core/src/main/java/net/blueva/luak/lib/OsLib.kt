@@ -106,8 +106,7 @@ class OsLib
             this.name = name
         }
 
-        fun invoke(args: Varargs): Varargs {
-            try {
+        override fun invoke(args: Varargs): Varargs {            try {
                 when (opcode) {
                     net.blueva.luak.lib.OsLib.Companion.CLOCK -> return valueOf(clock())
                     net.blueva.luak.lib.OsLib.Companion.DATE -> {

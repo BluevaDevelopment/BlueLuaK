@@ -83,16 +83,13 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal class resume : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val t: LuaThread = args.checkthread(1)
+        override fun invoke(args: Varargs): Varargs {            val t: LuaThread = args.checkthread(1)
             return t.resume(args.subargs(2))
         }
     }
 
     internal inner class running : VarArgFunction() {
-        fun invoke(args: Varargs?): Varargs {
-            val r: LuaThread = globals.running
-            return varargsOf(r, valueOf(r.isMainThread()))
+        override fun invoke(args: Varargs?): Varargs {            override val r: LuaThread = globals.running            return varargsOf(r, valueOf(r.isMainThread()))
         }
     }
 
@@ -104,7 +101,7 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal inner class YieldFunction : VarArgFunction() {
-        fun invoke(args: Varargs?): Varargs {
+        override fun invoke(args: Varargs?): Varargs {
             return globals.yield(args)
         }
     }
@@ -124,9 +121,8 @@ class CoroutineLib : TwoArgFunction() {
             this.luathread = luathread
         }
 
-        fun invoke(args: Varargs?): Varargs {
-            val result: Varargs = luathread.resume(args)
-            if (result.arg1().toboolean()) {
+        override fun invoke(args: Varargs?): Varargs {
+            override val result: Varargs = luathread.resume(args)            if (result.arg1().toboolean()) {
                 return result.subargs(2)
             } else {
                 return error(result.arg(2).tojstring())

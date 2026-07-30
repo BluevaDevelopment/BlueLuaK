@@ -129,7 +129,7 @@ class PackageLib : TwoArgFunction() {
         package_.set(net.blueva.luak.lib.PackageLib.Companion._PATH, LuaValue.valueOf(newLuaPath))
     }
 
-    fun tojstring(): String? {
+    override fun tojstring(): String? {
         return "package"
     }
 
@@ -204,24 +204,21 @@ class PackageLib : TwoArgFunction() {
     }
 
     class loadlib : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            args.checkstring(1)
+        override fun invoke(args: Varargs): Varargs {            args.checkstring(1)
             return varargsOf(NIL, valueOf("dynamic libraries not enabled"), valueOf("absent"))
         }
     }
 
     inner class preload_searcher : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs? {
-            val name: LuaString? = args.checkstring(1)
-            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
+        override fun invoke(args: Varargs): Varargs? {
+            override val name: LuaString? = args.checkstring(1)            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
             return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`
         }
     }
 
     inner class lua_searcher : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val name: LuaString? = args.checkstring(1)
-
+        override fun invoke(args: Varargs): Varargs {
+            override val name: LuaString? = args.checkstring(1)
 
             // get package path
             val path: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PATH)
@@ -249,10 +246,9 @@ class PackageLib : TwoArgFunction() {
     }
 
     inner class searchpath : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             var name: String = args.checkjstring(1)
-            val path: String = args.checkjstring(2)
-            val sep: String = args.optjstring(3, ".")
+            override val path: String = args.checkjstring(2)            val sep: String = args.optjstring(3, ".")
             val rep: String = args.optjstring(4, net.blueva.luak.lib.PackageLib.Companion.FILE_SEP)
 
 
@@ -298,11 +294,9 @@ class PackageLib : TwoArgFunction() {
     }
 
     inner class java_searcher : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val name: String = args.checkjstring(1)
-            val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)
-            var c: Class? = null
-            var v: LuaValue? = null
+            override val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)            override var c: Class? = null            var v: LuaValue? = null
             try {
                 c = Class.forName(classname)
                 v = c.newInstance() as LuaValue?

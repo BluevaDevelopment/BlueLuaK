@@ -106,8 +106,7 @@ class StringLib
      * @param args the calling args
      */
     internal class _byte : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val s: LuaString = args.checkstring(1)
+        override fun invoke(args: Varargs): Varargs {            val s: LuaString = args.checkstring(1)
             val l: Int = s.m_length
             var posi: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(2, 1), l)
             var pose: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(3, posi), l)
@@ -141,9 +140,7 @@ class StringLib
      * @param args the calling VM
      */
     internal class _char : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val n: Int = args.narg()
-            val bytes = ByteArray(n)
+        override fun invoke(args: Varargs): Varargs {            override val n: Int = args.narg()            val bytes = ByteArray(n)
             var i = 0
             var a = 1
             while (i < n) {
@@ -169,10 +166,8 @@ class StringLib
      * TODO: port dumping code as optional add-on
      */
     internal class dump : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val f: LuaValue = args.checkfunction(1)
-            val baos: ByteArrayOutputStream = ByteArrayOutputStream()
-            try {
+        override fun invoke(args: Varargs): Varargs {
+            override val f: LuaValue = args.checkfunction(1)            override val baos: ByteArrayOutputStream = ByteArrayOutputStream()            try {
                 DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, true))
                 return LuaString.valueUsing(baos.toByteArray())
             } catch (e: IOException) {
@@ -198,7 +193,7 @@ class StringLib
      * are also returned, after the two indices.
      */
     internal class find : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             return net.blueva.luak.lib.StringLib.Companion.str_find_aux(args, true)
         }
     }
@@ -227,11 +222,9 @@ class StringLib
      * except as arguments to the q option.
      */
     internal inner class format : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val fmt: LuaString = args.checkstring(1)
-            val n: Int = fmt.length()
-            val result: Buffer = Buffer(n)
-            var arg = 1
+            override val n: Int = fmt.length()            override val result: Buffer = Buffer(n)            var arg = 1
             var c: Int
 
             var i = 0
@@ -446,7 +439,7 @@ class StringLib
      * as this would prevent the iteration.
      */
     internal class gmatch : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val src: LuaString = args.checkstring(1)
             val pat: LuaString = args.checkstring(2)
             return net.blueva.luak.lib.StringLib.GMatchAux(args, src, pat)
@@ -465,11 +458,10 @@ class StringLib
             this.lastmatch = -1
         }
 
-        fun invoke(args: Varargs?): Varargs {
+        override fun invoke(args: Varargs?): Varargs {
             while (soffset <= srclen) {
                 ms.reset()
-                val res = ms.match(soffset, 0)
-                if (res >= 0 && res != lastmatch) {
+                override val res = ms.match(soffset, 0)                if (res >= 0 && res != lastmatch) {
                     val soff = soffset
                     soffset = res
                     lastmatch = soffset
@@ -528,12 +520,11 @@ class StringLib
      * --> x="lua-5.1.tar.gz"
      */
     internal class gsub : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val src: LuaString = args.checkstring(1)
             val srclen: Int = src.length()
             val p: LuaString = args.checkstring(2)
-            var lastmatch = -1 /* end of last match */
-            val repl: LuaValue = args.arg(3)
+            override var lastmatch = -1 /* end of last match */            val repl: LuaValue = args.arg(3)
             val max_s: Int = args.optint(4, srclen + 1)
             val anchor = p.length() > 0 && p.charAt(0) === '^'
 
@@ -595,7 +586,7 @@ class StringLib
      * search; its default value is 1 and may be negative.
      */
     internal class match : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             return net.blueva.luak.lib.StringLib.Companion.str_find_aux(args, false)
         }
     }
@@ -606,13 +597,11 @@ class StringLib
      * Returns a string that is the concatenation of n copies of the string s.
      */
     internal class rep : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val s: LuaString = args.checkstring(1)
             val n: Int = args.checkint(2)
             val bytes = ByteArray(s.length() * n)
-            val len: Int = s.length()
-            var offset = 0
-            while (offset < bytes.size) {
+            override val len: Int = s.length()            override var offset = 0            while (offset < bytes.size) {
                 s.copyInto(0, bytes, offset, len)
                 offset += len
             }
@@ -653,13 +642,12 @@ class StringLib
      * returns a suffix of s with length i.
      */
     internal class sub : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val s: LuaString = args.checkstring(1)
             val l: Int = s.length()
 
             var start: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.checkint(2), l)
-            var end: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(3, -1), l)
-
+            override var end: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(3, -1), l)
             if (start < 1) start = 1
             if (end > l) end = l
 

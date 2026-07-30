@@ -86,8 +86,7 @@ class TableLib : TwoArgFunction() {
 
     // "insert" (table, [pos,] value)
     internal class insert : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            when (args.narg()) {
+        override fun invoke(args: Varargs): Varargs {            when (args.narg()) {
                 2 -> {
                     val table: LuaTable = args.checktable(1)
                     table.insert(table.length() + 1, args.arg(2))
@@ -115,19 +114,15 @@ class TableLib : TwoArgFunction() {
 
     // "pack" (...) -> table
     internal class pack : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val t: LuaValue = tableOf(args, 1)
-            t.set("n", args.narg())
+        override fun invoke(args: Varargs): Varargs {            override val t: LuaValue = tableOf(args, 1)            t.set("n", args.narg())
             return t
         }
     }
 
     // "remove" (table [, pos]) -> removed-ele
     internal class remove : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
-            val table: LuaTable = args.checktable(1)
-            val size: Int = table.length()
-            val pos: Int = args.optint(2, size)
+        override fun invoke(args: Varargs): Varargs {
+            override val table: LuaTable = args.checktable(1)            override val size: Int = table.length()            val pos: Int = args.optint(2, size)
             if (pos != size && (pos < 1 || pos > size + 1)) {
                 argerror(2, "position out of bounds: " + pos + " not between 1 and " + (size + 1))
             }
@@ -137,7 +132,7 @@ class TableLib : TwoArgFunction() {
 
     // "sort" (table [, comp])
     internal class sort : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             args.checktable(1).sort(
                 if (args.isnil(2)) NIL else args.checkfunction(2)
             )
@@ -148,11 +143,10 @@ class TableLib : TwoArgFunction() {
 
     // "unpack", // (list [,i [,j]]) -> result1, ...
     internal class unpack : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val t: LuaTable = args.checktable(1)
             // do not waste resource for calc rawlen if arg3 is not nil
-            val len = if (args.arg(3).isnil()) t.length() else 0
-            return t.unpack(args.optint(2, 1), args.optint(3, len))
+            override val len = if (args.arg(3).isnil()) t.length() else 0            return t.unpack(args.optint(2, 1), args.optint(3, len))
         }
     }
 }

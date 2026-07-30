@@ -73,11 +73,11 @@ abstract class Varargs {
      * Evaluate any pending tail call and return result.
      * @return the evaluated tail call result
      */
-    fun eval(): Varargs {
+    open fun eval(): Varargs {
         return this
     }
 
-    val isTailcall: Boolean
+    open val isTailcall: Boolean
         /**
          * Return true if this is a TailcallVarargs
          * @return true if a tail call, false otherwise
@@ -567,7 +567,7 @@ abstract class Varargs {
      * @param i the index of the argument to convert, 1 is the first argument
      * @return String value representing the type
      */
-    fun tojstring(i: Int): String {
+    open fun tojstring(i: Int): String {
         return arg(i).tojstring()
     }
 
@@ -600,7 +600,7 @@ abstract class Varargs {
     /** Convert the list of varargs values to a human readable java String.
      * @return String value in human readable form such as {1,2}.
      */
-    fun tojstring(): String {
+    open fun tojstring(): String {
         val sb: Buffer = Buffer()
         sb.append("(")
         var i = 1
@@ -618,7 +618,7 @@ abstract class Varargs {
      * @return String value in human readable form.
      * @see tojstring
      */
-    fun toString(): String {
+    override fun toString(): String {
         return tojstring()
     }
 
@@ -837,7 +837,7 @@ abstract class Varargs {
      * Internal utility method not intended to be called directly from user code.
      * @return Varargs containing same values, but flattened.
      */
-    fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
+    open fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
         for (i in 0..<length) dest[offset + i] = arg(i + 1)
     }
 

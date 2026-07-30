@@ -46,13 +46,11 @@ class LuaError : RuntimeException {
     /**
      * Get the cause, if any.
      */
-    var cause: Throwable? = null
-        protected set
+    override var cause: Throwable? = null        protected set
 
     private var `object`: LuaValue? = null
 
-    val message: String?
-        /** Get the string message if it was supplied, or a string
+    override val message: String?        /** Get the string message if it was supplied, or a string
          * representation of the message object if that was supplied.
          */
         get() {

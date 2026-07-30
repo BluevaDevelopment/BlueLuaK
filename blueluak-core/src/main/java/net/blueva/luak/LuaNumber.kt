@@ -30,55 +30,55 @@ package net.blueva.luak
  */
 abstract
 class LuaNumber : LuaValue() {
-    fun type(): Int {
+    override fun type(): Int {
         return TNUMBER
     }
 
-    fun typename(): String? {
+    override fun typename(): String? {
         return "number"
     }
 
-    fun checknumber(): LuaNumber {
+    override fun checknumber(): LuaNumber {
         return this
     }
 
-    fun checknumber(errmsg: String?): LuaNumber {
+    override fun checknumber(errmsg: String?): LuaNumber {
         return this
     }
 
-    fun optnumber(defval: LuaNumber?): LuaNumber {
+    override fun optnumber(defval: LuaNumber?): LuaNumber {
         return this
     }
 
-    fun tonumber(): LuaValue? {
+    override fun tonumber(): LuaValue? {
         return this
     }
 
-    fun isnumber(): Boolean {
+    override fun isnumber(): Boolean {
         return true
     }
 
-    fun isstring(): Boolean {
+    override fun isstring(): Boolean {
         return true
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return net.blueva.luak.LuaNumber.Companion.s_metatable
     }
 
-    fun concat(rhs: LuaValue): LuaValue {
+    override fun concat(rhs: LuaValue): LuaValue {
         return rhs.concatTo(this)
     }
 
-    fun concat(rhs: Buffer): Buffer {
+    override fun concat(rhs: Buffer): Buffer {
         return rhs.concatTo(this)
     }
 
-    fun concatTo(lhs: LuaNumber): LuaValue {
+    override fun concatTo(lhs: LuaNumber): LuaValue {
         return strvalue().concatTo(lhs.strvalue())
     }
 
-    fun concatTo(lhs: LuaString?): LuaValue {
+    override fun concatTo(lhs: LuaString?): LuaValue {
         return strvalue().concatTo(lhs)
     }
 

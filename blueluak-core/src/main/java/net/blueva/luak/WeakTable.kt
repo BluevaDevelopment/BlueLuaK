@@ -43,15 +43,15 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         this.backing = backing
     }
 
-    fun useWeakKeys(): Boolean {
+    override fun useWeakKeys(): Boolean {
         return weakkeys
     }
 
-    fun useWeakValues(): Boolean {
+    override fun useWeakValues(): Boolean {
         return weakvalues
     }
 
-    fun toLuaValue(): LuaValue? {
+    override fun toLuaValue(): LuaValue? {
         return backing
     }
 
@@ -83,13 +83,12 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             this.next = next
         }
 
-        abstract fun keyindex(hashMask: Int): Int
+        abstract override fun keyindex(hashMask: Int): Int
 
         abstract fun set(value: LuaValue?): Slot?
 
-        fun first(): StrongSlot? {
-            val key: LuaValue? = strongkey()
-            val value: LuaValue? = strongvalue()
+        override fun first(): StrongSlot? {
+            override val key: LuaValue? = strongkey()            val value: LuaValue? = strongvalue()
             if (key != null && value != null) {
                 return NormalEntry(key, value)
             } else {
@@ -99,21 +98,20 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             }
         }
 
-        fun find(key: LuaValue?): StrongSlot? {
-            val first: StrongSlot? = first()
-            return if (first != null) first.find(key) else null
+        override fun find(key: LuaValue?): StrongSlot? {
+            override val first: StrongSlot? = first()            return if (first != null) first.find(key) else null
         }
 
-        fun keyeq(key: LuaValue?): Boolean {
-            val first: StrongSlot? = first()
+        override fun keyeq(key: LuaValue?): Boolean {
+            override val first: StrongSlot? = first()
             return (first != null) && first.keyeq(key)
         }
 
-        fun rest(): Slot? {
+        override fun rest(): Slot? {
             return next
         }
 
-        fun arraykey(max: Int): Int {
+        override fun arraykey(max: Int): Int {
             // Integer keys can never be weak.
             return 0
         }
@@ -132,7 +130,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             }
         }
 
-        fun add(entry: Slot?): Slot? {
+        override fun add(entry: Slot?): Slot? {
             next = if (next != null) next.add(entry) else entry
             if (strongkey() != null && strongvalue() != null) {
                 return this
@@ -154,7 +152,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             }
         }
 
-        fun relink(rest: Slot?): Slot? {
+        override fun relink(rest: Slot?): Slot? {
             if (strongkey() != null && strongvalue() != null) {
                 if (rest == null && this.next == null) {
                     return this
@@ -166,11 +164,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             }
         }
 
-        fun strongkey(): LuaValue? {
+        open fun strongkey(): LuaValue? {
             return key as LuaValue?
         }
 
-        fun strongvalue(): LuaValue? {
+        override fun strongvalue(): LuaValue? {
             return value as LuaValue?
         }
 
@@ -281,28 +279,28 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
     /** Internal class to implement weak values.
      * @see WeakTable
      */
-    internal class WeakValue(value: LuaValue?) : LuaValue() {
+    internal open class WeakValue(value: LuaValue?) : LuaValue() {
         var ref: WeakReference?
 
         init {
             ref = WeakReference(value)
         }
 
-        fun type(): Int {
+        override fun type(): Int {
             illegal("type", "weak value")
             return 0
         }
 
-        fun typename(): String? {
+        override fun typename(): String? {
             illegal("typename", "weak value")
             return null
         }
 
-        fun toString(): String? {
+        override fun toString(): String? {
             return "weak<" + ref.get() + ">"
         }
 
-        fun strongvalue(): LuaValue? {
+        override fun strongvalue(): LuaValue? {
             val o: Object? = ref.get()
             return o as LuaValue?
         }

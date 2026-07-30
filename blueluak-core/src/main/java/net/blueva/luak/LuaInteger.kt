@@ -48,96 +48,96 @@ class LuaInteger
     /** The value being held by this instance.  */
     val v: Int
 ) : LuaNumber() {
-    fun isint(): Boolean {
+    override fun isint(): Boolean {
         return true
     }
 
-    fun isinttype(): Boolean {
+    override fun isinttype(): Boolean {
         return true
     }
 
-    fun islong(): Boolean {
+    override fun islong(): Boolean {
         return true
     }
 
-    fun tobyte(): Byte {
+    override fun tobyte(): Byte {
         return v.toByte()
     }
 
-    fun tochar(): Char {
+    override fun tochar(): Char {
         return v.toChar()
     }
 
-    fun todouble(): Double {
+    override fun todouble(): Double {
         return v.toDouble()
     }
 
-    fun tofloat(): Float {
+    override fun tofloat(): Float {
         return v.toFloat()
     }
 
-    fun toint(): Int {
+    override fun toint(): Int {
         return v
     }
 
-    fun tolong(): Long {
+    override fun tolong(): Long {
         return v.toLong()
     }
 
-    fun toshort(): Short {
+    override fun toshort(): Short {
         return v.toShort()
     }
 
-    fun optdouble(defval: Double): Double {
+    override fun optdouble(defval: Double): Double {
         return v.toDouble()
     }
 
-    fun optint(defval: Int): Int {
+    override fun optint(defval: Int): Int {
         return v
     }
 
-    fun optinteger(defval: LuaInteger?): LuaInteger {
+    override fun optinteger(defval: LuaInteger?): LuaInteger {
         return this
     }
 
-    fun optlong(defval: Long): Long {
+    override fun optlong(defval: Long): Long {
         return v.toLong()
     }
 
-    fun tojstring(): String {
+    override fun tojstring(): String {
         return Integer.toString(v)
     }
 
-    fun strvalue(): LuaString {
+    override fun strvalue(): LuaString {
         return LuaString.valueOf(Integer.toString(v))
     }
 
-    fun optstring(defval: LuaString?): LuaString {
+    override fun optstring(defval: LuaString?): LuaString {
         return LuaString.valueOf(Integer.toString(v))
     }
 
-    fun tostring(): LuaValue {
+    override fun tostring(): LuaValue {
         return LuaString.valueOf(Integer.toString(v))
     }
 
-    fun optjstring(defval: String?): String {
+    override fun optjstring(defval: String?): String {
         return Integer.toString(v)
     }
 
-    fun checkinteger(): LuaInteger {
+    override fun checkinteger(): LuaInteger {
         return this
     }
 
-    fun isstring(): Boolean {
+    override fun isstring(): Boolean {
         return true
     }
 
-    fun hashCode(): Int {
+    override fun hashCode(): Int {
         return v
     }
 
     // unary operators
-    fun neg(): LuaValue? {
+    override fun neg(): LuaValue? {
         return net.blueva.luak.LuaInteger.Companion.valueOf(-v.toLong())
     }
 
@@ -156,235 +156,235 @@ class LuaInteger
     }
 
     // equality w/o metatable processing
-    fun raweq(`val`: LuaValue): Boolean {
+    override fun raweq(`val`: LuaValue): Boolean {
         return `val`.raweq(v)
     }
 
-    fun raweq(`val`: Double): Boolean {
+    override fun raweq(`val`: Double): Boolean {
         return v.toDouble() == `val`
     }
 
-    fun raweq(`val`: Int): Boolean {
+    override fun raweq(`val`: Int): Boolean {
         return v == `val`
     }
 
     // arithmetic operators
-    fun add(rhs: LuaValue): LuaValue {
+    override fun add(rhs: LuaValue): LuaValue {
         return rhs.add(v)
     }
 
-    fun add(lhs: Double): LuaValue {
+    override fun add(lhs: Double): LuaValue {
         return LuaDouble.valueOf(lhs + v)
     }
 
-    fun add(lhs: Int): LuaValue? {
+    override fun add(lhs: Int): LuaValue? {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs + v.toLong())
     }
 
-    fun sub(rhs: LuaValue): LuaValue {
+    override fun sub(rhs: LuaValue): LuaValue {
         return rhs.subFrom(v)
     }
 
-    fun sub(rhs: Double): LuaValue {
+    override fun sub(rhs: Double): LuaValue {
         return LuaDouble.valueOf(v - rhs)
     }
 
-    fun sub(rhs: Int): LuaValue {
+    override fun sub(rhs: Int): LuaValue {
         return LuaDouble.valueOf(v - rhs)
     }
 
-    fun subFrom(lhs: Double): LuaValue {
+    override fun subFrom(lhs: Double): LuaValue {
         return LuaDouble.valueOf(lhs - v)
     }
 
-    fun subFrom(lhs: Int): LuaValue? {
+    override fun subFrom(lhs: Int): LuaValue? {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs - v.toLong())
     }
 
-    fun mul(rhs: LuaValue): LuaValue {
+    override fun mul(rhs: LuaValue): LuaValue {
         return rhs.mul(v)
     }
 
-    fun mul(lhs: Double): LuaValue {
+    override fun mul(lhs: Double): LuaValue {
         return LuaDouble.valueOf(lhs * v)
     }
 
-    fun mul(lhs: Int): LuaValue? {
+    override fun mul(lhs: Int): LuaValue? {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs * v.toLong())
     }
 
-    fun pow(rhs: LuaValue): LuaValue {
+    override fun pow(rhs: LuaValue): LuaValue {
         return rhs.powWith(v)
     }
 
-    fun pow(rhs: Double): LuaValue {
+    override fun pow(rhs: Double): LuaValue {
         return MathLib.dpow(v, rhs)
     }
 
-    fun pow(rhs: Int): LuaValue {
+    override fun pow(rhs: Int): LuaValue {
         return MathLib.dpow(v, rhs)
     }
 
-    fun powWith(lhs: Double): LuaValue {
+    override fun powWith(lhs: Double): LuaValue {
         return MathLib.dpow(lhs, v)
     }
 
-    fun powWith(lhs: Int): LuaValue {
+    override fun powWith(lhs: Int): LuaValue {
         return MathLib.dpow(lhs, v)
     }
 
-    fun div(rhs: LuaValue): LuaValue {
+    override fun div(rhs: LuaValue): LuaValue {
         return rhs.divInto(v)
     }
 
-    fun div(rhs: Double): LuaValue {
+    override fun div(rhs: Double): LuaValue {
         return LuaDouble.ddiv(v, rhs)
     }
 
-    fun div(rhs: Int): LuaValue {
+    override fun div(rhs: Int): LuaValue {
         return LuaDouble.ddiv(v, rhs)
     }
 
-    fun divInto(lhs: Double): LuaValue {
+    override fun divInto(lhs: Double): LuaValue {
         return LuaDouble.ddiv(lhs, v)
     }
 
-    fun mod(rhs: LuaValue): LuaValue {
+    override fun mod(rhs: LuaValue): LuaValue {
         return rhs.modFrom(v)
     }
 
-    fun mod(rhs: Double): LuaValue {
+    override fun mod(rhs: Double): LuaValue {
         return LuaDouble.dmod(v, rhs)
     }
 
-    fun mod(rhs: Int): LuaValue {
+    override fun mod(rhs: Int): LuaValue {
         return LuaDouble.dmod(v, rhs)
     }
 
-    fun modFrom(lhs: Double): LuaValue {
+    override fun modFrom(lhs: Double): LuaValue {
         return LuaDouble.dmod(lhs, v)
     }
 
     // relational operators
-    fun lt(rhs: LuaValue): LuaValue {
+    override fun lt(rhs: LuaValue): LuaValue {
         return if (rhs is LuaNumber) (if (rhs.gt_b(v)) TRUE else FALSE) else super.lt(rhs)
     }
 
-    fun lt(rhs: Double): LuaValue {
+    override fun lt(rhs: Double): LuaValue {
         return if (v < rhs) TRUE else FALSE
     }
 
-    fun lt(rhs: Int): LuaValue {
+    override fun lt(rhs: Int): LuaValue {
         return if (v < rhs) TRUE else FALSE
     }
 
-    fun lt_b(rhs: LuaValue): Boolean {
+    override fun lt_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.gt_b(v) else super.lt_b(rhs)
     }
 
-    fun lt_b(rhs: Int): Boolean {
+    override fun lt_b(rhs: Int): Boolean {
         return v < rhs
     }
 
-    fun lt_b(rhs: Double): Boolean {
+    override fun lt_b(rhs: Double): Boolean {
         return v < rhs
     }
 
-    fun lteq(rhs: LuaValue): LuaValue {
+    override fun lteq(rhs: LuaValue): LuaValue {
         return if (rhs is LuaNumber) (if (rhs.gteq_b(v)) TRUE else FALSE) else super.lteq(rhs)
     }
 
-    fun lteq(rhs: Double): LuaValue {
+    override fun lteq(rhs: Double): LuaValue {
         return if (v <= rhs) TRUE else FALSE
     }
 
-    fun lteq(rhs: Int): LuaValue {
+    override fun lteq(rhs: Int): LuaValue {
         return if (v <= rhs) TRUE else FALSE
     }
 
-    fun lteq_b(rhs: LuaValue): Boolean {
+    override fun lteq_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.gteq_b(v) else super.lteq_b(rhs)
     }
 
-    fun lteq_b(rhs: Int): Boolean {
+    override fun lteq_b(rhs: Int): Boolean {
         return v <= rhs
     }
 
-    fun lteq_b(rhs: Double): Boolean {
+    override fun lteq_b(rhs: Double): Boolean {
         return v <= rhs
     }
 
-    fun gt(rhs: LuaValue): LuaValue {
+    override fun gt(rhs: LuaValue): LuaValue {
         return if (rhs is LuaNumber) (if (rhs.lt_b(v)) TRUE else FALSE) else super.gt(rhs)
     }
 
-    fun gt(rhs: Double): LuaValue {
+    override fun gt(rhs: Double): LuaValue {
         return if (v > rhs) TRUE else FALSE
     }
 
-    fun gt(rhs: Int): LuaValue {
+    override fun gt(rhs: Int): LuaValue {
         return if (v > rhs) TRUE else FALSE
     }
 
-    fun gt_b(rhs: LuaValue): Boolean {
+    override fun gt_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.lt_b(v) else super.gt_b(rhs)
     }
 
-    fun gt_b(rhs: Int): Boolean {
+    override fun gt_b(rhs: Int): Boolean {
         return v > rhs
     }
 
-    fun gt_b(rhs: Double): Boolean {
+    override fun gt_b(rhs: Double): Boolean {
         return v > rhs
     }
 
-    fun gteq(rhs: LuaValue): LuaValue {
+    override fun gteq(rhs: LuaValue): LuaValue {
         return if (rhs is LuaNumber) (if (rhs.lteq_b(v)) TRUE else FALSE) else super.gteq(rhs)
     }
 
-    fun gteq(rhs: Double): LuaValue {
+    override fun gteq(rhs: Double): LuaValue {
         return if (v >= rhs) TRUE else FALSE
     }
 
-    fun gteq(rhs: Int): LuaValue {
+    override fun gteq(rhs: Int): LuaValue {
         return if (v >= rhs) TRUE else FALSE
     }
 
-    fun gteq_b(rhs: LuaValue): Boolean {
+    override fun gteq_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.lteq_b(v) else super.gteq_b(rhs)
     }
 
-    fun gteq_b(rhs: Int): Boolean {
+    override fun gteq_b(rhs: Int): Boolean {
         return v >= rhs
     }
 
-    fun gteq_b(rhs: Double): Boolean {
+    override fun gteq_b(rhs: Double): Boolean {
         return v >= rhs
     }
 
     // string comparison
-    fun strcmp(rhs: LuaString?): Int {
+    override fun strcmp(rhs: LuaString?): Int {
         typerror("attempt to compare number with string")
         return 0
     }
 
-    fun checkint(): Int {
+    override fun checkint(): Int {
         return v
     }
 
-    fun checklong(): Long {
+    override fun checklong(): Long {
         return v.toLong()
     }
 
-    fun checkdouble(): Double {
+    override fun checkdouble(): Double {
         return v.toDouble()
     }
 
-    fun checkjstring(): String {
+    override fun checkjstring(): String {
         return String.valueOf(v)
     }
 
-    fun checkstring(): LuaString? {
+    override fun checkstring(): LuaString? {
         return valueOf(String.valueOf(v))
     }
 
@@ -414,7 +414,7 @@ class LuaInteger
             ) as LuaNumber) else LuaDouble.valueOf(l) as LuaNumber?
         }
 
-        fun hashCode(x: Int): Int {
+        override fun hashCode(x: Int): Int {
             return x
         }
     }

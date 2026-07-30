@@ -35,109 +35,109 @@ package net.blueva.luak
  * 
  * @see LuaValue.NIL
  */
-class LuaNil internal constructor() : LuaValue() {
-    fun type(): Int {
+open class LuaNil internal constructor() : LuaValue() {
+    override fun type(): Int {
         return LuaValue.TNIL
     }
 
-    fun toString(): String? {
+    override fun toString(): String? {
         return "nil"
     }
 
-    fun typename(): String? {
+    override fun typename(): String? {
         return "nil"
     }
 
-    fun tojstring(): String? {
+    override fun tojstring(): String? {
         return "nil"
     }
 
-    fun not(): LuaValue {
+    override fun not(): LuaValue {
         return LuaValue.TRUE
     }
 
-    fun toboolean(): Boolean {
+    override fun toboolean(): Boolean {
         return false
     }
 
-    fun isnil(): Boolean {
+    override fun isnil(): Boolean {
         return true
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return net.blueva.luak.LuaNil.Companion.s_metatable
     }
 
-    fun equals(o: Object?): Boolean {
+    override fun equals(o: Object?): Boolean {
         return o is LuaNil
     }
 
-    fun checknotnil(): LuaValue {
+    override fun checknotnil(): LuaValue {
         return argerror("value")
     }
 
-    fun isvalidkey(): Boolean {
+    override fun isvalidkey(): Boolean {
         return false
     }
 
     // optional argument conversions - nil alwas falls badk to default value
-    fun optboolean(defval: Boolean): Boolean {
+    override fun optboolean(defval: Boolean): Boolean {
         return defval
     }
 
-    fun optclosure(defval: LuaClosure?): LuaClosure? {
+    override fun optclosure(defval: LuaClosure?): LuaClosure? {
         return defval
     }
 
-    fun optdouble(defval: Double): Double {
+    override fun optdouble(defval: Double): Double {
         return defval
     }
 
-    fun optfunction(defval: LuaFunction?): LuaFunction? {
+    override fun optfunction(defval: LuaFunction?): LuaFunction? {
         return defval
     }
 
-    fun optint(defval: Int): Int {
+    override fun optint(defval: Int): Int {
         return defval
     }
 
-    fun optinteger(defval: LuaInteger?): LuaInteger? {
+    override fun optinteger(defval: LuaInteger?): LuaInteger? {
         return defval
     }
 
-    fun optlong(defval: Long): Long {
+    override fun optlong(defval: Long): Long {
         return defval
     }
 
-    fun optnumber(defval: LuaNumber?): LuaNumber? {
+    override fun optnumber(defval: LuaNumber?): LuaNumber? {
         return defval
     }
 
-    fun opttable(defval: LuaTable?): LuaTable? {
+    override fun opttable(defval: LuaTable?): LuaTable? {
         return defval
     }
 
-    fun optthread(defval: LuaThread?): LuaThread? {
+    override fun optthread(defval: LuaThread?): LuaThread? {
         return defval
     }
 
-    fun optjstring(defval: String?): String? {
+    override fun optjstring(defval: String?): String? {
         return defval
     }
 
-    fun optstring(defval: LuaString?): LuaString? {
+    override fun optstring(defval: LuaString?): LuaString? {
         return defval
     }
 
-    fun optuserdata(defval: Object?): Object? {
+    override fun optuserdata(defval: Object?): Object? {
         return defval
     }
 
-    fun optuserdata(c: Class?, defval: Object?): Object? {
+    override fun optuserdata(c: Class?, defval: Object?): Object? {
         return defval
     }
 
-    fun optvalue(defval: LuaValue?): LuaValue? {
+    override fun optvalue(defval: LuaValue?): LuaValue? {
         return defval
     }
 

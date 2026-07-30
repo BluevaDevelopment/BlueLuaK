@@ -43,19 +43,19 @@ class LuaBoolean internal constructor(
     /** The value of the boolean  */
     val v: Boolean
 ) : LuaValue() {
-    fun type(): Int {
+    override fun type(): Int {
         return LuaValue.TBOOLEAN
     }
 
-    fun typename(): String {
+    override fun typename(): String {
         return "boolean"
     }
 
-    fun isboolean(): Boolean {
+    override fun isboolean(): Boolean {
         return true
     }
 
-    fun not(): LuaValue {
+    override fun not(): LuaValue {
         return if (v) FALSE else LuaValue.TRUE
     }
 
@@ -67,23 +67,23 @@ class LuaBoolean internal constructor(
         return v
     }
 
-    fun toboolean(): Boolean {
+    override fun toboolean(): Boolean {
         return v
     }
 
-    fun tojstring(): String {
+    override fun tojstring(): String {
         return if (v) "true" else "false"
     }
 
-    fun optboolean(defval: Boolean): Boolean {
+    override fun optboolean(defval: Boolean): Boolean {
         return this.v
     }
 
-    fun checkboolean(): Boolean {
+    override fun checkboolean(): Boolean {
         return v
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return net.blueva.luak.LuaBoolean.Companion.s_metatable
     }
 

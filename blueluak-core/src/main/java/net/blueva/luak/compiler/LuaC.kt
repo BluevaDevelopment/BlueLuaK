@@ -83,7 +83,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
     }
 
     @kotlin.Throws(IOException::class)
-    fun load(prototype: Prototype?, chunkname: String?, env: LuaValue?): LuaFunction? {
+    override fun load(prototype: Prototype?, chunkname: String?, env: LuaValue?): LuaFunction? {
         return LuaClosure(prototype, env)
     }
 

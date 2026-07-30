@@ -99,7 +99,7 @@ package net.blueva.luak
  * @see Varargs
  */
 abstract
-class LuaValue : Varargs() {
+open class LuaValue : Varargs() {
     // type
     /** Get the enumeration value for the type of this value.
      * @return value for this type, one of
@@ -135,7 +135,7 @@ class LuaValue : Varargs() {
      * @see .optboolean
      * @see .TBOOLEAN
      */
-    fun isboolean(): Boolean {
+    open fun isboolean(): Boolean {
         return false
     }
 
@@ -147,7 +147,7 @@ class LuaValue : Varargs() {
      * @see .optclosure
      * @see .TFUNCTION
      */
-    fun isclosure(): Boolean {
+    open fun isclosure(): Boolean {
         return false
     }
 
@@ -158,7 +158,7 @@ class LuaValue : Varargs() {
      * @see .optfunction
      * @see .TFUNCTION
      */
-    fun isfunction(): Boolean {
+    open fun isfunction(): Boolean {
         return false
     }
 
@@ -176,7 +176,7 @@ class LuaValue : Varargs() {
      * @see .optint
      * @see .TNUMBER
      */
-    fun isint(): Boolean {
+    open fun isint(): Boolean {
         return false
     }
 
@@ -191,7 +191,7 @@ class LuaValue : Varargs() {
      * @see .tonumber
      * @see .TNUMBER
      */
-    fun isinttype(): Boolean {
+    open fun isinttype(): Boolean {
         return false
     }
 
@@ -207,7 +207,7 @@ class LuaValue : Varargs() {
      * @see .optlong
      * @see .TNUMBER
      */
-    fun islong(): Boolean {
+    open fun islong(): Boolean {
         return false
     }
 
@@ -224,7 +224,7 @@ class LuaValue : Varargs() {
      * 
      * @see .TNONE
      */
-    fun isnil(): Boolean {
+    open fun isnil(): Boolean {
         return false
     }
 
@@ -238,7 +238,7 @@ class LuaValue : Varargs() {
      * @see .optnumber
      * @see .TNUMBER
      */
-    fun isnumber(): Boolean {
+    open fun isnumber(): Boolean {
         return false
     } // may convert from string
 
@@ -251,7 +251,7 @@ class LuaValue : Varargs() {
      * @see .optstring
      * @see .TSTRING
      */
-    fun isstring(): Boolean {
+    open fun isstring(): Boolean {
         return false
     }
 
@@ -261,7 +261,7 @@ class LuaValue : Varargs() {
      * @see .optthread
      * @see .TTHREAD
      */
-    fun isthread(): Boolean {
+    open fun isthread(): Boolean {
         return false
     }
 
@@ -271,7 +271,7 @@ class LuaValue : Varargs() {
      * @see .opttable
      * @see .TTABLE
      */
-    fun istable(): Boolean {
+    open fun istable(): Boolean {
         return false
     }
 
@@ -283,7 +283,7 @@ class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    fun isuserdata(): Boolean {
+    open fun isuserdata(): Boolean {
         return false
     }
 
@@ -298,7 +298,7 @@ class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    fun isuserdata(c: Class?): Boolean {
+    open fun isuserdata(c: Class?): Boolean {
         return false
     }
 
@@ -309,7 +309,7 @@ class LuaValue : Varargs() {
      * @see .isboolean
      * @see .TBOOLEAN
      */
-    fun toboolean(): Boolean {
+    open fun toboolean(): Boolean {
         return true
     }
 
@@ -321,7 +321,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun tobyte(): Byte {
+    open fun tobyte(): Byte {
         return 0
     }
 
@@ -333,7 +333,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun tochar(): Char {
+    open fun tochar(): Char {
         return 0.toChar()
     }
 
@@ -350,7 +350,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun todouble(): Double {
+    open fun todouble(): Double {
         return 0.0
     }
 
@@ -362,7 +362,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun tofloat(): Float {
+    open fun tofloat(): Float {
         return 0f
     }
 
@@ -379,7 +379,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun toint(): Int {
+    open fun toint(): Int {
         return 0
     }
 
@@ -394,7 +394,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun tolong(): Long {
+    open fun tolong(): Long {
         return 0
     }
 
@@ -406,7 +406,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun toshort(): Short {
+    open fun toshort(): Short {
         return 0
     }
 
@@ -418,7 +418,7 @@ class LuaValue : Varargs() {
      * @see .isstring
      * @see .TSTRING
      */
-    fun tojstring(): String {
+    override fun tojstring(): String {
         return typename().toString() + ": " + Integer.toHexString(hashCode())
     }
 
@@ -429,7 +429,7 @@ class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    fun touserdata(): Object? {
+    open fun touserdata(): Object? {
         return null
     }
 
@@ -441,7 +441,7 @@ class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    fun touserdata(c: Class?): Object? {
+    open fun touserdata(c: Class?): Object? {
         return null
     }
 
@@ -454,7 +454,7 @@ class LuaValue : Varargs() {
      * @see .checkstring
      * @see .toString
      */
-    fun toString(): String {
+    override fun toString(): String {
         return tojstring()
     }
 
@@ -480,7 +480,7 @@ class LuaValue : Varargs() {
      * @see .toint
      * @see .todouble
      */
-    fun tonumber(): LuaValue {
+    open fun tonumber(): LuaValue {
         return net.blueva.luak.LuaValue.Companion.NIL
     }
 
@@ -502,7 +502,7 @@ class LuaValue : Varargs() {
      * @see .checkstring
      * @see .toString
      */
-    fun tostring(): LuaValue {
+    open fun tostring(): LuaValue {
         return net.blueva.luak.LuaValue.Companion.NIL
     }
 
@@ -516,7 +516,7 @@ class LuaValue : Varargs() {
      * @see .isboolean
      * @see .TBOOLEAN
      */
-    fun optboolean(defval: Boolean): Boolean {
+    open fun optboolean(defval: Boolean): Boolean {
         argerror("boolean")
         return false
     }
@@ -534,7 +534,7 @@ class LuaValue : Varargs() {
      * @see .isclosure
      * @see .TFUNCTION
      */
-    fun optclosure(defval: LuaClosure?): LuaClosure? {
+    open fun optclosure(defval: LuaClosure?): LuaClosure? {
         argerror("closure")
         return null
     }
@@ -553,7 +553,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun optdouble(defval: Double): Double {
+    open fun optdouble(defval: Double): Double {
         argerror("number")
         return 0.0
     }
@@ -573,7 +573,7 @@ class LuaValue : Varargs() {
      * @see .isfunction
      * @see .TFUNCTION
      */
-    fun optfunction(defval: LuaFunction?): LuaFunction? {
+    open fun optfunction(defval: LuaFunction?): LuaFunction? {
         argerror("function")
         return null
     }
@@ -593,7 +593,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun optint(defval: Int): Int {
+    open fun optint(defval: Int): Int {
         argerror("int")
         return 0
     }
@@ -612,7 +612,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun optinteger(defval: LuaInteger?): LuaInteger? {
+    open fun optinteger(defval: LuaInteger?): LuaInteger? {
         argerror("integer")
         return null
     }
@@ -631,7 +631,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun optlong(defval: Long): Long {
+    open fun optlong(defval: Long): Long {
         argerror("long")
         return 0
     }
@@ -651,7 +651,7 @@ class LuaValue : Varargs() {
      * @see .isnumber
      * @see .TNUMBER
      */
-    fun optnumber(defval: LuaNumber?): LuaNumber? {
+    open fun optnumber(defval: LuaNumber?): LuaNumber? {
         argerror("number")
         return null
     }
@@ -668,7 +668,7 @@ class LuaValue : Varargs() {
      * @see .toString
      * @see .TSTRING
      */
-    fun optjstring(defval: String?): String? {
+    open fun optjstring(defval: String?): String? {
         argerror("String")
         return null
     }
@@ -685,7 +685,7 @@ class LuaValue : Varargs() {
      * @see .toString
      * @see .TSTRING
      */
-    fun optstring(defval: LuaString?): LuaString? {
+    open fun optstring(defval: LuaString?): LuaString? {
         argerror("string")
         return null
     }
@@ -700,7 +700,7 @@ class LuaValue : Varargs() {
      * @see .istable
      * @see .TTABLE
      */
-    fun opttable(defval: LuaTable?): LuaTable? {
+    open fun opttable(defval: LuaTable?): LuaTable? {
         argerror("table")
         return null
     }
@@ -715,7 +715,7 @@ class LuaValue : Varargs() {
      * @see .isthread
      * @see .TTHREAD
      */
-    fun optthread(defval: LuaThread?): LuaThread? {
+    open fun optthread(defval: LuaThread?): LuaThread? {
         argerror("thread")
         return null
     }
@@ -731,7 +731,7 @@ class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    fun optuserdata(defval: Object?): Object? {
+    open fun optuserdata(defval: Object?): Object? {
         argerror("object")
         return null
     }
@@ -749,7 +749,7 @@ class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    fun optuserdata(c: Class, defval: Object?): Object? {
+    open fun optuserdata(c: Class, defval: Object?): Object? {
         argerror(c.getName())
         return null
     }
@@ -767,7 +767,7 @@ class LuaValue : Varargs() {
      * 
      * @see .TNONE
      */
-    fun optvalue(defval: LuaValue?): LuaValue {
+    open fun optvalue(defval: LuaValue?): LuaValue {
         return this
     }
 
@@ -779,7 +779,7 @@ class LuaValue : Varargs() {
      * @see .optboolean
      * @see .TBOOLEAN
      */
-    fun checkboolean(): Boolean {
+    open fun checkboolean(): Boolean {
         argerror("boolean")
         return false
     }
@@ -796,7 +796,7 @@ class LuaValue : Varargs() {
      * @see .isclosure
      * @see .TFUNCTION
      */
-    fun checkclosure(): LuaClosure? {
+    open fun checkclosure(): LuaClosure? {
         argerror("closure")
         return null
     }
@@ -815,7 +815,7 @@ class LuaValue : Varargs() {
      * @see .optdouble
      * @see .TNUMBER
      */
-    fun checkdouble(): Double {
+    open fun checkdouble(): Double {
         argerror("number")
         return 0.0
     }
@@ -830,7 +830,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if not a function
      * @see .checkclosure
      */
-    fun checkfunction(): LuaFunction? {
+    open fun checkfunction(): LuaFunction? {
         argerror("function")
         return null
     }
@@ -843,7 +843,7 @@ class LuaValue : Varargs() {
      * @return `this` if if an instance fof [Globals]
      * @throws LuaError if not a [Globals] instance.
      */
-    fun checkglobals(): Globals? {
+    open fun checkglobals(): Globals? {
         argerror("globals")
         return null
     }
@@ -862,7 +862,7 @@ class LuaValue : Varargs() {
      * @see .optint
      * @see .TNUMBER
      */
-    fun checkint(): Int {
+    open fun checkint(): Int {
         argerror("int")
         return 0
     }
@@ -881,7 +881,7 @@ class LuaValue : Varargs() {
      * @see .optinteger
      * @see .TNUMBER
      */
-    fun checkinteger(): LuaInteger? {
+    open fun checkinteger(): LuaInteger? {
         argerror("integer")
         return null
     }
@@ -900,7 +900,7 @@ class LuaValue : Varargs() {
      * @see .optlong
      * @see .TNUMBER
      */
-    fun checklong(): Long {
+    open fun checklong(): Long {
         argerror("long")
         return 0
     }
@@ -918,7 +918,7 @@ class LuaValue : Varargs() {
      * @see .optnumber
      * @see .TNUMBER
      */
-    fun checknumber(): LuaNumber? {
+    open fun checknumber(): LuaNumber? {
         argerror("number")
         return null
     }
@@ -937,7 +937,7 @@ class LuaValue : Varargs() {
      * @see .optnumber
      * @see .TNUMBER
      */
-    fun checknumber(msg: String?): LuaNumber? {
+    open fun checknumber(msg: String?): LuaNumber? {
         throw LuaError(msg)
     }
 
@@ -955,7 +955,7 @@ class LuaValue : Varargs() {
      * 
      * @see .TSTRING
      */
-    fun checkjstring(): String? {
+    open fun checkjstring(): String? {
         argerror("string")
         return null
     }
@@ -975,7 +975,7 @@ class LuaValue : Varargs() {
      * @see .isstring
      * @see .TSTRING
      */
-    fun checkstring(): LuaString? {
+    open fun checkstring(): LuaString? {
         argerror("string")
         return null
     }
@@ -987,7 +987,7 @@ class LuaValue : Varargs() {
      * @see .opttable
      * @see .TTABLE
      */
-    fun checktable(): LuaTable? {
+    open fun checktable(): LuaTable? {
         argerror("table")
         return null
     }
@@ -999,7 +999,7 @@ class LuaValue : Varargs() {
      * @see .optthread
      * @see .TTHREAD
      */
-    fun checkthread(): LuaThread? {
+    open fun checkthread(): LuaThread? {
         argerror("thread")
         return null
     }
@@ -1012,7 +1012,7 @@ class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    fun checkuserdata(): Object? {
+    open fun checkuserdata(): Object? {
         argerror("userdata")
         return null
     }
@@ -1025,7 +1025,7 @@ class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    fun checkuserdata(c: Class?): Object? {
+    open fun checkuserdata(c: Class?): Object? {
         argerror("userdata")
         return null
     }
@@ -1035,7 +1035,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is [.NIL]
      * @see .optvalue
      */
-    fun checknotnil(): LuaValue {
+    open fun checknotnil(): LuaValue {
         return this
     }
 
@@ -1044,7 +1044,7 @@ class LuaValue : Varargs() {
      * @see .isnil
      * @see .isinttype
      */
-    fun isvalidkey(): Boolean {
+    open fun isvalidkey(): Boolean {
         return true
     }
 
@@ -1141,7 +1141,7 @@ class LuaValue : Varargs() {
      * @see .get
      * @see .rawget
      */
-    fun get(key: LuaValue): LuaValue {
+    open fun get(key: LuaValue): LuaValue {
         return net.blueva.luak.LuaValue.Companion.gettable(this, key)
     }
 
@@ -1153,7 +1153,7 @@ class LuaValue : Varargs() {
      * @see .get
      * @see .rawget
      */
-    fun get(key: Int): LuaValue? {
+    open fun get(key: Int): LuaValue? {
         return get(LuaInteger.valueOf(key))
     }
 
@@ -1165,7 +1165,7 @@ class LuaValue : Varargs() {
      * @see .get
      * @see .rawget
      */
-    fun get(key: String?): LuaValue? {
+    open fun get(key: String?): LuaValue? {
         return get(net.blueva.luak.LuaValue.Companion.valueOf(key))
     }
 
@@ -1176,7 +1176,7 @@ class LuaValue : Varargs() {
      * or key is [.NIL],
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: LuaValue?, value: LuaValue?) {
+    open fun set(key: LuaValue?, value: LuaValue?) {
         net.blueva.luak.LuaValue.Companion.settable(this, key, value)
     }
 
@@ -1186,7 +1186,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: Int, value: LuaValue?) {
+    open fun set(key: Int, value: LuaValue?) {
         set(LuaInteger.valueOf(key), value)
     }
 
@@ -1196,7 +1196,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: Int, value: String?) {
+    open fun set(key: Int, value: String?) {
         set(key, net.blueva.luak.LuaValue.Companion.valueOf(value))
     }
 
@@ -1206,7 +1206,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: String?, value: LuaValue?) {
+    open fun set(key: String?, value: LuaValue?) {
         set(net.blueva.luak.LuaValue.Companion.valueOf(key), value)
     }
 
@@ -1216,7 +1216,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: String?, value: Double) {
+    open fun set(key: String?, value: Double) {
         set(net.blueva.luak.LuaValue.Companion.valueOf(key), net.blueva.luak.LuaValue.Companion.valueOf(value))
     }
 
@@ -1226,7 +1226,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: String?, value: Int) {
+    open fun set(key: String?, value: Int) {
         set(net.blueva.luak.LuaValue.Companion.valueOf(key), net.blueva.luak.LuaValue.Companion.valueOf(value))
     }
 
@@ -1236,7 +1236,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a table,
      * or there is no [.NEWINDEX] metatag
      */
-    fun set(key: String?, value: String?) {
+    open fun set(key: String?, value: String?) {
         set(net.blueva.luak.LuaValue.Companion.valueOf(key), net.blueva.luak.LuaValue.Companion.valueOf(value))
     }
 
@@ -1245,7 +1245,7 @@ class LuaValue : Varargs() {
      * @return [LuaValue] for that key, or [.NIL] if not found
      * @throws LuaError if `this` is not a table, or key is [.NIL]
      */
-    fun rawget(key: LuaValue?): LuaValue {
+    open fun rawget(key: LuaValue?): LuaValue {
         return unimplemented("rawget")
     }
 
@@ -1254,7 +1254,7 @@ class LuaValue : Varargs() {
      * @return [LuaValue] for that key, or [.NIL] if not found
      * @throws LuaError if `this` is not a table
      */
-    fun rawget(key: Int): LuaValue? {
+    open fun rawget(key: Int): LuaValue? {
         return rawget(net.blueva.luak.LuaValue.Companion.valueOf(key))
     }
 
@@ -1263,7 +1263,7 @@ class LuaValue : Varargs() {
      * @return [LuaValue] for that key, or [.NIL] if not found
      * @throws LuaError if `this` is not a table
      */
-    fun rawget(key: String?): LuaValue? {
+    open fun rawget(key: String?): LuaValue? {
         return rawget(net.blueva.luak.LuaValue.Companion.valueOf(key))
     }
 
@@ -1354,7 +1354,7 @@ class LuaValue : Varargs() {
      * @param i the number of array slots to preallocate in the table.
      * @throws LuaError if this is not a table.
      */
-    fun presize(i: Int) {
+    open fun presize(i: Int) {
         typerror("table")
     }
 
@@ -1416,15 +1416,15 @@ class LuaValue : Varargs() {
     }
 
     // varargs references
-    fun arg(index: Int): LuaValue? {
+    override fun arg(index: Int): LuaValue? {
         return if (index == 1) this else net.blueva.luak.LuaValue.Companion.NIL
     }
 
-    fun narg(): Int {
+    override fun narg(): Int {
         return 1
     }
 
-    fun arg1(): LuaValue {
+    override fun arg1(): LuaValue {
         return this
     }
 
@@ -1446,7 +1446,7 @@ class LuaValue : Varargs() {
      * 
      * @see LuaThread.s_metatable
      */
-    fun getmetatable(): LuaValue? {
+    open fun getmetatable(): LuaValue? {
         return null
     }
 
@@ -1468,7 +1468,7 @@ class LuaValue : Varargs() {
      * 
      * @see LuaThread.s_metatable
      */
-    fun setmetatable(metatable: LuaValue?): LuaValue? {
+    open fun setmetatable(metatable: LuaValue?): LuaValue? {
         return argerror("table")
     }
 
@@ -1498,7 +1498,7 @@ class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    fun call(): LuaValue {
+    open fun call(): LuaValue {
         return callmt().call(this)
     }
 
@@ -1529,7 +1529,7 @@ class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    fun call(arg: LuaValue?): LuaValue {
+    open fun call(arg: LuaValue?): LuaValue {
         return callmt().call(this, arg)
     }
 
@@ -1538,7 +1538,7 @@ class LuaValue : Varargs() {
      * @return return value of the invocation.
      * @see .call
      */
-    fun call(arg: String?): LuaValue? {
+    open fun call(arg: String?): LuaValue? {
         return call(net.blueva.luak.LuaValue.Companion.valueOf(arg))
     }
 
@@ -1570,7 +1570,7 @@ class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+    open fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
         return callmt().call(this, arg1, arg2)
     }
 
@@ -1603,7 +1603,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
+    open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
         return callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3)).arg1()
     }
 
@@ -1819,7 +1819,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(): Varargs? {
+    open fun invoke(): Varargs? {
         return invoke(net.blueva.luak.LuaValue.Companion.NONE)
     }
 
@@ -1848,7 +1848,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(args: Varargs): Varargs? {
+    open fun invoke(args: Varargs): Varargs? {
         return callmt().invoke(this, args)
     }
 
@@ -1877,7 +1877,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(arg: LuaValue?, varargs: Varargs): Varargs? {
+    open fun invoke(arg: LuaValue?, varargs: Varargs): Varargs? {
         return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg, varargs))
     }
 
@@ -1907,7 +1907,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(arg1: LuaValue?, arg2: LuaValue?, varargs: Varargs): Varargs? {
+    open fun invoke(arg1: LuaValue?, arg2: LuaValue?, varargs: Varargs): Varargs? {
         return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg1, arg2, varargs))
     }
 
@@ -1935,7 +1935,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(args: Array<LuaValue?>): Varargs? {
+    open fun invoke(args: Array<LuaValue?>): Varargs? {
         return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(args))
     }
 
@@ -1966,7 +1966,7 @@ class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    fun invoke(args: Array<LuaValue?>, varargs: Varargs): Varargs? {
+    open fun invoke(args: Array<LuaValue?>, varargs: Varargs): Varargs? {
         return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(args, varargs))
     }
 
@@ -2196,7 +2196,7 @@ class LuaValue : Varargs() {
     /** Unary not: return inverse boolean value `(~this)` as defined by lua not operator
      * @return [.TRUE] if [.NIL] or [.FALSE], otherwise [.FALSE]
      */
-    fun not(): LuaValue? {
+    open fun not(): LuaValue? {
         return net.blueva.luak.LuaValue.Companion.FALSE
     }
 
@@ -2206,7 +2206,7 @@ class LuaValue : Varargs() {
      * or metatag processing result if [.UNM] metatag is defined
      * @throws LuaError if  `this` is not a table or string, and has no [.UNM] metatag
      */
-    fun neg(): LuaValue {
+    open fun neg(): LuaValue {
         return checkmetatag(net.blueva.luak.LuaValue.Companion.UNM, "attempt to perform arithmetic on ").call(this)
     }
 
@@ -2215,7 +2215,7 @@ class LuaValue : Varargs() {
      * or metatag processing result
      * @throws LuaError if  `this` is not a table or string, and has no [.LEN] metatag
      */
-    fun len(): LuaValue {
+    open fun len(): LuaValue {
         return checkmetatag(net.blueva.luak.LuaValue.Companion.LEN, "attempt to get length of ").call(this)
     }
 
@@ -2224,7 +2224,7 @@ class LuaValue : Varargs() {
      * or metatag processing result converted to java int using [.toint]
      * @throws LuaError if  `this` is not a table or string, and has no [.LEN] metatag
      */
-    fun length(): Int {
+    open fun length(): Int {
         return len().toint()
     }
 
@@ -2232,13 +2232,13 @@ class LuaValue : Varargs() {
      * @return the length of the table or string.
      * @throws LuaError if `this` is not a table or string.
      */
-    fun rawlen(): Int {
+    open fun rawlen(): Int {
         typerror("table or string")
         return 0
     }
 
     // object equality, used for key comparison
-    fun equals(obj: Object?): Boolean {
+    open fun equals(obj: Object?): Boolean {
         return this === obj
     }
 
@@ -2316,7 +2316,7 @@ class LuaValue : Varargs() {
      * @see .raweq
      * @see .EQ
      */
-    fun raweq(`val`: LuaValue?): Boolean {
+    open fun raweq(`val`: LuaValue?): Boolean {
         return this === `val`
     }
 
@@ -2330,7 +2330,7 @@ class LuaValue : Varargs() {
      * @see .eq
      * @see .raweq
      */
-    fun raweq(`val`: LuaUserdata?): Boolean {
+    open fun raweq(`val`: LuaUserdata?): Boolean {
         return false
     }
 
@@ -2341,7 +2341,7 @@ class LuaValue : Varargs() {
      * and their byte sequences match,
      * otherwise false
      */
-    fun raweq(`val`: LuaString?): Boolean {
+    open fun raweq(`val`: LuaString?): Boolean {
         return false
     }
 
@@ -2352,7 +2352,7 @@ class LuaValue : Varargs() {
      * whose value equals val,
      * otherwise false
      */
-    fun raweq(`val`: Double): Boolean {
+    open fun raweq(`val`: Double): Boolean {
         return false
     }
 
@@ -2363,7 +2363,7 @@ class LuaValue : Varargs() {
      * whose value equals val,
      * otherwise false
      */
-    fun raweq(`val`: Int): Boolean {
+    open fun raweq(`val`: Int): Boolean {
         return false
     }
 
@@ -2381,7 +2381,7 @@ class LuaValue : Varargs() {
      * and neither has the [.ADD] metatag defined
      * @see .arithmt
      */
-    fun add(rhs: LuaValue): LuaValue {
+    open fun add(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.ADD, rhs)
     }
 
@@ -2397,7 +2397,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .add
      */
-    fun add(rhs: Double): LuaValue {
+    open fun add(rhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.ADD, rhs)
     }
 
@@ -2413,7 +2413,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .add
      */
-    fun add(rhs: Int): LuaValue {
+    open fun add(rhs: Int): LuaValue {
         return add(rhs.toDouble())
     }
 
@@ -2432,7 +2432,7 @@ class LuaValue : Varargs() {
      * and neither has the [.SUB] metatag defined
      * @see .arithmt
      */
-    fun sub(rhs: LuaValue): LuaValue {
+    open fun sub(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.SUB, rhs)
     }
 
@@ -2448,7 +2448,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .sub
      */
-    fun sub(rhs: Double): LuaValue? {
+    open fun sub(rhs: Double): LuaValue? {
         return aritherror("sub")
     }
 
@@ -2464,7 +2464,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .sub
      */
-    fun sub(rhs: Int): LuaValue? {
+    open fun sub(rhs: Int): LuaValue? {
         return aritherror("sub")
     }
 
@@ -2482,7 +2482,7 @@ class LuaValue : Varargs() {
      * @see .sub
      * @see .sub
      */
-    fun subFrom(lhs: Double): LuaValue {
+    open fun subFrom(lhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.SUB, lhs)
     }
 
@@ -2503,7 +2503,7 @@ class LuaValue : Varargs() {
      * @see .sub
      * @see .sub
      */
-    fun subFrom(lhs: Int): LuaValue {
+    open fun subFrom(lhs: Int): LuaValue {
         return subFrom(lhs.toDouble())
     }
 
@@ -2522,7 +2522,7 @@ class LuaValue : Varargs() {
      * and neither has the [.MUL] metatag defined
      * @see .arithmt
      */
-    fun mul(rhs: LuaValue): LuaValue {
+    open fun mul(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.MUL, rhs)
     }
 
@@ -2538,7 +2538,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mul
      */
-    fun mul(rhs: Double): LuaValue {
+    open fun mul(rhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.MUL, rhs)
     }
 
@@ -2554,7 +2554,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mul
      */
-    fun mul(rhs: Int): LuaValue {
+    open fun mul(rhs: Int): LuaValue {
         return mul(rhs.toDouble())
     }
 
@@ -2572,7 +2572,7 @@ class LuaValue : Varargs() {
      * and neither has the [.POW] metatag defined
      * @see .arithmt
      */
-    fun pow(rhs: LuaValue): LuaValue {
+    open fun pow(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.POW, rhs)
     }
 
@@ -2588,7 +2588,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .pow
      */
-    fun pow(rhs: Double): LuaValue? {
+    open fun pow(rhs: Double): LuaValue? {
         return aritherror("pow")
     }
 
@@ -2604,7 +2604,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .pow
      */
-    fun pow(rhs: Int): LuaValue? {
+    open fun pow(rhs: Int): LuaValue? {
         return aritherror("pow")
     }
 
@@ -2622,7 +2622,7 @@ class LuaValue : Varargs() {
      * @see .pow
      * @see .pow
      */
-    fun powWith(lhs: Double): LuaValue {
+    open fun powWith(lhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.POW, lhs)
     }
 
@@ -2640,7 +2640,7 @@ class LuaValue : Varargs() {
      * @see .pow
      * @see .pow
      */
-    fun powWith(lhs: Int): LuaValue {
+    open fun powWith(lhs: Int): LuaValue {
         return powWith(lhs.toDouble())
     }
 
@@ -2659,7 +2659,7 @@ class LuaValue : Varargs() {
      * and neither has the [.DIV] metatag defined
      * @see .arithmt
      */
-    fun div(rhs: LuaValue): LuaValue {
+    open fun div(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.DIV, rhs)
     }
 
@@ -2678,7 +2678,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .div
      */
-    fun div(rhs: Double): LuaValue? {
+    open fun div(rhs: Double): LuaValue? {
         return aritherror("div")
     }
 
@@ -2697,7 +2697,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .div
      */
-    fun div(rhs: Int): LuaValue? {
+    open fun div(rhs: Int): LuaValue? {
         return aritherror("div")
     }
 
@@ -2715,7 +2715,7 @@ class LuaValue : Varargs() {
      * @see .div
      * @see .div
      */
-    fun divInto(lhs: Double): LuaValue {
+    open fun divInto(lhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.DIV, lhs)
     }
 
@@ -2734,7 +2734,7 @@ class LuaValue : Varargs() {
      * and neither has the [.MOD] metatag defined
      * @see .arithmt
      */
-    fun mod(rhs: LuaValue): LuaValue {
+    open fun mod(rhs: LuaValue): LuaValue {
         return arithmt(net.blueva.luak.LuaValue.Companion.MOD, rhs)
     }
 
@@ -2753,7 +2753,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mod
      */
-    fun mod(rhs: Double): LuaValue? {
+    open fun mod(rhs: Double): LuaValue? {
         return aritherror("mod")
     }
 
@@ -2772,7 +2772,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mod
      */
-    fun mod(rhs: Int): LuaValue? {
+    open fun mod(rhs: Int): LuaValue? {
         return aritherror("mod")
     }
 
@@ -2790,7 +2790,7 @@ class LuaValue : Varargs() {
      * @see .mod
      * @see .mod
      */
-    fun modFrom(lhs: Double): LuaValue {
+    open fun modFrom(lhs: Double): LuaValue {
         return arithmtwith(net.blueva.luak.LuaValue.Companion.MOD, lhs)
     }
 
@@ -2879,7 +2879,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lt(rhs: LuaValue): LuaValue? {
+    open fun lt(rhs: LuaValue): LuaValue? {
         return comparemt(net.blueva.luak.LuaValue.Companion.LT, rhs)
     }
 
@@ -2898,7 +2898,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lt(rhs: Double): LuaValue? {
+    open fun lt(rhs: Double): LuaValue? {
         return compareerror("number")
     }
 
@@ -2917,7 +2917,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lt(rhs: Int): LuaValue? {
+    open fun lt(rhs: Int): LuaValue? {
         return compareerror("number")
     }
 
@@ -2937,7 +2937,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lt_b(rhs: LuaValue): Boolean {
+    open fun lt_b(rhs: LuaValue): Boolean {
         return comparemt(net.blueva.luak.LuaValue.Companion.LT, rhs)!!.toboolean()
     }
 
@@ -2957,7 +2957,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lt_b(rhs: Int): Boolean {
+    open fun lt_b(rhs: Int): Boolean {
         compareerror("number")
         return false
     }
@@ -2978,7 +2978,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lt_b(rhs: Double): Boolean {
+    open fun lt_b(rhs: Double): Boolean {
         compareerror("number")
         return false
     }
@@ -2999,7 +2999,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lteq(rhs: LuaValue): LuaValue? {
+    open fun lteq(rhs: LuaValue): LuaValue? {
         return comparemt(net.blueva.luak.LuaValue.Companion.LE, rhs)
     }
 
@@ -3018,7 +3018,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lteq(rhs: Double): LuaValue? {
+    open fun lteq(rhs: Double): LuaValue? {
         return compareerror("number")
     }
 
@@ -3037,7 +3037,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun lteq(rhs: Int): LuaValue? {
+    open fun lteq(rhs: Int): LuaValue? {
         return compareerror("number")
     }
 
@@ -3057,7 +3057,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lteq_b(rhs: LuaValue): Boolean {
+    open fun lteq_b(rhs: LuaValue): Boolean {
         return comparemt(net.blueva.luak.LuaValue.Companion.LE, rhs)!!.toboolean()
     }
 
@@ -3077,7 +3077,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lteq_b(rhs: Int): Boolean {
+    open fun lteq_b(rhs: Int): Boolean {
         compareerror("number")
         return false
     }
@@ -3098,7 +3098,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun lteq_b(rhs: Double): Boolean {
+    open fun lteq_b(rhs: Double): Boolean {
         compareerror("number")
         return false
     }
@@ -3119,7 +3119,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gt(rhs: LuaValue): LuaValue? {
+    open fun gt(rhs: LuaValue): LuaValue? {
         return rhs.comparemt(net.blueva.luak.LuaValue.Companion.LE, this)
     }
 
@@ -3138,7 +3138,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gt(rhs: Double): LuaValue? {
+    open fun gt(rhs: Double): LuaValue? {
         return compareerror("number")
     }
 
@@ -3157,7 +3157,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gt(rhs: Int): LuaValue? {
+    open fun gt(rhs: Int): LuaValue? {
         return compareerror("number")
     }
 
@@ -3177,7 +3177,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gt_b(rhs: LuaValue): Boolean {
+    open fun gt_b(rhs: LuaValue): Boolean {
         return rhs.comparemt(net.blueva.luak.LuaValue.Companion.LE, this)!!.toboolean()
     }
 
@@ -3197,7 +3197,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gt_b(rhs: Int): Boolean {
+    open fun gt_b(rhs: Int): Boolean {
         compareerror("number")
         return false
     }
@@ -3218,7 +3218,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gt_b(rhs: Double): Boolean {
+    open fun gt_b(rhs: Double): Boolean {
         compareerror("number")
         return false
     }
@@ -3239,7 +3239,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gteq(rhs: LuaValue): LuaValue? {
+    open fun gteq(rhs: LuaValue): LuaValue? {
         return rhs.comparemt(net.blueva.luak.LuaValue.Companion.LT, this)
     }
 
@@ -3258,7 +3258,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gteq(rhs: Double): LuaValue? {
+    open fun gteq(rhs: Double): LuaValue? {
         return compareerror("number")
     }
 
@@ -3277,7 +3277,7 @@ class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    fun gteq(rhs: Int): LuaValue? {
+    open fun gteq(rhs: Int): LuaValue? {
         return net.blueva.luak.LuaValue.Companion.valueOf(todouble() >= rhs)
     }
 
@@ -3297,7 +3297,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gteq_b(rhs: LuaValue): Boolean {
+    open fun gteq_b(rhs: LuaValue): Boolean {
         return rhs.comparemt(net.blueva.luak.LuaValue.Companion.LT, this)!!.toboolean()
     }
 
@@ -3317,7 +3317,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gteq_b(rhs: Int): Boolean {
+    open fun gteq_b(rhs: Int): Boolean {
         compareerror("number")
         return false
     }
@@ -3338,7 +3338,7 @@ class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    fun gteq_b(rhs: Double): Boolean {
+    open fun gteq_b(rhs: Double): Boolean {
         compareerror("number")
         return false
     }
@@ -3384,7 +3384,7 @@ class LuaValue : Varargs() {
      * @return  int < 0 for `(this < rhs)`, int > 0 for `(this > rhs)`, or 0 when same string.
      * @throws LuaError if either operand is not a string
      */
-    fun strcmp(rhs: LuaValue?): Int {
+    open fun strcmp(rhs: LuaValue?): Int {
         net.blueva.luak.LuaValue.Companion.error("attempt to compare " + typename())
         return 0
     }
@@ -3401,7 +3401,7 @@ class LuaValue : Varargs() {
      * @return  int < 0 for `(this < rhs)`, int > 0 for `(this > rhs)`, or 0 when same string.
      * @throws LuaError if this is not a string
      */
-    fun strcmp(rhs: LuaString?): Int {
+    open fun strcmp(rhs: LuaString?): Int {
         net.blueva.luak.LuaValue.Companion.error("attempt to compare " + typename())
         return 0
     }
@@ -3418,7 +3418,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if either operand is not of an appropriate type,
      * such as nil or a table
      */
-    fun concat(rhs: LuaValue): LuaValue {
+    open fun concat(rhs: LuaValue): LuaValue {
         return this.concatmt(rhs)
     }
 
@@ -3437,7 +3437,7 @@ class LuaValue : Varargs() {
      * such as nil or a table
      * @see .concat
      */
-    fun concatTo(lhs: LuaValue): LuaValue {
+    open fun concatTo(lhs: LuaValue): LuaValue {
         return lhs.concatmt(this)
     }
 
@@ -3456,7 +3456,7 @@ class LuaValue : Varargs() {
      * such as nil or a table
      * @see .concat
      */
-    fun concatTo(lhs: LuaNumber): LuaValue {
+    open fun concatTo(lhs: LuaNumber): LuaValue {
         return lhs.concatmt(this)
     }
 
@@ -3475,7 +3475,7 @@ class LuaValue : Varargs() {
      * such as nil or a table
      * @see .concat
      */
-    fun concatTo(lhs: LuaString): LuaValue {
+    open fun concatTo(lhs: LuaString): LuaValue {
         return lhs.concatmt(this)
     }
 
@@ -3499,7 +3499,7 @@ class LuaValue : Varargs() {
      * @throws LuaError if either operand is not of an appropriate type,
      * such as nil or a table
      */
-    fun concat(rhs: Buffer): Buffer {
+    open fun concat(rhs: Buffer): Buffer {
         return rhs.concatTo(this)
     }
 
@@ -3559,7 +3559,7 @@ class LuaValue : Varargs() {
      * @return [LuaString] corresponding to the value if a string or number
      * @throws LuaError if not a string or number
      */
-    fun strvalue(): LuaString? {
+    open fun strvalue(): LuaString? {
         typerror("string or number")
         return null
     }
@@ -3568,7 +3568,7 @@ class LuaValue : Varargs() {
      * @return [LuaValue] referred to, or null if it was weak and is no longer referenced.
      * @see WeakTable
      */
-    fun strongvalue(): LuaValue {
+    open fun strongvalue(): LuaValue {
         return this
     }
 
@@ -3621,7 +3621,7 @@ class LuaValue : Varargs() {
      * @see method
      * @see invokemethod
      */
-    fun onInvoke(args: Varargs): Varargs? {
+    open fun onInvoke(args: Varargs): Varargs? {
         return invoke(args)
     }
 
@@ -3630,7 +3630,7 @@ class LuaValue : Varargs() {
      * calling this will be no effect.
      * @param env  The environment to load into the first upvalue, if there is one.
      */
-    fun initupvalue1(env: LuaValue?) {}
+    open fun initupvalue1(env: LuaValue?) {}
 
     /** Varargs implemenation with no values.
      * 
@@ -3641,29 +3641,28 @@ class LuaValue : Varargs() {
      * @see NONE
      */
     private class None : LuaNil() {
-        fun arg(i: Int): LuaValue {
+        override fun arg(i: Int): LuaValue {
             return net.blueva.luak.LuaValue.Companion.NIL
         }
 
-        fun narg(): Int {
+        override fun narg(): Int {
             return 0
         }
 
-        fun arg1(): LuaValue {
+        override fun arg1(): LuaValue {
             return net.blueva.luak.LuaValue.Companion.NIL
         }
 
-        fun tojstring(): String {
+        override fun tojstring(): String {
             return "none"
         }
 
-        fun subargs(start: Int): Varargs? {
+        override fun subargs(start: Int): Varargs? {
             return if (start > 0) this else net.blueva.luak.LuaValue.Companion.argerror(1, "start must be > 0")
         }
 
-        fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
-            var offset = offset
-            var length = length
+        override fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
+            override var offset = offset            var length = length
             while (length > 0) {
                 dest[offset++] = net.blueva.luak.LuaValue.Companion.NIL
                 length--
@@ -3680,7 +3679,7 @@ class LuaValue : Varargs() {
      * @param start the index from which to include arguments, where 1 is the first argument.
      * @return Varargs containing argument { start, start+1,  ... , narg-start-1 }
      */
-    fun subargs(start: Int): Varargs? {
+    override fun subargs(start: Int): Varargs? {
         if (start == 1) return this
         if (start > 1) return net.blueva.luak.LuaValue.Companion.NONE
         return net.blueva.luak.LuaValue.Companion.argerror(1, "start must be > 0")

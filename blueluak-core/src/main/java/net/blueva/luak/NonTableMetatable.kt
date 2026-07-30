@@ -25,23 +25,23 @@ internal class NonTableMetatable(value: LuaValue?) : Metatable {
         this.value = value
     }
 
-    fun useWeakKeys(): Boolean {
+    override fun useWeakKeys(): Boolean {
         return false
     }
 
-    fun useWeakValues(): Boolean {
+    override fun useWeakValues(): Boolean {
         return false
     }
 
-    fun toLuaValue(): LuaValue? {
+    override fun toLuaValue(): LuaValue? {
         return value
     }
 
-    fun entry(key: LuaValue?, value: LuaValue?): Slot {
+    override fun entry(key: LuaValue?, value: LuaValue?): Slot {
         return LuaTable.defaultEntry(key, value)
     }
 
-    fun wrap(value: LuaValue?): LuaValue? {
+    override fun wrap(value: LuaValue?): LuaValue? {
         return value
     }
 

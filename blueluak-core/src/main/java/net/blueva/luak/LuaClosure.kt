@@ -93,8 +93,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         globals = if (env is Globals) env as Globals? else null
     }
 
-    fun initupvalue1(env: LuaValue?) {
-        if (p.upvalues == null || p.upvalues.length === 0) this.upValues =
+    override fun initupvalue1(env: LuaValue?) {        if (p.upvalues == null || p.upvalues.length === 0) this.upValues =
             net.blueva.luak.LuaClosure.Companion.NOUPVALUES
         else {
             this.upValues = arrayOfNulls<UpValue>(p.upvalues.length)
@@ -103,19 +102,19 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
 
-    fun isclosure(): Boolean {
+    override fun isclosure(): Boolean {
         return true
     }
 
-    fun optclosure(defval: LuaClosure?): LuaClosure {
+    override fun optclosure(defval: LuaClosure?): LuaClosure {
         return this
     }
 
-    fun checkclosure(): LuaClosure {
+    override fun checkclosure(): LuaClosure {
         return this
     }
 
-    fun tojstring(): String? {
+    override fun tojstring(): String? {
         return "function: " + p.toString()
     }
 
@@ -127,12 +126,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             return stack
         }
 
-    fun call(): LuaValue {
-        val stack: Array<LuaValue> = this.newStack
-        return execute(stack, NONE).arg1()
+    override fun call(): LuaValue {
+        override val stack: Array<LuaValue> = this.newStack        return execute(stack, NONE).arg1()
     }
 
-    fun call(arg: LuaValue): LuaValue {
+    override fun call(arg: LuaValue): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             0 -> return execute(stack, arg).arg1()
@@ -143,7 +141,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
     }
 
-    fun call(arg1: LuaValue?, arg2: LuaValue): LuaValue {
+    override fun call(arg1: LuaValue?, arg2: LuaValue): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             1 -> {
@@ -160,7 +158,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
     }
 
-    fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue): LuaValue {
+    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             2 -> {
@@ -184,13 +182,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
     }
 
-    fun invoke(varargs: Varargs): Varargs {
+    override fun invoke(varargs: Varargs): Varargs {
         return onInvoke(varargs).eval()
     }
 
-    fun onInvoke(varargs: Varargs): Varargs? {
-        val stack: Array<LuaValue> = this.newStack
-        for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
+    override fun onInvoke(varargs: Varargs): Varargs? {
+        override val stack: Array<LuaValue> = this.newStack        for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
         return execute(stack, if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)
     }
 
@@ -792,7 +789,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         upValues[i].setValue(v)
     }
 
-    fun name(): String? {
+    override fun name(): String? {
         return "<" + p.shortsource() + ":" + p.linedefined + ">"
     }
 

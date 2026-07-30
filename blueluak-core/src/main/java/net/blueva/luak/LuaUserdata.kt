@@ -30,19 +30,19 @@ class LuaUserdata : LuaValue {
         m_metatable = metatable
     }
 
-    fun tojstring(): String {
+    override fun tojstring(): String {
         return String.valueOf(m_instance)
     }
 
-    fun type(): Int {
+    override fun type(): Int {
         return LuaValue.TUSERDATA
     }
 
-    fun typename(): String? {
+    override fun typename(): String? {
         return "userdata"
     }
 
-    fun hashCode(): Int {
+    override fun hashCode(): Int {
         return m_instance.hashCode()
     }
 
@@ -50,45 +50,45 @@ class LuaUserdata : LuaValue {
         return m_instance
     }
 
-    fun isuserdata(): Boolean {
+    override fun isuserdata(): Boolean {
         return true
     }
 
-    fun isuserdata(c: Class): Boolean {
+    override fun isuserdata(c: Class): Boolean {
         return c.isAssignableFrom(m_instance.getClass())
     }
 
-    fun touserdata(): Object {
+    override fun touserdata(): Object {
         return m_instance
     }
 
-    fun touserdata(c: Class): Object? {
+    override fun touserdata(c: Class): Object? {
         return if (c.isAssignableFrom(m_instance.getClass())) m_instance else null
     }
 
-    fun optuserdata(defval: Object?): Object {
+    override fun optuserdata(defval: Object?): Object {
         return m_instance
     }
 
-    fun optuserdata(c: Class, defval: Object?): Object {
+    override fun optuserdata(c: Class, defval: Object?): Object {
         if (!c.isAssignableFrom(m_instance.getClass())) typerror(c.getName())
         return m_instance
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return m_metatable
     }
 
-    fun setmetatable(metatable: LuaValue?): LuaValue? {
+    override fun setmetatable(metatable: LuaValue?): LuaValue? {
         this.m_metatable = metatable
         return this
     }
 
-    fun checkuserdata(): Object {
+    override fun checkuserdata(): Object {
         return m_instance
     }
 
-    fun checkuserdata(c: Class): Object {
+    override fun checkuserdata(c: Class): Object {
         if (c.isAssignableFrom(m_instance.getClass())) return m_instance
         return typerror(c.getName())
     }
@@ -97,11 +97,11 @@ class LuaUserdata : LuaValue {
         return if (m_metatable != null) gettable(this, key) else NIL
     }
 
-    fun set(key: LuaValue?, value: LuaValue?) {
+    override fun set(key: LuaValue?, value: LuaValue?) {
         if (m_metatable == null || !settable(this, key, value)) error("cannot set " + key + " for userdata")
     }
 
-    fun equals(`val`: Object?): Boolean {
+    override fun equals(`val`: Object?): Boolean {
         if (this === `val`) return true
         if (`val` !is LuaUserdata) return false
         val u = `val`

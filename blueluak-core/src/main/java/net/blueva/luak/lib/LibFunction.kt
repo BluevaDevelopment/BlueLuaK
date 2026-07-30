@@ -96,7 +96,7 @@ protected constructor() : LuaFunction() {
      */
     protected var name: String? = null
 
-    fun tojstring(): String? {
+    override fun tojstring(): String? {
         return if (name != null) "function: " + name else super.tojstring()
     }
 
@@ -143,27 +143,27 @@ protected constructor() : LuaFunction() {
         }
     }
 
-    open fun call(): LuaValue {
+    open override fun call(): LuaValue {
         return argerror(1, "value expected")
     }
 
-    open fun call(a: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?): LuaValue {
         return call()
     }
 
-    open fun call(a: LuaValue?, b: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?, b: LuaValue?): LuaValue {
         return call(a)
     }
 
-    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue {
         return call(a, b)
     }
 
-    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
         return call(a, b, c)
     }
 
-    open fun invoke(args: Varargs): Varargs {
+    open override fun invoke(args: Varargs): Varargs {
         when (args.narg()) {
             0 -> return call()
             1 -> return call(args.arg1())
