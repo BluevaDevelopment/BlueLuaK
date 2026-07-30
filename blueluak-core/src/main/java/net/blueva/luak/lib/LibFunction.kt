@@ -148,7 +148,7 @@ protected constructor() : LuaFunction() {
     }
 
     open override fun call(a: LuaValue?): LuaValue? {
-        return call()
+        return call()!!
     }
 
     open override fun call(a: LuaValue?, b: LuaValue?): LuaValue? {
@@ -165,11 +165,11 @@ protected constructor() : LuaFunction() {
 
     open override fun invoke(args: Varargs): Varargs {
         when (args.narg()) {
-            0 -> return call()
-            1 -> return call(args.arg1())
-            2 -> return call(args.arg1(), args.arg(2))
-            3 -> return call(args.arg1(), args.arg(2), args.arg(3))
-            else -> return call(args.arg1(), args.arg(2), args.arg(3), args.arg(4))
+            0 -> return call()!!
+            1 -> return call(args.arg1())!!
+            2 -> return call(args.arg1(), args.arg(2))!!
+            3 -> return call(args.arg1(), args.arg(2), args.arg(3))!!
+            else -> return call(args.arg1(), args.arg(2), args.arg(3), args.arg(4))!!
         }
     }
 

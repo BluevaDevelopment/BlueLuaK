@@ -64,6 +64,6 @@ abstract class ZeroArgFunction
     }
 
     fun invoke(varargs: Varargs?): Varargs {
-        return call()
+        return call()!!
     }
 }

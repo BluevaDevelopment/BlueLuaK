@@ -66,6 +66,6 @@ abstract class ThreeArgFunction
     }
 
     override fun invoke(varargs: Varargs): Varargs {
-        return call(varargs.arg1(), varargs.arg(2), varargs.arg(3))
+        return call(varargs.arg1(), varargs.arg(2), varargs.arg(3))!!
     }
 }

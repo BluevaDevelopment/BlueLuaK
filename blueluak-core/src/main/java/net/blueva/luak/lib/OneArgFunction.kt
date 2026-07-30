@@ -66,6 +66,6 @@ abstract class OneArgFunction
     }
 
     override fun invoke(varargs: Varargs): Varargs {
-        return call(varargs.arg1())
+        return call(varargs.arg1())!!
     }
 }
