@@ -1,3 +1,17 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
 package net.blueva.luak.lib.jvm
 
 import junit.framework.TestCase
@@ -9,9 +23,13 @@ import net.blueva.luak.lib.jvm.JavaClass.Companion.forClass
 class LuajavaClassMembersTest : TestCase() {
     open class A
     open class B : A {
+        @JvmField
         var m_byte_field: Byte = 0
+        @JvmField
         var m_int_field: Int = 0
+        @JvmField
         var m_double_field: Double = 0.0
+        @JvmField
         var m_string_field: String? = null
 
         constructor()
@@ -71,22 +89,27 @@ class LuajavaClassMembersTest : TestCase() {
         }
 
         companion object {
+            @JvmStatic
             fun staticpick(): String {
                 return "static-pick()"
             }
 
+            @JvmStatic
             fun staticpick(s: String): String {
                 return "static-pick(string:" + s + ")"
             }
 
+            @JvmStatic
             fun staticpick(i: Int): String {
                 return "static-pick(int:" + i + ")"
             }
 
+            @JvmStatic
             fun staticpick(s: String, i: Int): String {
                 return "static-pick(string:" + s + ",int:" + i + ")"
             }
 
+            @JvmStatic
             fun staticpick(i: Int, s: String?): String {
                 return "static-pick(int:" + i + ",string:" + s + ")"
             }
@@ -168,7 +191,7 @@ class LuajavaClassMembersTest : TestCase() {
         val c = forClass(B::class.java)
         assertEquals(JavaClass::class.java, c.javaClass)
         val constr: LuaValue = c.get("new")!!
-        assertEquals(JavaConstructor::class.java, constr.javaClass)
+        assertEquals(JavaConstructor.Overload::class.java, constr.javaClass)
         val v: LuaValue = constr.call(NUMS)!!
         val b: Any = v.touserdata()!!
         assertEquals(B::class.java, b.javaClass)
@@ -181,7 +204,7 @@ class LuajavaClassMembersTest : TestCase() {
     fun testUniqueFactoryUncoercible() {
         val f = forClass(B::class.java)
         val constr: LuaValue = f.get("new")!!
-        assertEquals(JavaConstructor::class.java, constr.javaClass)
+        assertEquals(JavaConstructor.Overload::class.java, constr.javaClass)
         try {
             val v = constr.call(LuaValue.userdataOf(Any()))
             val b: Any = v!!.touserdata()!!

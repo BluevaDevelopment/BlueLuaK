@@ -1,3 +1,17 @@
+/******************************************************************************
+ *  ____  _            _                _  __
+ * | __ )| |_   _  ___| |   _   _  __ _| |/ /
+ * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ *
+ *  BlueLuaK
+ *  https://github.com/BluevaDevelopment/BlueLuaK
+ *
+ *  Copyright (c) 2026 Blueva Development
+ *
+ *  SPDX-License-Identifier: MIT
+ ******************************************************************************/
 package net.blueva.luak.lib.jvm
 
 import junit.framework.TestCase
@@ -25,10 +39,10 @@ class LuaJavaCoercionTest : TestCase() {
     fun testLuaIntToJavaInt() {
         val i = LuaInteger.valueOf(777)
         var o = CoerceLuaToJava.coerce(i, Int::class.javaPrimitiveType!!)
-        assertEquals(Int::class.java, o!!.javaClass)
+        assertEquals(Int::class.javaObjectType, o!!.javaClass)
         TestCase.assertEquals(777, (o as Number).toInt())
-        o = coerce(i, Int::class.java)
-        assertEquals(Int::class.java, o!!.javaClass)
+        o = coerce(i, Int::class.javaObjectType)
+        assertEquals(Int::class.javaObjectType, o!!.javaClass)
         assertEquals(777, o)
     }
 
@@ -55,13 +69,13 @@ class LuaJavaCoercionTest : TestCase() {
         val vi = coerce(ClassA())
         assertNotSame(va, vi)
         assertTrue(vi!!.isuserdata())
-        assertTrue(vi.isuserdata(ClassA::class.java))
-        assertFalse(vi.isuserdata(ClassB::class.java))
+        assertTrue(vi.isuserdata(ClassA::class))
+        assertFalse(vi.isuserdata(ClassB::class))
         val vj = coerce(ClassB())
         assertNotSame(vb, vj)
         assertTrue(vj!!.isuserdata())
-        assertFalse(vj.isuserdata(ClassA::class.java))
-        assertTrue(vj.isuserdata(ClassB::class.java))
+        assertFalse(vj.isuserdata(ClassA::class))
+        assertTrue(vj.isuserdata(ClassB::class))
     }
 
     internal class ClassA
@@ -208,6 +222,7 @@ class LuaJavaCoercionTest : TestCase() {
     class SomeException(message: String?) : RuntimeException(message)
 
     object SomeClass {
+        @JvmStatic
         fun someMethod() {
             throw SomeException("this is some message")
         }
@@ -578,4 +593,3 @@ class LuaJavaCoercionTest : TestCase() {
         private val LENGTH = LuaString.valueOf("length")
     }
 }
-
