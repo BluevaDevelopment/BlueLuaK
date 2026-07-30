@@ -24,7 +24,8 @@ package net.blueva.luak
  * This is a direct translation of C lua distribution header file constants
  * for bytecode creation and processing.
  */
-object Lua {
+open class Lua {
+    companion object {
     /** version is supplied by ant build task  */
     val _VERSION: String = "Luaj 0.0"
 
@@ -345,9 +346,10 @@ object Lua {
             source = "[string \"" + source
             end = "\"]"
         }
-        val n: Int = source.length() + end.length()
+        val n: Int = source.length + end.length
         if (n > net.blueva.luak.Lua.MAXSRC) source =
-            source.substring(0, net.blueva.luak.Lua.MAXSRC - end.length() - 3) + "..."
+            source.substring(0, net.blueva.luak.Lua.MAXSRC - end.length - 3) + "..."
         return source + end
+    }
     }
 }
