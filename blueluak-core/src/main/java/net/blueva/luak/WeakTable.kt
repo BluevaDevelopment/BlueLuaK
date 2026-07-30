@@ -91,7 +91,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             val key: LuaValue? = strongkey()
             val value: LuaValue? = strongvalue()
             if (key != null && value != null) {
-                return NormalEntry(key, value)
+                return LuaTable.NormalEntry(key, value)
             } else {
                 this.key = null
                 this.value = null

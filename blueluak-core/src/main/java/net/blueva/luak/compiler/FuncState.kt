@@ -39,7 +39,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     var f: Prototype? = null /* current function header */
-    var h: Hashtable? = null /* table to find (and reuse) elements in `k' */
+    var h: Hashtable<LuaValue, Int>? = null /* table to find (and reuse) elements in `k' */
     var prev: FuncState? = null /* enclosing function */
     var ls: LexState? = null /* lexical state */
     var bl: BlockCnt? = null /* chain of current blocks */
@@ -803,7 +803,7 @@ internal class FuncState internal constructor() : Constants() {
     fun indexed(t: expdesc, k: expdesc) {
         t.u.ind_t = t.u.info as Short
         t.u.ind_idx = this.exp2RK(k).toShort()
-        LuaC._assert(t.k === LexState.VUPVAL || net.blueva.luak.compiler.FuncState.Companion.vkisinreg(t.k))
+        _assert(t.k === LexState.VUPVAL || net.blueva.luak.compiler.FuncState.Companion.vkisinreg(t.k))
         t.u.ind_vt = (if (t.k === LexState.VUPVAL) LexState.VUPVAL else LexState.VLOCAL) as Short
         t.k = LexState.VINDEXED
     }

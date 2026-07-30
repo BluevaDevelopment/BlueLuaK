@@ -239,7 +239,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             try {
                 return (varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
-                val m: LuaValue? = le.getMessageObject()
+                val m: LuaValue? = le.messageObject
                 return (varargsOf(FALSE, if (m != null) m else NIL))!!
             } catch (e: Exception) {
                 val m: String? = e.message
@@ -387,7 +387,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
-                    val m: LuaValue? = le.getMessageObject()
+                    val m: LuaValue? = le.messageObject
                     return (varargsOf(FALSE, if (m != null) m else NIL))!!
                 } catch (e: Exception) {
                     val m: String? = e.message
