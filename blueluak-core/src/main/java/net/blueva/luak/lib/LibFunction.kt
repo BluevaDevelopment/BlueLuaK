@@ -25,7 +25,7 @@ import net.blueva.luak.Varargs
  * Subclass of [LuaFunction] common to Java functions exposed to lua.
  * 
  * 
- * To provide for common implementations in JME and JSE,
+ * To provide for common implementations in JME and JVM,
  * library functions are typically grouped on one or more library classes
  * and an opcode per library function is defined and used to key the switch
  * to the correct function within the library.

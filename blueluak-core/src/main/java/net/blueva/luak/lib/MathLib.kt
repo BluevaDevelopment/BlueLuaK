@@ -28,8 +28,8 @@ import java.util.Random
  * 
  * 
  * It contains only the math library support that is possible on JME.
- * For a more complete implementation based on math functions specific to JSE
- * use [net.blueva.luak.lib.jse.JseMathLib].
+ * For a more complete implementation based on math functions specific to JVM
+ * use [net.blueva.luak.lib.jvm.JvmMathLib].
  * In Particular the following math functions are **not** implemented by this library:
  * 
  *  * acos
@@ -44,21 +44,21 @@ import java.util.Random
  * 
  * 
  * The implementations of `exp()` and `pow()` are constructed by
- * hand for JME, so will be slower and less accurate than when executed on the JSE platform.
+ * hand for JME, so will be slower and less accurate than when executed on the JVM platform.
  * 
  * 
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
  * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JsePlatform.standardGlobals(); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
- * When using [net.blueva.luak.lib.jse.JsePlatform] as in this example,
- * the subclass [net.blueva.luak.lib.jse.JseMathLib] will
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
+ * When using [net.blueva.luak.lib.jvm.JvmPlatform] as in this example,
+ * the subclass [net.blueva.luak.lib.jvm.JvmMathLib] will
  * be included, which also includes this base functionality.
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.load(new PackageLib()); globals.load(new MathLib()); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new MathLib()); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
  * Doing so will ensure the library is properly initialized
  * and loaded into the globals table.
  * 
@@ -66,11 +66,11 @@ import java.util.Random
  * This has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * @see LibFunction
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
- * @see net.blueva.luak.lib.jse.JseMathLib
+ * @see net.blueva.luak.lib.jvm.JvmMathLib
  * 
  * @see [Lua 5.2 Math Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.6)
  */

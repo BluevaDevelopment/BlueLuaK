@@ -44,7 +44,7 @@ package net.blueva.luak
  * 
  * 
  * Field access and function calls are similar, with common overloads to simplify Java usage:
- * <pre> `LuaValue globals = JsePlatform.standardGlobals(); LuaValue sqrt = globals.get("math").get("sqrt"); LuaValue print = globals.get("print"); LuaValue d = sqrt.call( a ); print.call( LuaValue.valueOf("sqrt(5):"), a ); ` </pre>
+ * <pre> `LuaValue globals = JvmPlatform.standardGlobals(); LuaValue sqrt = globals.get("math").get("sqrt"); LuaValue print = globals.get("print"); LuaValue d = sqrt.call( a ); print.call( LuaValue.valueOf("sqrt(5):"), a ); ` </pre>
  * 
  * 
  * To supply variable arguments or get multiple return values, use
@@ -60,7 +60,7 @@ package net.blueva.luak
  * <pre> `globals.get("require").call(LuaValue.valueOf("main")); ` </pre>
  * For this to work the file must be in the current directory, or in the class path,
  * dependening on the platform.
- * See [net.blueva.luak.lib.jse.JsePlatform] and [net.blueva.luak.lib.jme.JmePlatform] for details.
+ * See [net.blueva.luak.lib.jvm.JvmPlatform] and [net.blueva.luak.lib.jme.JmePlatform] for details.
  * 
  * 
  * In general a [LuaError] may be thrown on any operation when the
@@ -90,7 +90,7 @@ package net.blueva.luak
  * [.MOD], [.UNM], [.LEN], [.EQ], [.LT],
  * [.LE], [.TOSTRING], and [.CONCAT].
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 

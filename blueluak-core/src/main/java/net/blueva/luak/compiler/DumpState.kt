@@ -33,7 +33,7 @@ import java.io.OutputStream
  * 
  * 
  * A lua binary file is created via [dump]:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); Prototype p = globals.compilePrototype(new StringReader("print('hello, world')"), "main.lua"); ByteArrayOutputStream o = new ByteArrayOutputStream(); DumpState.dump(p, o, false); byte[] lua_binary_file_bytes = o.toByteArray(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); Prototype p = globals.compilePrototype(new StringReader("print('hello, world')"), "main.lua"); ByteArrayOutputStream o = new ByteArrayOutputStream(); DumpState.dump(p, o, false); byte[] lua_binary_file_bytes = o.toByteArray(); ` </pre>
  * 
  * The [LoadState] may be used directly to undump these bytes:
  * <pre> `Prototypep = LoadState.instance.undump(new ByteArrayInputStream(lua_binary_file_bytes), "main.lua"); LuaClosure c = new LuaClosure(p, globals); c.call(); ` </pre>

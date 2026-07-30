@@ -32,10 +32,10 @@ import java.io.Reader
  * 
  * <h3>Constructing and Initializing Instances</h3>
  * Typically, this is constructed indirectly by a call to
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
  * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals],
  * and then used to load lua scripts for execution as in the following example.
- * <pre> `Globals globals = JsePlatform.standardGlobals(); globals.load( new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.load( new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
  * The creates a complete global environment with the standard libraries loaded.
  * 
  * 
@@ -77,7 +77,7 @@ import java.io.Reader
  * 
  * 
  * <h3>Lua Environment Variables</h3>
- * When using [net.blueva.luak.lib.jse.JsePlatform] or [net.blueva.luak.lib.jme.JmePlatform],
+ * When using [net.blueva.luak.lib.jvm.JvmPlatform] or [net.blueva.luak.lib.jme.JmePlatform],
  * these environment variables are created within the Globals.
  * 
  *  * "_G" Pointer to this Globals.
@@ -91,7 +91,7 @@ import java.io.Reader
  * 
  * 
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
@@ -317,7 +317,7 @@ class Globals : LuaTable() {
         return (s.lua_yield(args) ?: LuaValue.NONE)!!
     }
 
-    /** Reader implementation to read chars from a String in JME or JSE.  */
+    /** Reader implementation to read chars from a String in JME or JVM.  */
     internal class StrReader(val s: String) : Reader() {
         var i: Int = 0
         val n: Int
@@ -398,7 +398,7 @@ class Globals : LuaTable() {
     }
 
     /**  Simple converter from Reader to InputStream using UTF8 encoding that will work
-     * on both JME and JSE.
+     * on both JME and JVM.
      * This class may be moved to its own package in the future.
      */
     internal class UTF8Stream(r: Reader) : AbstractBufferedStream(96) {

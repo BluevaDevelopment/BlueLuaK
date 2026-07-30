@@ -45,26 +45,26 @@ import java.io.InputStream
  * 
  * <h3>Loading</h3>
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JsePlatform.standardGlobals(); System.out.println( globals.get("require").call"foo") ); ` </pre>
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("require").call"foo") ); ` </pre>
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.load(new PackageLib()); System.out.println( globals.get("require").call("foo") ); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); System.out.println( globals.get("require").call("foo") ); ` </pre>
  * <h3>Limitations</h3>
  * This library has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * However, the default filesystem search semantics are different and delegated to the bas library
- * as outlined in the [BaseLib] and [net.blueva.luak.lib.jse.JseBaseLib] documentation.
+ * as outlined in the [BaseLib] and [net.blueva.luak.lib.jvm.JvmBaseLib] documentation.
  * 
  * 
  * @see LibFunction
  * 
  * @see BaseLib
  * 
- * @see net.blueva.luak.lib.jse.JseBaseLib
+ * @see net.blueva.luak.lib.jvm.JvmBaseLib
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 

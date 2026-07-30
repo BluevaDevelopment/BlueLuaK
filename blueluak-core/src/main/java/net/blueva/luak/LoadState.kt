@@ -32,12 +32,12 @@ import java.io.InputStream
  * 
  * The canonical method to load and execute code is done
  * indirectly using the Globals:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); LuaValue chunk = globasl.load("print('hello, world')", "main.lua"); chunk.call(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); LuaValue chunk = globasl.load("print('hello, world')", "main.lua"); chunk.call(); ` </pre>
  * This should work regardless of which [Globals.Compiler] or [Globals.Undumper]
  * have been installed.
  * 
  * 
- * By default, when using [net.blueva.luak.lib.jse.JsePlatform] or
+ * By default, when using [net.blueva.luak.lib.jvm.JvmPlatform] or
  * [net.blueva.luak.lib.jme.JmePlatform]
  * to construct globals, the [LoadState] default undumper is installed
  * as the default [Globals.Undumper].
@@ -46,7 +46,7 @@ import java.io.InputStream
  * 
  * A lua binary file is created via the [net.blueva.luak.compiler.DumpState] class
  * :
- * <pre> `Globals globals = JsePlatform.standardGlobals(); Prototype p = globals.compilePrototype(new StringReader("print('hello, world')"), "main.lua"); ByteArrayOutputStream o = new ByteArrayOutputStream(); net.blueva.luak.compiler.DumpState.dump(p, o, false); byte[] lua_binary_file_bytes = o.toByteArray(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); Prototype p = globals.compilePrototype(new StringReader("print('hello, world')"), "main.lua"); ByteArrayOutputStream o = new ByteArrayOutputStream(); net.blueva.luak.compiler.DumpState.dump(p, o, false); byte[] lua_binary_file_bytes = o.toByteArray(); ` </pre>
  * 
  * The [LoadState]'s default undumper [.instance]
  * may be used directly to undump these bytes:

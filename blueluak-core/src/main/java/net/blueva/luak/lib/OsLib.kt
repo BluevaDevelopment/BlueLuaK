@@ -31,11 +31,11 @@ import java.util.Date
  * 
  * It is a usable base with simplified stub functions
  * for library functions that cannot be implemented uniformly
- * on Jse and Jme.
+ * on Jvm and Jme.
  * 
  * 
  * This can be installed as-is on either platform, or extended
- * and refined to be used in a complete Jse implementation.
+ * and refined to be used in a complete Jvm implementation.
  * 
  * 
  * Because the nature of the `os` library is to encapsulate
@@ -54,22 +54,22 @@ import java.util.Date
  * 
  * 
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JsePlatform.standardGlobals(); System.out.println( globals.get("os").get("time").call() ); ` </pre>
- * In this example the platform-specific [net.blueva.luak.lib.jse.JseOsLib] library will be loaded, which will include
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("os").get("time").call() ); ` </pre>
+ * In this example the platform-specific [net.blueva.luak.lib.jvm.JvmOsLib] library will be loaded, which will include
  * the base functionality provided by this class.
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); System.out.println( globals.get("os").get("time").call() ); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); System.out.println( globals.get("os").get("time").call() ); ` </pre>
  * 
  * 
  * @see LibFunction
  * 
- * @see net.blueva.luak.lib.jse.JseOsLib
+ * @see net.blueva.luak.lib.jvm.JvmOsLib
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
@@ -347,7 +347,7 @@ open class OsLib
      * The default implementation, which is used by the JmePlatform,
      * only queryies System.getProperty().
      * 
-     * The JsePlatform overrides this behavior and returns the
+     * The JvmPlatform overrides this behavior and returns the
      * environment variable value using System.getenv() if it exists,
      * or the System property value if it does not.
      * 

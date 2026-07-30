@@ -47,14 +47,14 @@ import net.blueva.luak.Varargs
  * 
  * 
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.debugGlobals] or
+ * [net.blueva.luak.lib.jvm.JvmPlatform.debugGlobals] or
  * [net.blueva.luak.lib.jme.JmePlatform.debugGlobals]
- * <pre> `Globals globals = JsePlatform.debugGlobals(); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.debugGlobals(); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.load(new PackageLib()); globals.load(new DebugLib()); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new DebugLib()); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
  * 
  * 
  * This library exposes the entire state of lua code, and provides method to see and modify
@@ -63,7 +63,7 @@ import net.blueva.luak.Varargs
  * 
  * @see LibFunction
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 

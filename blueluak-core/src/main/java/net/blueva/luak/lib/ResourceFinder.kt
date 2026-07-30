@@ -24,12 +24,12 @@ import java.io.InputStream
  * 
  * This is used by required to load files that are part of
  * the application, and implemented by BaseLib
- * for both the Jme and Jse platforms.
+ * for both the Jme and Jvm platforms.
  * 
  * 
  * The Jme version of base lib [BaseLib]
  * implements [Globals.finder] via [Class.getResourceAsStream],
- * while the Jse version [net.blueva.luak.lib.jse.JseBaseLib] implements it using [java.io.File.File].
+ * while the Jvm version [net.blueva.luak.lib.jvm.JvmBaseLib] implements it using [java.io.File.File].
  * 
  * 
  * The io library does not use this API for file manipulation.
@@ -39,11 +39,11 @@ import java.io.InputStream
  * 
  * @see Globals.finder
  * 
- * @see net.blueva.luak.lib.jse.JseBaseLib
+ * @see net.blueva.luak.lib.jvm.JvmBaseLib
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  */
 interface ResourceFinder {
     /**
@@ -51,7 +51,7 @@ interface ResourceFinder {
      * 
      * @see net.blueva.luak.lib.BaseLib
      * 
-     * @see net.blueva.luak.lib.jse.JseBaseLib
+     * @see net.blueva.luak.lib.jvm.JvmBaseLib
      * 
      * 
      * @param filename

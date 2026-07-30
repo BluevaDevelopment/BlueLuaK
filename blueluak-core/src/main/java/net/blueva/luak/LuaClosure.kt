@@ -39,11 +39,11 @@ import net.blueva.luak.lib.DebugLib.CallFrame
  * 
  * To construct it directly, the [Prototype] is typically created via a compiler such as
  * [net.blueva.luak.compiler.LuaC]:
- * <pre> `String script = "print( 'hello, world' )"; InputStream is = new ByteArrayInputStream(script.toByteArray()); Prototype p = LuaC.instance.compile(is, "script"); LuaValue globals = JsePlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
+ * <pre> `String script = "print( 'hello, world' )"; InputStream is = new ByteArrayInputStream(script.toByteArray()); Prototype p = LuaC.instance.compile(is, "script"); LuaValue globals = JvmPlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
  * 
  * 
  * To construct it indirectly, the [Globals.load] method may be used:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); LuaFunction f = globals.load(new StringReader(script), "script"); LuaClosure c = f.checkclosure();  // This may fail if LuaJC is installed. c.call(); `</pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); LuaFunction f = globals.load(new StringReader(script), "script"); LuaClosure c = f.checkclosure();  // This may fail if LuaJC is installed. c.call(); `</pre>
  * 
  * 
  * In this example, the "checkclosure()" may fail if direct lua-to-java-bytecode

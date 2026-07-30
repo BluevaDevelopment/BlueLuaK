@@ -34,7 +34,7 @@ import java.lang.ref.WeakReference
  * [.LuaThread].
  * 
  * 
- * The utility classes [net.blueva.luak.lib.jse.JsePlatform] and
+ * The utility classes [net.blueva.luak.lib.jvm.JvmPlatform] and
  * [net.blueva.luak.lib.jme.JmePlatform]
  * see to it that this [Globals] are initialized properly.
  * 
@@ -63,7 +63,7 @@ import java.lang.ref.WeakReference
  * 
  * @see LuaValue
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 

@@ -31,38 +31,38 @@ import java.io.IOException
  * 
  * 
  * It contains the implementation of the io library support that is common to
- * the JSE and JME platforms.
+ * the JVM and JME platforms.
  * In practice on of the concrete IOLib subclasses is chosen:
- * [net.blueva.luak.lib.jse.JseIoLib] for the JSE platform, and
+ * [net.blueva.luak.lib.jvm.JvmIoLib] for the JVM platform, and
  * [net.blueva.luak.lib.jme.JmeIoLib] for the JME platform.
  * 
  * 
- * The JSE implementation conforms almost completely to the C-based lua library,
+ * The JVM implementation conforms almost completely to the C-based lua library,
  * while the JME implementation follows closely except in the area of random-access files,
  * which are difficult to support properly on JME.
  * 
  * 
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JsePlatform.standardGlobals(); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
- * In this example the platform-specific [net.blueva.luak.lib.jse.JseIoLib] library will be loaded, which will include
- * the base functionality provided by this class, whereas the [net.blueva.luak.lib.jse.JsePlatform] would load the
- * [net.blueva.luak.lib.jse.JseIoLib].
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
+ * In this example the platform-specific [net.blueva.luak.lib.jvm.JvmIoLib] library will be loaded, which will include
+ * the base functionality provided by this class, whereas the [net.blueva.luak.lib.jvm.JvmPlatform] would load the
+ * [net.blueva.luak.lib.jvm.JvmIoLib].
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
  * 
  * 
  * This has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * @see LibFunction
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
- * @see net.blueva.luak.lib.jse.JseIoLib
+ * @see net.blueva.luak.lib.jvm.JvmIoLib
  * 
  * @see net.blueva.luak.lib.jme.JmeIoLib
  * 

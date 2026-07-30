@@ -45,10 +45,10 @@ import java.util.Hashtable
  * 
  * 
  * The [LuaC] compiler is installed by default by both the
- * [net.blueva.luak.lib.jse.JsePlatform] and [net.blueva.luak.lib.jme.JmePlatform] classes,
+ * [net.blueva.luak.lib.jvm.JvmPlatform] and [net.blueva.luak.lib.jme.JmePlatform] classes,
  * so in the following example, the default [LuaC] compiler
  * will be used:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); globals.load(new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.load(new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
  * 
  * To load the LuaC compiler manually, use the install method:
  * <pre> `LuaC.install(globals); ` </pre>
@@ -60,7 +60,7 @@ import java.util.Hashtable
  * 
  * @see net.blueva.luak.luajc.LuaJC
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 

@@ -41,25 +41,25 @@ import java.io.InputStream
  * 
  * 
  * To use basic library functions that include a [ResourceFinder] based on
- * directory lookup, use [net.blueva.luak.lib.jse.JseBaseLib] instead.
+ * directory lookup, use [net.blueva.luak.lib.jvm.JvmBaseLib] instead.
  * 
  * 
  * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jse.JsePlatform.standardGlobals] or
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
  * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JsePlatform.standardGlobals(); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
  * 
  * 
  * For special cases where the smallest possible footprint is desired,
  * a minimal set of libraries could be loaded
  * directly via [Globals.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JseBaseLib()); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
+ * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
  * Doing so will ensure the library is properly initialized
  * and loaded into the globals table.
  * 
  * 
  * This is a direct port of the corresponding library in C.
- * @see net.blueva.luak.lib.jse.JseBaseLib
+ * @see net.blueva.luak.lib.jvm.JvmBaseLib
  * 
  * @see ResourceFinder
  * 
@@ -67,7 +67,7 @@ import java.io.InputStream
  * 
  * @see LibFunction
  * 
- * @see net.blueva.luak.lib.jse.JsePlatform
+ * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
  * @see net.blueva.luak.lib.jme.JmePlatform
  * 
@@ -118,7 +118,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
 
     /** ResourceFinder implementation
      * 
-     * Tries to open the file as a resource, which can work for JSE and JME.
+     * Tries to open the file as a resource, which can work for JVM and JME.
      */
     open override fun findResource(filename: String?): InputStream? {
         filename ?: return null

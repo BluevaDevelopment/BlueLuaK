@@ -32,7 +32,7 @@ options {
   DEBUG_LOOKAHEAD = false;
   DEBUG_PARSER = false;
   DEBUG_TOKEN_MANAGER = false;
-  OUTPUT_DIRECTORY = "blueluak-jse/src/main/java/net/blueva/luak/parser";
+  OUTPUT_DIRECTORY = "blueluak-jvm/src/main/java/net/blueva/luak/parser";
 }
 
 PARSER_BEGIN(LuaParser)

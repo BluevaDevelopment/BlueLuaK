@@ -28,7 +28,7 @@ package net.blueva.luak
  * 
  * Generally, the [Prototype] is not constructed directly is an intermediate result
  * as lua code is loaded using [Globals.load]:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); globals.load( new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.load( new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
  * 
  * 
  * 
@@ -48,7 +48,7 @@ package net.blueva.luak
  * 
  * To execute the code represented by the [Prototype] it must be supplied to
  * the constructor of a [LuaClosure]:
- * <pre> `Globals globals = JsePlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
+ * <pre> `Globals globals = JvmPlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
  * 
  * To simplify the debugging of prototype values, the contents may be printed using [Print.print]:
  * <pre> `Print.print(p); `</pre>
