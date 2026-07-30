@@ -148,11 +148,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     // only called by new_localvarliteral() for var names.
     fun newstring(s: String?): LuaString {
-        return L!!.newTString(s)
+        return (L!!.newTString(s))!!
     }
 
     fun newstring(chars: CharArray?, offset: Int, len: Int): LuaString {
-        return L!!.newTString(String((chars)!!, offset, len))
+        return (L!!.newTString(String((chars)!!, offset, len)))!!
     }
 
     fun inclinenumber() {
@@ -211,9 +211,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             ++s
         }
         /* Check for "0x" */
-        if (s + 2 >= c.size) return LuaValue.ZERO
-        if (c[s++] != '0') return LuaValue.ZERO
-        if (c[s] != 'x' && c[s] != 'X') return LuaValue.ZERO
+        if (s + 2 >= c.size) return (LuaValue.ZERO)!!
+        if (c[s++] != '0') return (LuaValue.ZERO)!!
+        if (c[s] != 'x' && c[s] != 'X') return (LuaValue.ZERO)!!
         ++s
 
         // read integer part.
