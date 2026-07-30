@@ -743,7 +743,7 @@ class LuaString private constructor(
         if (end > start + 64) end = start + 64
         for (i in start..<end) {
             when (m_bytes[i]) {
-                '-', '+', '.', 'e', 'E', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {}
+                '-'.code.toByte(), '+'.code.toByte(), '.'.code.toByte(), 'e'.code.toByte(), 'E'.code.toByte(), '0'.code.toByte(), '1'.code.toByte(), '2'.code.toByte(), '3'.code.toByte(), '4'.code.toByte(), '5'.code.toByte(), '6'.code.toByte(), '7'.code.toByte(), '8'.code.toByte(), '9'.code.toByte() -> {}
                 else -> return Double.NaN
             }
         }

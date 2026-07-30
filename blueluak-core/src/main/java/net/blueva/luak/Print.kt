@@ -90,14 +90,14 @@ class Print : Lua() {
                 if (c >= ' '.code && c <= '~'.code && c != '\"'.code && c != '\\'.code) ps.print(c.toChar())
                 else {
                     when (c) {
-                        '"' -> ps.print("\\\"")
-                        '\\' -> ps.print("\\\\")
+                        '"'.code -> ps.print("\\\"")
+                        '\\'.code -> ps.print("\\\\")
                         0x0007 -> ps.print("\\a")
-                        '\b' -> ps.print("\\b")
-                        '\u000C' -> ps.print("\\f")
-                        '\t' -> ps.print("\\t")
-                        '\r' -> ps.print("\\r")
-                        '\n' -> ps.print("\\n")
+                        '\b'.code -> ps.print("\\b")
+                        '\u000C'.code -> ps.print("\\f")
+                        '\t'.code -> ps.print("\\t")
+                        '\r'.code -> ps.print("\\r")
+                        '\n'.code -> ps.print("\\n")
                         0x000B -> ps.print("\\v")
                         else -> {
                             ps.print('\\')
