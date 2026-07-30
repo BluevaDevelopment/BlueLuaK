@@ -196,7 +196,7 @@ open class MathLib : TwoArgFunction() {
     internal class fmod : TwoArgFunction() {
         override fun call(xv: LuaValue?, yv: LuaValue?): LuaValue? {
             if (xv!!.islong() && yv!!.islong()) {
-                return valueOf(xv!!.tolong() % yv!!.tolong())
+                return valueOf((xv!!.tolong() % yv!!.tolong()).toDouble())
             }
             return valueOf(xv!!.checkdouble() % yv!!.checkdouble())
         }

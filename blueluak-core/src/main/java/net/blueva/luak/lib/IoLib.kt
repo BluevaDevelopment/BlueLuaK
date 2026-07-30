@@ -114,8 +114,8 @@ class IoLib : TwoArgFunction() {
         }
 
         // delegate method access to file methods table
-        fun get(key: LuaValue?): LuaValue {
-            return filemethods!!.get((key)!!)
+        override fun get(key: LuaValue): LuaValue {
+            return filemethods!!.get(key)
         }
 
         // essentially a userdata instance

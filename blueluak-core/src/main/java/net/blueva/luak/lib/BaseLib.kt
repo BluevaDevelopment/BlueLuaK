@@ -149,7 +149,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             } else if ("count".equals(s)) {
                 val rt: Runtime = Runtime.getRuntime()
                 val used: Long = rt.totalMemory() - rt.freeMemory()
-                return (varargsOf(valueOf(used / 1024.0), valueOf(used % 1024)))!!
+                return (varargsOf(valueOf(used / 1024.0), valueOf((used % 1024).toInt())))!!
             } else if ("step".equals(s)) {
                 System.gc()
                 return (LuaValue.TRUE)!!
@@ -258,7 +258,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             val n: Int = args.narg()
             while (i <= n) {
                 if (i > 1) globals!!.STDOUT!!.print('\t')
-                val s: LuaString = tostring.call(args.arg(i)).strvalue()!!
+                val s: LuaString = tostring.call(args.arg(i))!!.strvalue()!!
                 globals!!.STDOUT!!.print(s.tojstring())
                 i++
             }
@@ -474,7 +474,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun read(): Int {
             if (remaining < 0) return -1
             if (remaining == 0) {
-                val s: LuaValue = func.call()
+                val s: LuaValue = func.call()!!
                 if (s.isnil()) return (-1).also { remaining = it }
                 val ls: LuaString = s.strvalue()!!
                 bytes = ls.m_bytes

@@ -158,8 +158,8 @@ class DebugLib : TwoArgFunction() {
                 info.set(net.blueva.luak.lib.DebugLib.Companion.CURRENTLINE, valueOf(ar.currentline))
             }
             if (what.indexOf('u') >= 0) {
-                info.set(net.blueva.luak.lib.DebugLib.Companion.NUPS, valueOf(ar.nups))
-                info.set(net.blueva.luak.lib.DebugLib.Companion.NPARAMS, valueOf(ar.nparams))
+                info.set(net.blueva.luak.lib.DebugLib.Companion.NUPS, valueOf(ar.nups.toInt()))
+                info.set(net.blueva.luak.lib.DebugLib.Companion.NPARAMS, valueOf(ar.nparams.toInt()))
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ISVARARG, if (ar.isvararg) ONE else ZERO)
             }
             if (what.indexOf('n') >= 0) {
@@ -320,7 +320,7 @@ class DebugLib : TwoArgFunction() {
             val o: Any? = args.checkuserdata(1)
             val v: LuaValue = args.checkvalue(2)!!
             val u: LuaUserdata = args.arg1() as LuaUserdata
-            u.m_instance = v.checkuserdata()
+            u.m_instance = v.checkuserdata()!!
             u.m_metatable = v.getmetatable()
             return (NONE)!!
         }
@@ -640,16 +640,16 @@ class DebugLib : TwoArgFunction() {
             this.pc = pc
             this.v = v
             this.top = top
-            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState((f!!.checkclosure())!!, pc, stack, top, v)
+            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState((f!!.checkclosure())!!, pc, stack!!, top, v)
         }
 
         fun getLocal(i: Int): Varargs {
             val name: LuaString? = getlocalname(i)
             if (i >= 1 && i <= stack!!.size && stack!![i - 1] != null) return varargsOf(
                 if (name == null) NIL else name,
-                stack!![i - 1]
+                stack!![i - 1]!!
             )!!
-            else return NIL
+            else return NIL!!
         }
 
         fun setLocal(i: Int, value: LuaValue?): Varargs? {

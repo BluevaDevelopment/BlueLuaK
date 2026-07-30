@@ -194,7 +194,7 @@ class PackageLib : TwoArgFunction() {
 
             // load the module using the loader
             loaded.set(name, net.blueva.luak.lib.PackageLib.Companion._SENTINEL)
-            result = loader!!.arg1()!!.call(name, loader!!.arg(2))
+            result = loader!!.arg1()!!.call(name, loader!!.arg(2))!!
             if (!result.isnil()) loaded.set(name, result)
             else if ((loaded.get((name)!!)
                     .also { result = it }) === net.blueva.luak.lib.PackageLib.Companion._SENTINEL

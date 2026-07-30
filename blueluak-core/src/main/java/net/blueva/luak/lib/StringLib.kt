@@ -462,7 +462,7 @@ class StringLib
             this.lastmatch = -1
         }
 
-        override fun invoke(args: Varargs?): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             while (soffset <= srclen) {
                 ms.reset()
                 val res = ms.match(soffset, 0)

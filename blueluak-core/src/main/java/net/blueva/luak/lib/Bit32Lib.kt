@@ -69,7 +69,7 @@ class Bit32Lib : TwoArgFunction() {
     }
 
     internal class Bit32LibV : VarArgFunction() {
-        override fun invoke(args: Varargs?): Varargs {
+        override fun invoke(args: Varargs): Varargs {
             val a = args!!
             when (opcode) {
                 0 -> return net.blueva.luak.lib.Bit32Lib.Companion.band(a)
