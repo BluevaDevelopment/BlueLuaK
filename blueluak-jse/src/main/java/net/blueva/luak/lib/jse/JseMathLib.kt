@@ -64,9 +64,9 @@ class JseMathLib : MathLib() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
     </P> */
-    override fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue {
         super.call(modname, env)
-        val math: LuaValue = env.get("math")!!
+        val math: LuaValue = env!!.get("math")!!
         math.set("acos", acos())
         math.set("asin", asin())
         val atan: LuaValue = atan2()
@@ -143,4 +143,3 @@ class JseMathLib : MathLib() {
         return a.pow(b)
     }
 }
-

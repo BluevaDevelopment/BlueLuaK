@@ -70,9 +70,9 @@ class JseBaseLib : BaseLib() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
     </P> */
-    override fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue {
         super.call(modname, env)
-        env.checkglobals()!!.STDIN = System.`in`
+        env!!.checkglobals()!!.STDIN = System.`in`
         return env
     }
 
@@ -93,7 +93,7 @@ class JseBaseLib : BaseLib() {
      * @param filename
      * @return InputStream, or null if not found.
      */
-    override fun findResource(filename: String): InputStream? {
+    override fun findResource(filename: String?): InputStream? {
         val f = File(filename)
         if (!f.exists()) return super.findResource(filename)
         try {
@@ -103,4 +103,3 @@ class JseBaseLib : BaseLib() {
         }
     }
 }
-

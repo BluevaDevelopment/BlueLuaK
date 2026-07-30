@@ -21,10 +21,10 @@ import net.blueva.luak.lib.StringLib
 class JseStringLib
 /** public constructor  */
     : StringLib() {
-    override fun format(src: String, x: Double): String? {
+    override fun format(src: String?, x: Double): String {
         var out: String?
         try {
-            out = String.format(src, *arrayOf<Any?>(x))
+            out = String.format(src!!, *arrayOf<Any?>(x))
         } catch (e: Throwable) {
             out = super.format(src, x)
         }

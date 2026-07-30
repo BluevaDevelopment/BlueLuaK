@@ -67,7 +67,7 @@ import java.io.IOException
 class JseOsLib
 /** public constructor  */
     : OsLib() {
-    override fun getenv(varname: String): String? {
+    override fun getenv(varname: String?): String? {
         val s = System.getenv(varname)
         return if (s != null) s else System.getProperty(varname)
     }
@@ -88,20 +88,20 @@ class JseOsLib
     }
 
     @Throws(IOException::class)
-    override fun remove(filename: String) {
+    override fun remove(filename: String?) {
         val f = File(filename)
         if (!f.exists()) throw IOException("No such file or directory")
         if (!f.delete()) throw IOException("Failed to delete")
     }
 
     @Throws(IOException::class)
-    override fun rename(oldname: String, newname: String) {
+    override fun rename(oldname: String?, newname: String?) {
         val f = File(oldname)
         if (!f.exists()) throw IOException("No such file or directory")
         if (!f.renameTo(File(newname))) throw IOException("Failed to rename")
     }
 
-    override fun tmpname(): String? {
+    override fun tmpname(): String {
         try {
             val f = File.createTempFile(TMP_PREFIX, TMP_SUFFIX)
             return f.getAbsolutePath()
