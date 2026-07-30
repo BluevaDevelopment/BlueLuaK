@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import kotlin.reflect.KClass
 /**
  * Class to encapsulate varargs values, either as part of a variable argument list, or multiple return values.
  * 
@@ -323,7 +324,7 @@ abstract class Varargs {
      * @return java Any value if argument i is a userdata whose instance Class c or a subclass, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun optuserdata(i: Int, c: Class<*>?, defval: Any?): Any {
+    fun optuserdata(i: Int, c: KClass<*>?, defval: Any?): Any {
         return (arg(i)!!.optuserdata((c)!!, defval))!!
     }
 
@@ -460,7 +461,7 @@ abstract class Varargs {
      * @return java Any value if argument i is a userdata whose instance Class c or a subclass
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun checkuserdata(i: Int, c: Class<*>?): Any {
+    fun checkuserdata(i: Int, c: KClass<*>?): Any {
         return (arg(i)!!.checkuserdata(c))!!
     }
 
@@ -593,7 +594,7 @@ abstract class Varargs {
      * @param c the class to which the userdata instance must be assignable
      * @return java Any value if argument i is a userdata whose instance Class c or a subclass, otherwise null
      */
-    fun touserdata(i: Int, c: Class<*>?): Any {
+    fun touserdata(i: Int, c: KClass<*>?): Any {
         return (arg(i)!!.touserdata(c))!!
     }
 
@@ -756,8 +757,8 @@ abstract class Varargs {
         }
 
         override fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
-            val n: Int = Math.min(v.size, length)
-            System.arraycopy(v, 0, dest, offset, n)
+            val n: Int = minOf(v.size, length)
+            arrayCopy(v, 0, dest, offset, n)
             r.copyto(dest, offset + n, length - n)
         }
     }
@@ -827,8 +828,8 @@ abstract class Varargs {
         }
 
         override fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
-            val n: Int = Math.min(this.length, length)
-            System.arraycopy(this.v, this.offset, dest, offset, n)
+            val n: Int = minOf(this.length, length)
+            arrayCopy(this.v, this.offset, dest, offset, n)
             more.copyto(dest, offset + n, length - n)
         }
     }

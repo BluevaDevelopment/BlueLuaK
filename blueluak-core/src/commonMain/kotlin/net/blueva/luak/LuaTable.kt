@@ -16,8 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
-import java.lang.ref.WeakReference
-import java.util.Vector
+import net.blueva.luak.WeakReference
 
 /**
  * Subclass of [LuaValue] for representing lua tables.
@@ -130,7 +129,7 @@ open class LuaTable : LuaValue, Metatable {
      */
     constructor(varargs: Varargs, firstarg: Int) {
         val nskip = firstarg - 1
-        val n: Int = Math.max(varargs.narg() - nskip, 0)
+        val n: Int = maxOf(varargs.narg() - nskip, 0)
         presize(n, 1)
         set(net.blueva.luak.LuaTable.Companion.N, valueOf(n))
         for (i in 1..n) set(i, varargs.arg(i + nskip))
@@ -484,6 +483,7 @@ open class LuaTable : LuaValue, Metatable {
                     if (arrayset(key.toint(), value)) return
                 } else {
                     rehash(-1)
+                    if (key.isinttype() && key.toint() > 0 && arrayset(key.toint(), value)) return
                 }
                 index = hashSlot(key)
             }
@@ -550,7 +550,7 @@ open class LuaTable : LuaValue, Metatable {
         // Count integer keys in array part
         for (bit in 0..30) {
             if (i > array.size) break
-            val j: Int = Math.min(array.size, 1 shl bit)
+            val j: Int = minOf(array.size, 1 shl bit)
             var c = 0
             while (i <= j) {
                 if (array[i++ - 1] != null) c++
@@ -565,7 +565,7 @@ open class LuaTable : LuaValue, Metatable {
             var s = hash[i]
             while (s != null) {
                 val k: Int
-                if ((s.arraykey(Integer.MAX_VALUE).also { k = it }) > 0) {
+                if ((s.arraykey(Int.MAX_VALUE).also { k = it }) > 0) {
                     nums[net.blueva.luak.LuaTable.Companion.log2(k)]++
                     total++
                 }
@@ -637,7 +637,7 @@ open class LuaTable : LuaValue, Metatable {
                     ++i
                 }
             }
-            System.arraycopy(oldArray, 0, newArray, 0, Math.min(oldArray.size, newArraySize))
+            arrayCopy(oldArray, 0, newArray, 0, minOf(oldArray.size, newArraySize))
         } else {
             newArray = array
         }
@@ -716,7 +716,7 @@ open class LuaTable : LuaValue, Metatable {
      * @param comparator [LuaValue] to be called to compare elements.
      */
     fun sort(comparator: LuaValue) {
-        if (len().tolong() >= Integer.MAX_VALUE as Long) throw LuaError("array too big: " + len().tolong())
+        if (len().tolong() >= Int.MAX_VALUE.toLong()) throw LuaError("array too big: " + len().tolong())
         if (m_metatable != null && m_metatable!!.useWeakValues()) {
             dropWeakArrayValues()
         }
@@ -783,7 +783,7 @@ open class LuaTable : LuaValue, Metatable {
      * @return array of keys in the table
      */
     fun keys(): Array<LuaValue?> {
-        val l: Vector<LuaValue> = Vector<LuaValue>()
+        val l: MutableList<LuaValue> = mutableListOf()
         var k: LuaValue = LuaValue.NIL
         while (true) {
             val n: Varargs = next(k)
@@ -791,7 +791,7 @@ open class LuaTable : LuaValue, Metatable {
             l.add(k)
         }
         val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(l.size)
-        l.copyInto(a)
+        l.forEachIndexed { index, value -> a[index] = value }
         return a
     }
 
@@ -823,7 +823,7 @@ open class LuaTable : LuaValue, Metatable {
     fun unpack(i: Int, j: Int): Varargs {
         if (j < i) return (NONE)!!
         val count = j - i
-        if (count < 0) throw LuaError("too many results to unpack: greater " + Integer.MAX_VALUE) // integer overflow
+        if (count < 0) throw LuaError("too many results to unpack: greater " + Int.MAX_VALUE) // integer overflow
 
         val max = 0x00ffffff
         if (count >= max) throw LuaError("too many results to unpack: " + count + " (max is " + max + ')')
@@ -838,7 +838,7 @@ open class LuaTable : LuaValue, Metatable {
                     val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
                     while (--n >= 0) v[n] = get(i + n)
                     return (varargsOf(v))!!
-                } catch (e: OutOfMemoryError) {
+                } catch (e: Throwable) {
                     throw LuaError("too many results to unpack [out of memory]: " + n)
                 }
             }
@@ -1255,7 +1255,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun toString(): String {
-            val buf: StringBuffer = StringBuffer()
+            val buf: StringBuilder = StringBuilder()
             buf.append("<dead")
             val k: LuaValue? = key()
             if (k != null) {
@@ -1299,7 +1299,7 @@ open class LuaTable : LuaValue, Metatable {
         /** Resize the table  */
         private fun resize(old: Array<LuaValue?>, n: Int): Array<LuaValue?> {
             val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
-            System.arraycopy(old, 0, v, 0, old.size)
+            arrayCopy(old, 0, v, 0, old.size)
             return v
         }
 
@@ -1334,7 +1334,7 @@ open class LuaTable : LuaValue, Metatable {
             var lg = 0
             x -= 1
             if (x < 0)  // 2^(-(2^31)) is approximately 0
-                return Integer.MIN_VALUE
+                return Int.MIN_VALUE
             if ((x and -0x10000) != 0) {
                 lg = 16
                 x = x ushr 16

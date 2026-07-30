@@ -71,7 +71,7 @@ class LuaFunction : LuaValue() {
      * If the first character is '_', it is skipped.
      */
     fun classnamestub(): String {
-        val s: String = javaClass.name
+        val s: String = this::class.simpleName ?: "function"
         var offset: Int = maxOf(s.lastIndexOf('.'), s.lastIndexOf('$')) + 1
         if (s[offset] == '_') offset++
         return s.substring(offset)

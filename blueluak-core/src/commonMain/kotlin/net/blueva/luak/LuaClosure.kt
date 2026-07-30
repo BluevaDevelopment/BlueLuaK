@@ -80,7 +80,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
     lateinit var upValues: Array<UpValue?>
 
-    val globals: Globals
+    val globals: Globals?
 
     /** Create a closure around a Prototype with a specific environment.
      * If the prototype has upvalues, the environment will be written into the first upvalue.
@@ -90,7 +90,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     init {
         this.p = p
         this.initupvalue1(env)
-        globals = env as Globals
+        globals = env as? Globals
     }
 
     override fun initupvalue1(env: LuaValue?) {
@@ -123,7 +123,6 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         get() {
             val max: Int = p.maxstacksize
             val stack: Array<LuaValue> = Array(max) { NIL }
-            System.arraycopy(NILS, 0, stack, 0, max)
             return stack
         }
 

@@ -95,6 +95,12 @@ class LuaError : RuntimeException {
         this.level = 1
     }
 
+    /** Construct a LuaError with a message and the exception that caused it. */
+    constructor(message: String?, cause: Throwable?) : super(message) {
+        this.cause = cause
+        this.level = 1
+    }
+
     /**
      * Construct a LuaError with a message, and level to draw line number information from.
      * @param message message to supply

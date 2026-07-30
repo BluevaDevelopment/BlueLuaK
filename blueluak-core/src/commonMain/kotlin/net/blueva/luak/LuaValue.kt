@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import kotlin.reflect.KClass
 /**
  * Base class for all concrete lua type values.
  * 
@@ -298,7 +299,7 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun isuserdata(c: Class<*>?): Boolean {
+    open fun isuserdata(c: KClass<*>?): Boolean {
         return false
     }
 
@@ -419,7 +420,7 @@ open class LuaValue : Varargs() {
      * @see .TSTRING
      */
     override fun tojstring(): String {
-        return typename().toString() + ": " + Integer.toHexString(hashCode())
+        return typename().toString() + ": " + hashCode().toString(16)
     }
 
     /** Convert to userdata instance, or null.
@@ -441,7 +442,7 @@ open class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    open fun touserdata(c: Class<*>?): Any? {
+    open fun touserdata(c: KClass<*>?): Any? {
         return null
     }
 
@@ -749,8 +750,8 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun optuserdata(c: Class<*>, defval: Any?): Any? {
-        argerror(c.name)
+    open fun optuserdata(c: KClass<*>, defval: Any?): Any? {
+        argerror(c.qualifiedName ?: c.simpleName ?: "userdata")
         return null
     }
 
@@ -1025,7 +1026,7 @@ open class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    open fun checkuserdata(c: Class<*>?): Any? {
+    open fun checkuserdata(c: KClass<*>?): Any? {
         argerror("userdata")
         return null
     }
@@ -3741,30 +3742,35 @@ open class LuaValue : Varargs() {
         )
 
         /** LuaValue constant corresponding to lua `#NIL`  */
-        @JvmField
+        @kotlin.jvm.JvmField
         val NIL: LuaValue = LuaNil._NIL
 
         /** LuaBoolean constant corresponding to lua `true`  */
-        @JvmField
+        @kotlin.jvm.JvmField
         val TRUE: LuaBoolean = LuaBoolean._TRUE
 
         /** LuaBoolean constant corresponding to lua `false`  */
-        @JvmField
+        @kotlin.jvm.JvmField
         val FALSE: LuaBoolean = LuaBoolean._FALSE
 
         /** LuaValue constant corresponding to a [Varargs] list of no values  */
+        @kotlin.jvm.JvmField
         val NONE: LuaValue? = net.blueva.luak.LuaValue.None.Companion._NONE
 
         /** LuaValue number constant equal to 0  */
+        @kotlin.jvm.JvmField
         val ZERO: LuaNumber? = LuaInteger.valueOf(0)
 
         /** LuaValue number constant equal to 1  */
+        @kotlin.jvm.JvmField
         val ONE: LuaNumber? = LuaInteger.valueOf(1)
 
         /** LuaValue number constant equal to -1  */
+        @kotlin.jvm.JvmField
         val MINUSONE: LuaNumber? = LuaInteger.valueOf(-1)
 
         /** LuaValue array constant with no values  */
+        @kotlin.jvm.JvmField
         val NOVALS: Array<LuaValue?> = arrayOf<LuaValue?>()
 
         /** The variable name of the environment.  */
@@ -3850,7 +3856,7 @@ open class LuaValue : Varargs() {
         /** Limit on lua stack size  */
         private const val MAXSTACK = 250
 
-        /** Array of [.NIL] values to optimize filling stacks using System.arraycopy().
+        /** Array of [.NIL] values to optimize filling stacks using arrayCopy().
          * Must not be modified.
          */
         val NILS: Array<LuaValue?> = arrayOfNulls<LuaValue>(net.blueva.luak.LuaValue.Companion.MAXSTACK)
@@ -3916,8 +3922,8 @@ open class LuaValue : Varargs() {
          * @param b boolean value to convert
          * @return [.TRUE] if not  or [.FALSE] if false
          */
-        @JvmStatic
-        fun valueOf(b: Boolean): LuaBoolean? {
+                @kotlin.jvm.JvmStatic
+                fun valueOf(b: Boolean): LuaBoolean? {
             return if (b) net.blueva.luak.LuaValue.Companion.TRUE else net.blueva.luak.LuaValue.Companion.FALSE
         }
 
@@ -3926,6 +3932,7 @@ open class LuaValue : Varargs() {
          * @param i int value to convert
          * @return [LuaInteger] instance, possibly pooled, whose value is i
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(i: Int): LuaInteger {
             return (LuaInteger.valueOf(i))!!
         }
@@ -3937,6 +3944,7 @@ open class LuaValue : Varargs() {
          * @param d double value to convert
          * @return [LuaNumber] instance, possibly pooled, whose value is d
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(d: Double): LuaNumber {
             return (LuaDouble.valueOf(d))!!
         }
@@ -3946,6 +3954,7 @@ open class LuaValue : Varargs() {
          * @param s String value to convert
          * @return [LuaString] instance, possibly pooled, whose value is s
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(s: String?): LuaString {
             return LuaString.valueOf((s)!!)
         }
@@ -3955,6 +3964,7 @@ open class LuaValue : Varargs() {
          * @param bytes byte array to convert
          * @return [LuaString] instance, possibly pooled, whose bytes are those in the supplied array
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(bytes: ByteArray?): LuaString {
             return LuaString.valueOf((bytes)!!)
         }
@@ -3966,6 +3976,7 @@ open class LuaValue : Varargs() {
          * @param len number of bytes to include in the [LuaString]
          * @return [LuaString] instance, possibly pooled, whose bytes are those in the supplied array
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(bytes: ByteArray?, off: Int, len: Int): LuaString {
             return LuaString.valueOf((bytes)!!, off, len)
         }
@@ -3973,6 +3984,7 @@ open class LuaValue : Varargs() {
         /** Construct an empty [LuaTable].
          * @return new [LuaTable] instance with no values and no metatable.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(): LuaTable {
             return LuaTable()
         }
@@ -3982,6 +3994,7 @@ open class LuaValue : Varargs() {
          * @param firstarg the index of the first argument to use from the varargs, 1 being the first.
          * @return new [LuaTable] instance with sequential elements coming from the varargs.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(varargs: Varargs?, firstarg: Int): LuaTable {
             return LuaTable((varargs)!!, firstarg)
         }
@@ -3991,6 +4004,7 @@ open class LuaValue : Varargs() {
          * @param nhash Number of hash elements to preallocate
          * @return new [LuaTable] instance with no values and no metatable, but preallocated for array and hashed elements.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(narray: Int, nhash: Int): LuaTable {
             return LuaTable(narray, nhash)
         }
@@ -4018,6 +4032,7 @@ open class LuaValue : Varargs() {
          * in order `{key-a, value-a, key-b, value-b, ...} `
          * @return new [LuaTable] instance with non-sequential keys coming from the supplied array.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(namedValues: Array<out LuaValue?>?): LuaTable {
             return LuaTable(namedValues, null, null)
         }
@@ -4031,6 +4046,7 @@ open class LuaValue : Varargs() {
          * in order `{value-1, value-2, ...} `, or null if there are none
          * @return new [LuaTable] instance with named and sequential values supplied.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(namedValues: Array<out LuaValue?>?, unnamedValues: Array<out LuaValue?>?): LuaTable {
             return LuaTable(namedValues, unnamedValues, null)
         }
@@ -4046,6 +4062,7 @@ open class LuaValue : Varargs() {
          * to be put after the last unnamedValues element
          * @return new [LuaTable] instance with named and sequential values supplied.
          */
+        @kotlin.jvm.JvmStatic
         fun tableOf(namedValues: Array<out LuaValue?>?, unnamedValues: Array<out LuaValue?>?, lastarg: Varargs?): LuaTable {
             return LuaTable(namedValues, unnamedValues, lastarg)
         }
@@ -4160,6 +4177,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v: Array<out LuaValue?>): Varargs {
             when (v.size) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE!!
@@ -4177,6 +4195,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v: Array<out LuaValue?>, r: Varargs): Varargs {
             when (v.size) {
                 0 -> return r
@@ -4195,6 +4214,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int): Varargs {
             when (length) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE!!
@@ -4217,6 +4237,7 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int, more: Varargs): Varargs {
             when (length) {
                 0 -> return more
@@ -4243,6 +4264,7 @@ open class LuaValue : Varargs() {
          * or [Varargs]s supplying all values beyond the first
          * @return [Varargs] wrapping the supplied values.
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v: LuaValue?, r: Varargs): Varargs {
             when (r.narg()) {
                 0 -> return v!!
@@ -4262,6 +4284,7 @@ open class LuaValue : Varargs() {
          * or [Varargs]s supplying all values beyond the second
          * @return [Varargs] wrapping the supplied values.
          */
+        @kotlin.jvm.JvmStatic
         fun varargsOf(v1: LuaValue?, v2: LuaValue?, v3: Varargs): Varargs {
             when (v3.narg()) {
                 0 -> return PairVarargs(v1, (v2)!!)
@@ -4287,6 +4310,7 @@ open class LuaValue : Varargs() {
          * @see method
          * @see invokemethod
          */
+        @kotlin.jvm.JvmStatic
         fun tailcallOf(func: LuaValue?, args: Varargs?): Varargs {
             return TailcallVarargs(func, args)
         }

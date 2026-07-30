@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import kotlin.reflect.KClass
 /**
  * Class to encapsulate behavior of the singleton instance `nil`
  * 
@@ -133,7 +134,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return defval
     }
 
-    override fun optuserdata(c: Class<*>, defval: Any?): Any? {
+    override fun optuserdata(c: KClass<*>, defval: Any?): Any? {
         return defval
     }
 

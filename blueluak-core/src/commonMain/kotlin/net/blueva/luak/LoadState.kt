@@ -16,9 +16,9 @@
  ******************************************************************************/
 package net.blueva.luak
 
-import java.io.DataInputStream
-import java.io.IOException
-import java.io.InputStream
+import net.blueva.luak.io.DataInputStream
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
 
 /**
  * Class to undump compiled lua bytecode into a [Prototype] instances.
@@ -289,7 +289,7 @@ class LoadState private constructor(
 
     /** Private constructor for create a load state  */
     init {
-        this.`is` = DataInputStream(stream)
+        this.`is` = DataInputStream(stream!!)
     }
 
     private class GlobalsUndumper : Globals.Undumper {

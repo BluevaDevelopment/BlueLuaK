@@ -27,7 +27,7 @@ package net.blueva.luak
 open class Lua {
     companion object {
     /** version is supplied by ant build task  */
-    val _VERSION: String = "Luaj 0.0"
+    val _VERSION: String = BuildInfo.VERSION
 
     /** use return values from previous op  */
     val LUA_MULTRET: Int = -1

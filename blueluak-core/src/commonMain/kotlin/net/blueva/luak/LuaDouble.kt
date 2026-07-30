@@ -354,10 +354,10 @@ class LuaDouble
 		}
 		*/
         val l = v.toLong()
-        if (l.toDouble() == v) return java.lang.Long.toString(l)
+        if (l.toDouble() == v) return l.toString()
         if ((v).isNaN()) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
         if ((v).isInfinite()) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
-        return java.lang.Float.toString(v.toFloat())
+        return v.toFloat().toString()
     }
 
     override fun strvalue(): LuaString {
@@ -484,7 +484,7 @@ class LuaDouble
                     lhs
                 )
             }
-            return net.blueva.luak.LuaDouble.Companion.valueOf(lhs - rhs * Math.floor(lhs / rhs))
+            return net.blueva.luak.LuaDouble.Companion.valueOf(lhs - rhs * kotlin.math.floor(lhs / rhs))
         }
 
         /** Take modulo for double numbers according to lua math, and return a double result.
@@ -502,7 +502,7 @@ class LuaDouble
             if (rhs == Double.NEGATIVE_INFINITY) {
                 return if (lhs > 0) Double.NEGATIVE_INFINITY else lhs
             }
-            return lhs - rhs * Math.floor(lhs / rhs)
+            return lhs - rhs * kotlin.math.floor(lhs / rhs)
         }
     }
 }

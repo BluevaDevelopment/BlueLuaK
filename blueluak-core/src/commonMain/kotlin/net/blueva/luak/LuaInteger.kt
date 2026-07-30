@@ -105,23 +105,23 @@ class LuaInteger
     }
 
     override fun tojstring(): String {
-        return Integer.toString(v)
+        return v.toString()
     }
 
     override fun strvalue(): LuaString {
-        return LuaString.valueOf(Integer.toString(v))
+        return LuaString.valueOf(v.toString())
     }
 
     override fun optstring(defval: LuaString?): LuaString {
-        return LuaString.valueOf(Integer.toString(v))
+        return LuaString.valueOf(v.toString())
     }
 
     override fun tostring(): LuaValue {
-        return LuaString.valueOf(Integer.toString(v))
+        return LuaString.valueOf(v.toString())
     }
 
     override fun optjstring(defval: String?): String {
-        return Integer.toString(v)
+        return v.toString()
     }
 
     override fun checkinteger(): LuaInteger {

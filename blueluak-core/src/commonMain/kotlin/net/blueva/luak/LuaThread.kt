@@ -17,7 +17,7 @@
 package net.blueva.luak
 
 
-import java.lang.ref.WeakReference
+import net.blueva.luak.WeakReference
 
 /**
  * Subclass of [LuaValue] that implements
@@ -137,7 +137,7 @@ class LuaThread : LuaValue {
         return s.lua_resume(this, args)
     }
 
-    class State internal constructor(globals: Globals, lua_thread: LuaThread, function: LuaValue?) : Runnable {
+    class State internal constructor(globals: Globals, lua_thread: LuaThread, function: LuaValue?) {
         private val globals: Globals
         val lua_thread: WeakReference<LuaThread>
         val function: LuaValue?
@@ -157,6 +157,7 @@ class LuaThread : LuaValue {
         var bytecodes: Int = 0
 
         var status: Int = net.blueva.luak.LuaThread.Companion.STATUS_INITIAL
+        private val runner = CoroutineRunner { run() }
 
         init {
             this.globals = globals
@@ -164,8 +165,7 @@ class LuaThread : LuaValue {
             this.function = function
         }
 
-        @kotlin.jvm.Synchronized
-        override fun run() {
+        private fun run() {
             try {
                 val a: Varargs? = this.args
                 this.args = LuaValue.NONE
@@ -174,31 +174,27 @@ class LuaThread : LuaValue {
                 this.error = t.message
             } finally {
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
-                (this as java.lang.Object).notify()
+                runner.complete()
             }
         }
 
-        @kotlin.jvm.Synchronized
-        fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
+                fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
             val previous_thread: LuaThread = globals.running
             try {
                 globals.running = new_thread
                 this.args = args
                 if (this.status == net.blueva.luak.LuaThread.Companion.STATUS_INITIAL) {
                     this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
-                    Thread(this, "Coroutine-" + (++net.blueva.luak.LuaThread.Companion.coroutine_count)).start()
+                    runner.startAndWait("Coroutine-" + (++net.blueva.luak.LuaThread.Companion.coroutine_count))
                 } else {
-                    (this as java.lang.Object).notify()
+                    this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+                    runner.resumeAndWait()
                 }
                 previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
-                this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
-                (this as java.lang.Object).wait()
                 return (if (this.error != null) LuaValue.varargsOf(
                     LuaValue.FALSE,
                     LuaValue.valueOf(this.error)
                 )!! else LuaValue.varargsOf(LuaValue.TRUE, (this.result)!!))!!
-            } catch (ie: InterruptedException) {
-                throw OrphanedThread()
             } finally {
                 this.args = LuaValue.NONE
                 this.result = LuaValue.NONE
@@ -208,23 +204,18 @@ class LuaThread : LuaValue {
             }
         }
 
-        @kotlin.jvm.Synchronized
-        fun lua_yield(args: Varargs?): Varargs? {
+                fun lua_yield(args: Varargs?): Varargs? {
             try {
                 this.result = args
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
-                (this as java.lang.Object).notify()
-                do {
-                    (this as java.lang.Object).wait(net.blueva.luak.LuaThread.Companion.thread_orphan_check_interval)
+                runner.yieldAndWait(net.blueva.luak.LuaThread.Companion.thread_orphan_check_interval) {
                     if (this.lua_thread.get() == null) {
                         this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
                         throw OrphanedThread()
                     }
-                } while (this.status == net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED)
+                    this.status == net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
+                }
                 return this.args
-            } catch (ie: InterruptedException) {
-                this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
-                throw OrphanedThread()
             } finally {
                 this.args = LuaValue.NONE
                 this.result = LuaValue.NONE

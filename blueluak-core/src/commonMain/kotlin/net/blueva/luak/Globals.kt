@@ -20,10 +20,12 @@ import net.blueva.luak.lib.BaseLib
 import net.blueva.luak.lib.DebugLib
 import net.blueva.luak.lib.PackageLib
 import net.blueva.luak.lib.ResourceFinder
-import java.io.IOException
-import java.io.InputStream
-import java.io.PrintStream
-import java.io.Reader
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
+import net.blueva.luak.io.PrintStream
+import net.blueva.luak.io.Reader
+import net.blueva.luak.io.standardError
+import net.blueva.luak.io.standardOutput
 
 /**
  * Global environment used by luaj.  Contains global variables referenced by executing lua.
@@ -114,10 +116,10 @@ class Globals : LuaTable() {
     var STDIN: InputStream? = null
 
     /** The current default output stream.  */
-    var STDOUT: PrintStream? = System.out
+    var STDOUT: PrintStream? = standardOutput()
 
     /** The current default error stream.  */
-    var STDERR: PrintStream? = System.err
+    var STDERR: PrintStream? = standardError()
 
     /** The installed ResourceFinder for looking files by name.  */
     var finder: ResourceFinder? = null
@@ -259,7 +261,7 @@ class Globals : LuaTable() {
         } catch (l: LuaError) {
             throw l
         } catch (e: Exception) {
-            return error("load " + chunkname + ": " + e)
+            throw LuaError("load " + chunkname + ": " + e, e)
         }
     }
 
@@ -375,18 +377,18 @@ class Globals : LuaTable() {
         }
 
         @kotlin.Throws(IOException::class)
-        override fun read(b: ByteArray?, i0: Int, n: Int): Int {
+        override fun read(b: ByteArray, i0: Int, n: Int): Int {
             val a = avail()
             if (a <= 0) return -1
-            val n_read: Int = Math.min(a, n)
-            System.arraycopy(this.b, i, b, i0, n_read)
+            val n_read: Int = minOf(a, n)
+            arrayCopy(this.b, i, b, i0, n_read)
             i += n_read
             return n_read
         }
 
         @kotlin.Throws(IOException::class)
         override fun skip(n: Long): Long {
-            val k: Long = Math.min(n, (j - i).toLong())
+            val k: Long = minOf(n, (j - i).toLong())
             i += k.toInt()
             return k
         }
@@ -412,7 +414,7 @@ class Globals : LuaTable() {
         @kotlin.Throws(IOException::class)
         override fun avail(): Int {
             if (i < j) return j - i
-            var n: Int = r.read(c)
+            var n: Int = r.read(c, 0, c.size)
             if (n < 0) return -1
             if (n == 0) {
                 val u: Int = r.read()
@@ -470,11 +472,10 @@ class Globals : LuaTable() {
             s.close()
         }
 
-        @kotlin.jvm.Synchronized
-        override fun mark(n: Int) {
+                override fun mark(n: Int) {
             if (i > 0 || n > b.size) {
                 val dest = if (n > b.size) ByteArray(n) else b
-                System.arraycopy(b, i, dest, 0, j - i)
+                arrayCopy(b, i, dest, 0, j - i)
                 j -= i
                 i = 0
                 b = dest
@@ -485,8 +486,7 @@ class Globals : LuaTable() {
             return true
         }
 
-        @kotlin.jvm.Synchronized
-        @kotlin.Throws(IOException::class)
+                @kotlin.Throws(IOException::class)
         override fun reset() {
             i = 0
         }

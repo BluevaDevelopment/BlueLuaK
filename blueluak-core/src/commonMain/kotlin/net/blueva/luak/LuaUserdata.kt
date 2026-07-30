@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import kotlin.reflect.KClass
 
 open class LuaUserdata : LuaValue {
     var m_instance: Any
@@ -54,24 +55,24 @@ open class LuaUserdata : LuaValue {
         return true
     }
 
-    override fun isuserdata(c: Class<*>?): Boolean {
-        return c!!.isAssignableFrom(m_instance.javaClass)
+    override fun isuserdata(c: KClass<*>?): Boolean {
+        return c!!.isInstance(m_instance)
     }
 
     override fun touserdata(): Any {
         return m_instance
     }
 
-    override fun touserdata(c: Class<*>?): Any? {
-        return if (c!!.isAssignableFrom(m_instance.javaClass)) m_instance else null
+    override fun touserdata(c: KClass<*>?): Any? {
+        return if (c!!.isInstance(m_instance)) m_instance else null
     }
 
     override fun optuserdata(defval: Any?): Any {
         return m_instance
     }
 
-    override fun optuserdata(c: Class<*>, defval: Any?): Any {
-        if (!c!!.isAssignableFrom(m_instance.javaClass)) typerror(c.name)
+    override fun optuserdata(c: KClass<*>, defval: Any?): Any {
+        if (!c!!.isInstance(m_instance)) typerror(c.qualifiedName ?: c.simpleName ?: "userdata")
         return m_instance
     }
 
@@ -88,9 +89,9 @@ open class LuaUserdata : LuaValue {
         return m_instance
     }
 
-    override fun checkuserdata(c: Class<*>?): Any {
-        if (c!!.isAssignableFrom(m_instance.javaClass)) return m_instance
-        return (typerror(c.name))!!
+    override fun checkuserdata(c: KClass<*>?): Any {
+        if (c!!.isInstance(m_instance)) return m_instance
+        return (typerror(c.qualifiedName ?: c.simpleName ?: "userdata"))!!
     }
 
     override fun get(key: LuaValue): LuaValue {

@@ -18,11 +18,11 @@ package net.blueva.luak
 
 
 import net.blueva.luak.lib.MathLib
-import java.io.ByteArrayInputStream
-import java.io.DataOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.PrintStream
+import net.blueva.luak.io.ByteArrayInputStream
+import net.blueva.luak.io.DataOutputStream
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
+import net.blueva.luak.io.PrintStream
 
 /**
  * Subclass of [LuaValue] for representing lua strings.
@@ -311,8 +311,8 @@ class LuaString private constructor(
 
     override fun concatTo(lhs: LuaString): LuaValue {
         val b = ByteArray(lhs.m_length + this.m_length)
-        System.arraycopy(lhs.m_bytes, lhs.m_offset, b, 0, lhs.m_length)
-        System.arraycopy(this.m_bytes, this.m_offset, b, lhs.m_length, this.m_length)
+        arrayCopy(lhs.m_bytes, lhs.m_offset, b, 0, lhs.m_length)
+        arrayCopy(this.m_bytes, this.m_offset, b, lhs.m_length, this.m_length)
         return net.blueva.luak.LuaString.Companion.valueUsing(b, 0, b.size)
     }
 
@@ -565,7 +565,7 @@ class LuaString private constructor(
      * @param len number of bytes to copy
      */
     fun copyInto(strOffset: Int, bytes: ByteArray?, arrayOffset: Int, len: Int) {
-        System.arraycopy(m_bytes, m_offset + strOffset, bytes, arrayOffset, len)
+        arrayCopy(m_bytes, m_offset + strOffset, bytes, arrayOffset, len)
     }
 
     /** Java version of strpbrk - find index of any byte that in an accept string.
@@ -756,7 +756,7 @@ class LuaString private constructor(
         val c = CharArray(end - start)
         for (i in start..<end) c[i - start] = Char(m_bytes[i].toUShort())
         try {
-            return (String(c)).toDouble()
+            return (c.concatToString()).toDouble()
         } catch (e: Exception) {
             return Double.NaN
         }
@@ -802,6 +802,7 @@ class LuaString private constructor(
          * @param string Java String containing characters to encode as UTF8
          * @return [LuaString] with UTF8 bytes corresponding to the supplied String
          */
+        @kotlin.jvm.JvmStatic
         fun valueOf(string: String): LuaString {
             val c: CharArray = string.toCharArray()
             val b = ByteArray(net.blueva.luak.LuaString.Companion.lengthAsUtf8(c))
@@ -834,6 +835,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping the byte buffer
          */
         @kotlin.jvm.JvmOverloads
+        @kotlin.jvm.JvmStatic
         fun valueOf(bytes: ByteArray, off: Int = 0, len: Int = bytes.size): LuaString {
             if (len > net.blueva.luak.LuaString.Companion.RECENT_STRINGS_MAX_LENGTH) return net.blueva.luak.LuaString.Companion.valueFromCopy(
                 bytes,
@@ -852,7 +854,7 @@ class LuaString private constructor(
         /** Construct a new LuaString using a copy of the bytes array supplied  */
         private fun valueFromCopy(bytes: ByteArray?, off: Int, len: Int): LuaString {
             val copy = ByteArray(len)
-            System.arraycopy(bytes, off, copy, 0, len)
+            arrayCopy(bytes, off, copy, 0, len)
             return net.blueva.luak.LuaString(copy, 0, len)
         }
 
@@ -918,6 +920,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping a copy of the byte buffer
          */
         @kotlin.jvm.JvmOverloads
+        @kotlin.jvm.JvmStatic
         fun valueOf(bytes: CharArray, off: Int = 0, len: Int = bytes.size): LuaString {
             val b = ByteArray(len)
             for (i in 0..<len) b[i] = bytes[i + off].code.toByte()
@@ -995,7 +998,7 @@ class LuaString private constructor(
                         b = it.toInt()
                     }) >= 0 || i >= j) b else if (b < -32 || i + 1 >= j) (((b and 0x3f) shl 6) or (bytes[i++].toInt() and 0x3f)) else (((b and 0xf) shl 12) or ((bytes[i++].toInt() and 0x3f) shl 6) or (bytes[i++].toInt() and 0x3f))).toChar()
             }
-            return String(chars)
+            return chars.concatToString()
         }
 
         /**

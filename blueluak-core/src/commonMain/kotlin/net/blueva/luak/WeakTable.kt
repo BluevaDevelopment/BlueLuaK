@@ -18,7 +18,7 @@ package net.blueva.luak
 
 import net.blueva.luak.LuaTable.Slot
 import net.blueva.luak.LuaTable.StrongSlot
-import java.lang.ref.WeakReference
+import net.blueva.luak.WeakReference
 
 /**
  * Subclass of [LuaTable] that provides weak key and weak value semantics.
@@ -202,7 +202,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongkey(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen((key)!!)
+            return net.blueva.luak.WeakTable.Companion.strengthen(key)
         }
 
         override fun copy(rest: Slot?): WeakSlot {
@@ -229,7 +229,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongvalue(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen((value)!!)
+            return net.blueva.luak.WeakTable.Companion.strengthen(value)
         }
 
         override fun copy(next: Slot?): WeakSlot {
@@ -266,11 +266,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongkey(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen((key)!!)
+            return net.blueva.luak.WeakTable.Companion.strengthen(key)
         }
 
         override fun strongvalue(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen((value)!!)
+            return net.blueva.luak.WeakTable.Companion.strengthen(value)
         }
 
         override fun copy(next: Slot?): WeakSlot {
@@ -304,7 +304,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
 
         override fun strongvalue(): LuaValue? {
             val o: Any? = ref!!.get()
-            return (o as LuaValue?)!!
+            return o as LuaValue?
         }
 
         override fun raweq(rhs: LuaValue?): Boolean {
@@ -332,7 +332,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             val o: Any? = ob.get()
             if (o != null) {
                 val ud: LuaValue? = LuaValue.userdataOf(o, mt)
-                ref = WeakReference(ud)
+                ref = WeakReference(ud!!)
                 return (ud)!!
             } else {
                 return null

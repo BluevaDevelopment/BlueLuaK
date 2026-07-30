@@ -16,8 +16,9 @@
  ******************************************************************************/
 package net.blueva.luak
 
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
+import net.blueva.luak.io.ByteArrayOutputStream
+import net.blueva.luak.io.PrintStream
+import net.blueva.luak.io.standardOutput
 
 /**
  * Debug helper class to pretty-print lua bytecodes.
@@ -33,7 +34,7 @@ class Print : Lua() {
     companion object {
         /** opcode names  */
         private val STRING_FOR_NULL = "null"
-        var ps: PrintStream = System.out
+        var ps: PrintStream = standardOutput()
 
         /** String names for each lua opcode value.  */
         val OPNAMES: Array<String?> = arrayOf<String?>(
@@ -101,7 +102,7 @@ class Print : Lua() {
                         0x000B -> ps.print("\\v")
                         else -> {
                             ps.print('\\')
-                            ps.print(Integer.toString(1000 + 0xff and c).substring(1))
+                            ps.print((1000 + (0xff and c)).toString().substring(1))
                         }
                     }
                 }
@@ -261,7 +262,7 @@ class Print : Lua() {
 
                     OP_JMP, OP_FORLOOP, OP_FORPREP -> ps.print("  ; to " + (sbx + pc + 2))
                     OP_CLOSURE -> if (protos != null && bx < protos.size) {
-                        ps.print("  ; " + protos[bx]!!.javaClass.name)
+                        ps.print("  ; " + protos[bx]!!::class.simpleName)
                     } else {
                         ps.print("  ; UNKNOWN_PROTYPE_" + bx)
                     }
@@ -429,9 +430,9 @@ class Print : Lua() {
                     LuaValue.TUSERDATA -> {
                         val o: Any? = v.touserdata()
                         if (o != null) {
-                            var n: String = o.javaClass.name
+                            var n: String = o::class.simpleName ?: "userdata"
                             n = n.substring(n.lastIndexOf('.') + 1)
-                            net.blueva.luak.Print.Companion.ps.print(n.toString() + ": " + Integer.toHexString(o.hashCode()))
+                            net.blueva.luak.Print.Companion.ps.print(n.toString() + ": " + o.hashCode().toString(16))
                         } else {
                             net.blueva.luak.Print.Companion.ps.print(v.toString())
                         }
