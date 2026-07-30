@@ -1,34 +1,15 @@
-import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
-
 plugins {
     java
     kotlin("jvm")
-    id("com.strumenta.antlr-kotlin")
+    `maven-publish`
 }
 
 dependencies {
     implementation(project(":blueluak-core"))
     implementation("org.apache.bcel:bcel:5.2")
-    implementation("com.strumenta:antlr-kotlin-runtime:1.0.10")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation(kotlin("test"))
-}
-
-val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
-    source = fileTree(rootProject.layout.projectDirectory.dir("grammar")) {
-        include("LuaLexer.g4", "LuaParser.g4")
-    }
-    packageName = "net.blueva.luak.parser.antlr"
-    arguments = listOf("-visitor", "-no-listener")
-    outputDirectory = layout.buildDirectory
-        .dir("generated-src/main/kotlin/net/blueva/luak/parser/antlr")
-        .get()
-        .asFile
-}
-
-kotlin.sourceSets.main {
-    kotlin.srcDir(generateKotlinGrammarSource)
 }
 
 val examples = sourceSets.create("examples")
@@ -64,4 +45,51 @@ repositories {
 }
 kotlin {
     jvmToolchain(17)
+}
+
+java {
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("jvm") {
+            from(components["java"])
+            artifactId = "blueluak-jvm"
+            pom {
+                name.set("BlueLuaK JVM")
+                description.set("JVM integrations and command-line tools for the BlueLuaK runtime.")
+                url.set("https://github.com/BluevaDevelopment/BlueLuaK")
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                        distribution.set("repo")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("blueva")
+                        name.set("Blueva Development")
+                        url.set("https://github.com/BluevaDevelopment")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/BluevaDevelopment/BlueLuaK.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/BluevaDevelopment/BlueLuaK.git")
+                    url.set("https://github.com/BluevaDevelopment/BlueLuaK")
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK")
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+            }
+        }
+    }
 }
