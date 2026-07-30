@@ -38,7 +38,7 @@ internal class NonTableMetatable(value: LuaValue?) : Metatable {
     }
 
     override fun entry(key: LuaValue?, value: LuaValue?): Slot {
-        return LuaTable.defaultEntry(key, value)
+        return LuaTable.defaultEntry(key!!, value!!)
     }
 
     override fun wrap(value: LuaValue?): LuaValue? {

@@ -131,7 +131,7 @@ class Print : Lua() {
         }
 
         fun printUpvalue(ps: PrintStream, u: Upvaldesc) {
-            ps.print(u.idx + " ")
+            ps.print("${u.idx} ")
             net.blueva.luak.Print.Companion.printValue(ps, u.name)
         }
 
@@ -295,11 +295,11 @@ class Print : Lua() {
                         + codeLen * 4 + " bytes at " + net.blueva.luak.Print.Companion.id(f) + ")\n")
             )
             net.blueva.luak.Print.Companion.ps.print(
-                (f.numparams + " param, " + f.maxstacksize + " slot, "
+                ("${f.numparams} param, " + f.maxstacksize + " slot, "
                         + (f.upvalues?.size ?: 0) + " upvalue, ")
             )
             net.blueva.luak.Print.Companion.ps.print(
-                ((f.locvars?.size ?: 0) + " local, " + (f.k?.size ?: 0)
+                ("${f.locvars?.size ?: 0} local, " + (f.k?.size ?: 0)
                         + " constant, " + (f.p?.size ?: 0) + " function\n")
             )
         }

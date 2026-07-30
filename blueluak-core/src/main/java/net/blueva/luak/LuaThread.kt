@@ -137,9 +137,9 @@ class LuaThread : LuaValue {
         return s.lua_resume(this, args)
     }
 
-    class State internal constructor(globals: Globals, lua_thread: LuaThread?, function: LuaValue?) : Runnable {
+    class State internal constructor(globals: Globals, lua_thread: LuaThread, function: LuaValue?) : Runnable {
         private val globals: Globals
-        val lua_thread: WeakReference
+        val lua_thread: WeakReference<LuaThread>
         val function: LuaValue?
         var args: Varargs? = LuaValue.NONE
         var result: Varargs? = LuaValue.NONE
@@ -179,8 +179,8 @@ class LuaThread : LuaValue {
         }
 
         @kotlin.jvm.Synchronized
-        fun lua_resume(new_thread: LuaThread?, args: Varargs?): Varargs {
-            val previous_thread: LuaThread? = globals.running
+        fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
+            val previous_thread: LuaThread = globals.running
             try {
                 globals.running = new_thread
                 this.args = args
@@ -190,8 +190,7 @@ class LuaThread : LuaValue {
                 } else {
                     (this as java.lang.Object).notify()
                 }
-                if (previous_thread != null) previous_thread.state.status =
-                    net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
+                previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
                 (this as java.lang.Object).wait()
                 return (if (this.error != null) LuaValue.varargsOf(
@@ -205,8 +204,7 @@ class LuaThread : LuaValue {
                 this.result = LuaValue.NONE
                 this.error = null
                 globals.running = previous_thread
-                if (previous_thread != null) globals.running.state.status =
-                    net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+                globals.running.state.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
             }
         }
 
