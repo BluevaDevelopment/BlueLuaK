@@ -167,8 +167,8 @@ class MetatableTest : TestCase() {
 
         // plain metatable
         mt.set(LuaValue.INDEX, object : TwoArgFunction() {
-            override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue {
-                return valueOf(arg1.typename() + "[" + arg2.tojstring() + "]=xyz")
+            override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+                return valueOf(arg1!!.typename() + "[" + arg2!!.tojstring() + "]=xyz")
             }
         })
         TestCase.assertEquals("table[1]=xyz", table.get(1).tojstring())

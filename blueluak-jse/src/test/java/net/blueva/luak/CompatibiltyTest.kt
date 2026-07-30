@@ -34,8 +34,8 @@ object CompatibiltyTest : TestSuite() {
         return suite
     }
 
-    protected abstract class CompatibiltyTestSuite protected constructor(platform: PlatformType?) :
-        ScriptDrivenTest(platform, dir) {
+    abstract class CompatibiltyTestSuite constructor(platform: PlatformType?) :
+        ScriptDrivenTest(platform!!, dir) {
         var savedStringMetatable: LuaValue? = null
 
         @Throws(Exception::class)
@@ -130,7 +130,7 @@ object CompatibiltyTest : TestSuite() {
         override fun setUp() {
             super.setUp()
             System.setProperty("JME", "false")
-            install(globals)
+            install(globals!!)
         }
 
         // not supported on this platform - don't test

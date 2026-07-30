@@ -31,7 +31,7 @@ class ErrorsTest : ScriptDrivenTest(PlatformType.JSE, dir) {
     }
 
     fun testBaseLibArgs() {
-        globals.STDIN = object : InputStream() {
+        globals!!.STDIN = object : InputStream() {
             @Throws(IOException::class)
             override fun read(): Int {
                 return -1

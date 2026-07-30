@@ -40,7 +40,7 @@ object FragmentsTest : TestSuite() {
 
     class JseFragmentsTest : FragmentsTestCase(TEST_TYPE_LUAC)
     class LuaJCFragmentsTest : FragmentsTestCase(TEST_TYPE_LUAJC)
-    protected abstract class FragmentsTestCase protected constructor(val TEST_TYPE: Int) : TestCase() {
+    abstract class FragmentsTestCase constructor(val TEST_TYPE: Int) : TestCase() {
         fun runFragment(expected: Varargs, script: String) {
             try {
                 val name = getName()

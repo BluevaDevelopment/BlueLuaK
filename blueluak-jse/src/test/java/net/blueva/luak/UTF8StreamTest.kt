@@ -26,7 +26,7 @@ class UTF8StreamTest : TestCase() {
         val globals = standardGlobals()
         val chunk: LuaValue = globals.load(script)!!
         val result = chunk.call()
-        val str: String? = result.tojstring()
+        val str: String? = result!!.tojstring()
         TestCase.assertEquals("98\u00b0: today's temp!", str)
     }
 }

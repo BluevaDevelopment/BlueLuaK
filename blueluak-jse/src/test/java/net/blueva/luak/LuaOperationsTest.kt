@@ -170,7 +170,7 @@ class LuaOperationsTest : TestCase() {
             // Test that a clusure with a custom enviroment uses that environment.
             assertEquals(aaa, c.call())
             c = LuaClosure(p, newenv)
-            assertEquals(newenv, c.upValues[0].getValue())
+            assertEquals(newenv, c.upValues[0]!!.getValue())
             assertEquals(eee, c.call())
         }
     }

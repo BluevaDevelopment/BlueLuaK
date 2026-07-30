@@ -23,9 +23,9 @@ class RequireClassTest : TestCase() {
 
     fun testRequireClassSuccess() {
         var result = require!!.call(LuaValue.valueOf("net.blueva.luak.require.RequireSampleSuccess"))
-        TestCase.assertEquals("require-sample-success-net.blueva.luak.require.RequireSampleSuccess", result.tojstring())
+        TestCase.assertEquals("require-sample-success-net.blueva.luak.require.RequireSampleSuccess", result!!.tojstring())
         result = require!!.call(LuaValue.valueOf("net.blueva.luak.require.RequireSampleSuccess"))
-        TestCase.assertEquals("require-sample-success-net.blueva.luak.require.RequireSampleSuccess", result.tojstring())
+        TestCase.assertEquals("require-sample-success-net.blueva.luak.require.RequireSampleSuccess", result!!.tojstring())
     }
 
     fun testRequireClassLoadLuaError() {

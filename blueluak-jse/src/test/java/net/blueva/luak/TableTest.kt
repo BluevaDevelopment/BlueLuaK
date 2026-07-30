@@ -28,7 +28,7 @@ open class TableTest : TestCase() {
     }
 
     private fun keyCount(t: LuaTable): Int {
-        return keys(t).length
+        return keys(t).size
     }
 
     private fun keys(t: LuaTable): Array<LuaValue?> {
@@ -289,7 +289,7 @@ open class TableTest : TestCase() {
 
     fun testInsertBeginningOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
 
         for (i in 1..32) {
             val test: LuaString? = LuaValue.valueOf("Test Value! " + i)
@@ -301,7 +301,7 @@ open class TableTest : TestCase() {
 
     fun testInsertEndOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
 
         for (i in 1..32) {
             val test: LuaString? = LuaValue.valueOf("Test Value! " + i)
@@ -313,7 +313,7 @@ open class TableTest : TestCase() {
 
     fun testInsertMiddleOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
 
         for (i in 1..32) {
             val test: LuaString? = LuaValue.valueOf("Test Value! " + i)
@@ -326,7 +326,7 @@ open class TableTest : TestCase() {
 
     fun testRemoveBeginningOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
         prefillLists(t, v)
         for (i in 1..32) {
             t.remove(1)
@@ -337,7 +337,7 @@ open class TableTest : TestCase() {
 
     fun testRemoveEndOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
         prefillLists(t, v)
         for (i in 1..32) {
             t.remove(0)
@@ -348,7 +348,7 @@ open class TableTest : TestCase() {
 
     fun testRemoveMiddleOfList() {
         val t = new_Table()
-        val v: Vector<*> = Vector<Any?>()
+        val v: Vector<Any?> = Vector<Any?>()
         prefillLists(t, v)
         for (i in 1..32) {
             val m = v.size / 2
@@ -404,18 +404,18 @@ open class TableTest : TestCase() {
     }
 
     companion object {
-        private fun compareLists(t: LuaTable, v: Vector<*>) {
+        private fun compareLists(t: LuaTable, v: Vector<Any?>) {
             val n = v.size
             TestCase.assertEquals(v.size, t.length())
             for (j in 0..<n) {
-                var vj: Any = v.elementAt(j)
+                var vj: Any? = v.elementAt(j)
                 val tj: Any? = t.get(j + 1).tojstring()
                 vj = (vj as LuaString).tojstring()
                 assertEquals(vj, tj)
             }
         }
 
-        private fun prefillLists(t: LuaTable, v: Vector<*>) {
+        private fun prefillLists(t: LuaTable, v: Vector<Any?>) {
             for (i in 1..32) {
                 val test: LuaString? = LuaValue.valueOf("Test Value! " + i)
                 t.insert(0, test!!)
