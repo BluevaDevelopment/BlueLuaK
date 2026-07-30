@@ -67,23 +67,23 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpBlock(b: ByteArray?, size: Int) {
-        writer.write(b, 0, size)
+        writer!!.write(b, 0, size)
     }
 
     @kotlin.Throws(IOException::class)
     fun dumpChar(b: Int) {
-        writer.write(b)
+        writer!!.write(b)
     }
 
     @kotlin.Throws(IOException::class)
     fun dumpInt(x: Int) {
         if (IS_LITTLE_ENDIAN) {
-            writer.writeByte(x and 0xff)
-            writer.writeByte((x shr 8) and 0xff)
-            writer.writeByte((x shr 16) and 0xff)
-            writer.writeByte((x shr 24) and 0xff)
+            writer!!.writeByte(x and 0xff)
+            writer!!.writeByte((x shr 8) and 0xff)
+            writer!!.writeByte((x shr 16) and 0xff)
+            writer!!.writeByte((x shr 24) and 0xff)
         } else {
-            writer.writeInt(x)
+            writer!!.writeInt(x)
         }
     }
 
@@ -92,7 +92,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         val len: Int = s.len().toint()
         dumpInt(len + 1)
         s.write(writer, 0, len)
-        writer.write(0)
+        writer!!.write(0)
     }
 
     @kotlin.Throws(IOException::class)
@@ -102,7 +102,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             dumpInt(l.toInt())
             dumpInt((l shr 32).toInt())
         } else {
-            writer.writeLong(l)
+            writer!!.writeLong(l)
         }
     }
 
@@ -124,29 +124,29 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         while (i < n) {
             val o: LuaValue = k[i]
             when (o.type()) {
-                LuaValue.TNIL -> writer.write(LuaValue.TNIL)
+                LuaValue.TNIL -> writer!!.write(LuaValue.TNIL)
                 LuaValue.TBOOLEAN -> {
-                    writer.write(LuaValue.TBOOLEAN)
+                    writer!!.write(LuaValue.TBOOLEAN)
                     dumpChar(if (o.toboolean()) 1 else 0)
                 }
 
                 LuaValue.TNUMBER -> when (NUMBER_FORMAT) {
                     net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES -> {
-                        writer.write(LuaValue.TNUMBER)
+                        writer!!.write(LuaValue.TNUMBER)
                         dumpDouble(o.todouble())
                     }
 
                     net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_INTS_ONLY -> {
                         kotlin.require(!(!net.blueva.luak.compiler.DumpState.Companion.ALLOW_INTEGER_CASTING && !o.isint())) { "not an integer: " + o }
-                        writer.write(LuaValue.TNUMBER)
+                        writer!!.write(LuaValue.TNUMBER)
                         dumpInt(o.toint())
                     }
 
                     net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_NUM_PATCH_INT32 -> if (o.isint()) {
-                        writer.write(LuaValue.TINT)
+                        writer!!.write(LuaValue.TINT)
                         dumpInt(o.toint())
                     } else {
-                        writer.write(LuaValue.TNUMBER)
+                        writer!!.write(LuaValue.TNUMBER)
                         dumpDouble(o.todouble())
                     }
 
@@ -154,7 +154,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
                 }
 
                 LuaValue.TSTRING -> {
-                    writer.write(LuaValue.TSTRING)
+                    writer!!.write(LuaValue.TSTRING)
                     dumpString(o as LuaString)
                 }
 
@@ -162,7 +162,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             }
             i++
         }
-        n = f.p.size
+        n = f.p!!.size
         dumpInt(n)
         i = 0
         while (i < n) {
@@ -173,11 +173,11 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpUpvalues(f: Prototype) {
-        val n: Int = f.upvalues.size
+        val n: Int = f.upvalues!!.size
         dumpInt(n)
         for (i in 0..<n) {
-            writer.writeByte(if (f.upvalues[i].instack) 1 else 0)
-            writer.writeByte(f.upvalues[i].idx)
+            writer!!.writeByte(if (f.upvalues[i]!!.instack) 1 else 0)
+            writer!!.writeByte(f.upvalues[i]!!.idx)
         }
     }
 
@@ -187,7 +187,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         var n: Int
         if (strip) dumpInt(0)
         else dumpString(f.source)
-        n = if (strip) 0 else f.lineinfo.size
+        n = if (strip) 0 else f.lineinfo!!.size
         dumpInt(n)
         i = 0
         while (i < n) {
@@ -204,11 +204,11 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             dumpInt(lvi.endpc)
             i++
         }
-        n = if (strip) 0 else f.upvalues.size
+        n = if (strip) 0 else f.upvalues!!.size
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpString(f.upvalues[i].name)
+            dumpString(f.upvalues[i]!!.name)
             i++
         }
     }
@@ -228,16 +228,16 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpHeader() {
-        writer.write(LoadState.LUA_SIGNATURE)
-        writer.write(LoadState.LUAC_VERSION)
-        writer.write(LoadState.LUAC_FORMAT)
-        writer.write(if (IS_LITTLE_ENDIAN) 1 else 0)
-        writer.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INT)
-        writer.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_SIZET)
-        writer.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INSTRUCTION)
-        writer.write(SIZEOF_LUA_NUMBER)
-        writer.write(NUMBER_FORMAT)
-        writer.write(LoadState.LUAC_TAIL)
+        writer!!.write(LoadState.LUA_SIGNATURE)
+        writer!!.write(LoadState.LUAC_VERSION)
+        writer!!.write(LoadState.LUAC_FORMAT)
+        writer!!.write(if (IS_LITTLE_ENDIAN) 1 else 0)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INT)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_SIZET)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INSTRUCTION)
+        writer!!.write(SIZEOF_LUA_NUMBER)
+        writer!!.write(NUMBER_FORMAT)
+        writer!!.write(LoadState.LUAC_TAIL)
     }
 
     companion object {

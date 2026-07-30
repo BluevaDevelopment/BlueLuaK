@@ -58,11 +58,11 @@ internal class FuncState internal constructor() : Constants() {
     // from lcode.h
     // =============================================================
     fun getcodePtr(e: expdesc): InstructionPtr? {
-        return InstructionPtr(f.code, e.u.info)
+        return InstructionPtr(f!!.code, e.u.info)
     }
 
     fun getcode(e: expdesc): Int {
-        return f.code[e.u.info]
+        return f!!.code[e.u.info]
     }
 
     fun codeAsBx(o: Int, A: Int, sBx: Int): Int {
@@ -82,11 +82,11 @@ internal class FuncState internal constructor() : Constants() {
         var i: Int
         i = bl!!.firstlabel.toInt()
         while (i < ll_n) {
-            if (label.eq_b(ll[i].name)) {
-                val msg: String? = ls.L.pushfstring(
-                    "label '" + label + " already defined on line " + ll[i].line
+            if (label.eq_b(ll[i]!!.name)) {
+                val msg: String? = ls!!.L!!.pushfstring(
+                    "label '" + label + " already defined on line " + ll[i]!!.line
                 )
-                ls.semerror(msg)
+                ls!!.semerror(msg)
             }
             i++
         }
@@ -100,30 +100,30 @@ internal class FuncState internal constructor() : Constants() {
     fun errorlimit(limit: Int, what: String?) {
         // TODO: report message logic.
         val msg: String? =
-            if (f.linedefined === 0) ls.L.pushfstring("main function has more than " + limit + " " + what) else ls.L.pushfstring(
-                "function at line " + f.linedefined + " has more than " + limit + " " + what
+            if (f!!.linedefined === 0) ls!!.L!!.pushfstring("main function has more than " + limit + " " + what) else ls!!.L!!.pushfstring(
+                "function at line " + f!!.linedefined + " has more than " + limit + " " + what
             )
-        ls.lexerror(msg, 0)
+        ls!!.lexerror(msg, 0)
     }
 
     fun getlocvar(i: Int): LocVars {
-        val idx: Int = ls.dyd.actvar[firstlocal + i].idx
+        val idx: Int = ls!!.dyd.actvar[firstlocal + i]!!.idx
         _assert(idx < nlocvars)
-        return f.locvars[idx]
+        return f!!.locvars[idx]
     }
 
     fun removevars(tolevel: Int) {
-        ls.dyd.n_actvar -= (nactvar - tolevel)
+        ls!!.dyd.n_actvar -= (nactvar - tolevel)
         while (nactvar > tolevel) getlocvar((--nactvar).toInt()).endpc = pc
     }
 
 
     fun searchupvalue(name: LuaString?): Int {
         var i: Int
-        val up: Array<Upvaldesc?> = f.upvalues
+        val up: Array<Upvaldesc?> = f!!.upvalues
         i = 0
         while (i < nups) {
-            if (up[i].name.eq_b(name)) return i
+            if (up[i]!!.name!!.eq_b(name)) return i
             i++
         }
         return -1 /* not found */
@@ -131,9 +131,9 @@ internal class FuncState internal constructor() : Constants() {
 
     fun newupvalue(name: LuaString?, v: expdesc): Int {
         checklimit(nups + 1, LUAI_MAXUPVAL, "upvalues")
-        if (f.upvalues == null || nups + 1 > f.upvalues.size) f.upvalues =
-            realloc(f.upvalues, if (nups > 0) nups * 2 else 1)
-        f.upvalues[nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
+        if (f!!.upvalues == null || nups + 1 > f!!.upvalues.size) f!!.upvalues =
+            realloc(f!!.upvalues, if (nups > 0) nups * 2 else 1)
+        f!!.upvalues[nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
         return (nups++).toInt()
     }
 
@@ -161,24 +161,24 @@ internal class FuncState internal constructor() : Constants() {
 	*/
     fun movegotosout(bl: BlockCnt) {
         var i = bl.firstgoto.toInt()
-        val gl: Array<LexState.Labeldesc> = ls.dyd.gt
+        val gl: Array<LexState.Labeldesc> = ls!!.dyd.gt
         /* correct pending gotos to current block and try to close it
 		   with visible labels */
-        while (i < ls.dyd.n_gt) {
+        while (i < ls!!.dyd.n_gt) {
             val gt: LexState.Labeldesc = gl[i]
             if (gt.nactvar > bl.nactvar) {
                 if (bl.upval) patchclose(gt.pc, bl.nactvar.toInt())
                 gt.nactvar = bl.nactvar
             }
-            if (!ls.findlabel(i)) i++ /* move to next one */
+            if (!ls!!.findlabel(i)) i++ /* move to next one */
         }
     }
 
     fun enterblock(bl: BlockCnt, isloop: Boolean) {
         bl.isloop = isloop
         bl.nactvar = nactvar
-        bl.firstlabel = ls.dyd.n_label as Short
-        bl.firstgoto = ls.dyd.n_gt as Short
+        bl.firstlabel = ls!!.dyd.n_label as Short
+        bl.firstgoto = ls!!.dyd.n_gt as Short
         bl.upval = false
         bl.previous = this.bl
         this.bl = bl
@@ -193,16 +193,16 @@ internal class FuncState internal constructor() : Constants() {
             this.patchclose(j, bl.nactvar.toInt())
             this.patchtohere(j)
         }
-        if (bl.isloop) ls.breaklabel() /* close pending breaks */
+        if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
         this.bl = bl.previous
         this.removevars(bl.nactvar.toInt())
         _assert(bl.nactvar == this.nactvar)
         this.freereg = this.nactvar /* free registers */
-        ls.dyd.n_label = bl.firstlabel /* remove local labels */
+        ls!!.dyd.n_label = bl.firstlabel /* remove local labels */
         if (bl.previous != null)  /* inner block? */
             this.movegotosout(bl) /* update pending gotos to outer block */
-        else if (bl.firstgoto < ls.dyd.n_gt)  /* pending gotos in outer block? */
-            ls.undefgoto(ls.dyd.gt[bl.firstgoto.toInt()]) /* error */
+        else if (bl.firstgoto < ls!!.dyd.n_gt)  /* pending gotos in outer block? */
+            ls!!.undefgoto(ls!!.dyd.gt[bl.firstgoto.toInt()]) /* error */
     }
 
     fun closelistfield(cc: ConsControl) {
@@ -210,7 +210,7 @@ internal class FuncState internal constructor() : Constants() {
         this.exp2nextreg(cc.v)
         cc.v.k = LexState.VVOID
         if (cc.tostore === LFIELDS_PER_FLUSH) {
-            this.setlist(cc.t.u.info, cc.na, cc.tostore) /* flush */
+            this.setlist(cc.t!!.u.info, cc.na, cc.tostore) /* flush */
             cc.tostore = 0 /* no more items pending */
         }
     }
@@ -223,12 +223,12 @@ internal class FuncState internal constructor() : Constants() {
         if (cc.tostore === 0) return
         if (hasmultret(cc.v.k)) {
             this.setmultret(cc.v)
-            this.setlist(cc.t.u.info, cc.na, LUA_MULTRET)
+            this.setlist(cc.t!!.u.info, cc.na, LUA_MULTRET)
             cc.na--
             /** do not count last expression (unknown number of elements)  */
         } else {
             if (cc.v.k !== LexState.VVOID) this.exp2nextreg(cc.v)
-            this.setlist(cc.t.u.info, cc.na, cc.tostore)
+            this.setlist(cc.t!!.u.info, cc.na, cc.tostore)
         }
     }
 
@@ -240,7 +240,7 @@ internal class FuncState internal constructor() : Constants() {
         var from = from
         var l = from + n - 1 /* last register to set nil */
         if (this.pc > this.lasttarget && pc > 0) {  /* no jumps to current position? */
-            val previous_code: Int = f.code[pc - 1]
+            val previous_code: Int = f!!.code[pc - 1]
             if (GET_OPCODE(previous_code) === OP_LOADNIL) {
                 val pfrom: Int = GETARG_A(previous_code)
                 val pl: Int = pfrom + GETARG_B(previous_code)
@@ -249,7 +249,7 @@ internal class FuncState internal constructor() : Constants() {
                 ) { /* can connect both? */
                     if (pfrom < from) from = pfrom /* from = min(from, pfrom) */
                     if (pl > l) l = pl /* l = max(l, pl) */
-                    val previous: InstructionPtr = InstructionPtr(this.f.code, this.pc - 1)
+                    val previous: InstructionPtr = InstructionPtr(this.f!!.code, this.pc - 1)
                     SETARG_A(previous, from)
                     SETARG_B(previous, l - from)
                     return
@@ -261,8 +261,8 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun jump(): Int {
-        val jpc: Int = this.jpc.i /* save list of jumps to here */
-        this.jpc.i = LexState.NO_JUMP
+        val jpc: Int = this.jpc!!.i /* save list of jumps to here */
+        this.jpc!!.i = LexState.NO_JUMP
         val j: IntPtr = IntPtr(this.codeAsBx(OP_JMP, 0, LexState.NO_JUMP))
         this.concat(j, jpc) /* keep them on hold */
         return j.i
@@ -278,10 +278,10 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun fixjump(pc: Int, dest: Int) {
-        val jmp: InstructionPtr = InstructionPtr(this.f.code, pc)
+        val jmp: InstructionPtr = InstructionPtr(this.f!!.code, pc)
         val offset = dest - (pc + 1)
         _assert(dest != LexState.NO_JUMP)
-        if (Math.abs(offset) > MAXARG_sBx) ls.syntaxerror("control structure too long")
+        if (Math.abs(offset) > MAXARG_sBx) ls!!.syntaxerror("control structure too long")
         SETARG_sBx(jmp, offset)
     }
 
@@ -297,7 +297,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun getjump(pc: Int): Int {
-        val offset: Int = GETARG_sBx(this.f.code[pc])
+        val offset: Int = GETARG_sBx(this.f!!.code[pc])
         /* point to itself represents end of list */
         if (offset == LexState.NO_JUMP)  /* end of list */
             return LexState.NO_JUMP
@@ -307,7 +307,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun getjumpcontrol(pc: Int): InstructionPtr {
-        val pi: InstructionPtr = InstructionPtr(this.f.code, pc)
+        val pi: InstructionPtr = InstructionPtr(this.f!!.code, pc)
         if (pc >= 1 && testTMode(GET_OPCODE(pi.code[pi.idx - 1]))) return InstructionPtr(pi.code, pi.idx - 1)
         else return pi
     }
@@ -359,8 +359,8 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun dischargejpc() {
-        this.patchlistaux(this.jpc.i, this.pc, NO_REG, this.pc)
-        this.jpc.i = LexState.NO_JUMP
+        this.patchlistaux(this.jpc!!.i, this.pc, NO_REG, this.pc)
+        this.jpc!!.i = LexState.NO_JUMP
     }
 
     fun patchlist(list: Int, target: Int) {
@@ -378,10 +378,10 @@ internal class FuncState internal constructor() : Constants() {
         while (list != LexState.NO_JUMP) {
             val next = getjump(list)
             _assert(
-                GET_OPCODE(f.code[list]) === OP_JMP
-                        && (GETARG_A(f.code[list]) === 0 || GETARG_A(f.code[list]) >= level)
+                GET_OPCODE(f!!.code[list]) === OP_JMP
+                        && (GETARG_A(f!!.code[list]) === 0 || GETARG_A(f!!.code[list]) >= level)
             )
-            SETARG_A(f.code, list, level)
+            SETARG_A(f!!.code, list, level)
             list = next
         }
     }
@@ -405,9 +405,9 @@ internal class FuncState internal constructor() : Constants() {
 
     fun checkstack(n: Int) {
         val newstack = this.freereg + n
-        if (newstack > this.f.maxstacksize) {
-            if (newstack >= MAXSTACK) ls.syntaxerror("function or expression too complex")
-            this.f.maxstacksize = newstack
+        if (newstack > this.f!!.maxstacksize) {
+            if (newstack >= MAXSTACK) ls!!.syntaxerror("function or expression too complex")
+            this.f!!.maxstacksize = newstack
         }
     }
 
@@ -814,7 +814,7 @@ internal class FuncState internal constructor() : Constants() {
         val r: LuaValue
         if (!e1.isnumeral() || !e2.isnumeral()) return false
         if ((op == OP_DIV || op == OP_MOD) && e2.u.nval()
-                .eq_b(LuaValue.ZERO)
+                !!.eq_b(LuaValue.ZERO)
         ) return false /* do not attempt to divide by 0 */
         v1 = e1.u.nval()
         v2 = e2.u.nval()
@@ -883,7 +883,7 @@ internal class FuncState internal constructor() : Constants() {
         when (op) {
             LexState.OPR_MINUS -> {
                 if (e.isnumeral())  /* minus constant? */
-                    e.u.setNval(e.u.nval().neg()) /* fold it */
+                    e.u.setNval(e.u.nval()!!.neg()) /* fold it */
                 else {
                     this.exp2anyreg(e)
                     this.codearith(OP_UNM, e, e2, line)
@@ -977,7 +977,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun fixline(line: Int) {
-        this.f.lineinfo[this.pc - 1] = line
+        this.f!!.lineinfo[this.pc - 1] = line
     }
 
 
@@ -1001,7 +1001,7 @@ internal class FuncState internal constructor() : Constants() {
         _assert(getOpMode(o) === iABC)
         _assert(getBMode(o) !== OpArgN || b == 0)
         _assert(getCMode(o) !== OpArgN || c == 0)
-        return this.code(CREATE_ABC(o, a, b, c), this.ls.lastline)
+        return this.code(CREATE_ABC(o, a, b, c), this.ls!!.lastline)
     }
 
 
@@ -1009,12 +1009,12 @@ internal class FuncState internal constructor() : Constants() {
         _assert(getOpMode(o) === iABx || getOpMode(o) === iAsBx)
         _assert(getCMode(o) === OpArgN)
         _assert(bc >= 0 && bc <= Lua.MAXARG_Bx)
-        return this.code(CREATE_ABx(o, a, bc), this.ls.lastline)
+        return this.code(CREATE_ABx(o, a, bc), this.ls!!.lastline)
     }
 
     fun codeextraarg(a: Int): Int {
         _assert(a <= MAXARG_Ax)
-        return this.code(CREATE_Ax(OP_EXTRAARG, a), this.ls.lastline)
+        return this.code(CREATE_Ax(OP_EXTRAARG, a), this.ls!!.lastline)
     }
 
     fun codeK(reg: Int, k: Int): Int {
@@ -1033,7 +1033,7 @@ internal class FuncState internal constructor() : Constants() {
         if (c <= MAXARG_C) this.codeABC(OP_SETLIST, base, b, c)
         else {
             this.codeABC(OP_SETLIST, base, b, 0)
-            this.code(c, this.ls.lastline)
+            this.code(c, this.ls!!.lastline)
         }
         this.freereg = (base + 1).toShort() /* free registers with list values */
     }

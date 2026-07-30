@@ -110,7 +110,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
             lexstate.setinput(this, z.read(), z, LuaValue.valueOf(name) as LuaString?)
             /* main func. is always vararg */
             funcstate.f = Prototype()
-            funcstate.f.source = LuaValue.valueOf(name) as LuaString?
+            funcstate.f!!.source = LuaValue.valueOf(name) as LuaString?
             lexstate.mainfunc(funcstate)
             _assert(funcstate.prev == null)
             /* all scopes should be correctly finished */
