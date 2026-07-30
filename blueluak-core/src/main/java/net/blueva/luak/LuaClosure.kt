@@ -684,7 +684,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                 if (uv[j]!!.instack)  /* upvalue refes to local variable? */
                                     ncl.upValues[j] = findupval(stack, uv[j]!!.idx, openups)
                                 else  /* get upvalue from enclosing function */
-                                    ncl.upValues[j] = upValues[uv[j]!!.idx]
+                                    ncl.upValues[j] = upValues[(uv[j]!!.idx).toInt()]
                                 ++j
                             }
                             stack[a] = ncl

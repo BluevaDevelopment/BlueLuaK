@@ -1051,7 +1051,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun add(entry: Slot?): Slot? {
-            return net.blueva.luak.LuaTable.LinkSlot(this, entry)
+            return net.blueva.luak.LuaTable.LinkSlot(this, (entry)!!)
         }
 
         override fun remove(target: StrongSlot?): Slot {
@@ -1094,7 +1094,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun keyeq(key: LuaValue?): Boolean {
-            return key.raweq(this.key)
+            return key!!.raweq(this.key)
         }
     }
 
@@ -1127,7 +1127,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun keyeq(key: LuaValue?): Boolean {
-            return key.raweq(this.key)
+            return key!!.raweq(this.key)
         }
     }
 
@@ -1152,8 +1152,8 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         public override fun set(value: LuaValue?): Entry {
-            if (value.type() === TNUMBER) {
-                val n: LuaValue = value.tonumber()
+            if (value!!.type() === TNUMBER) {
+                val n: LuaValue = value!!.tonumber()
                 if (!n.isnil()) {
                     this.value = n.todouble()
                     return this
@@ -1167,7 +1167,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun keyeq(key: LuaValue?): Boolean {
-            return key.raweq(this.key)
+            return key!!.raweq(this.key)
         }
     }
 
@@ -1201,7 +1201,7 @@ open class LuaTable : LuaValue, Metatable {
 
         override fun keyeq(key: LuaValue?): Boolean {
             val k: LuaValue? = key()
-            return k != null && key.raweq(k)
+            return k != null && key!!.raweq(k)
         }
 
         override fun rest(): Slot? {

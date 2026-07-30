@@ -324,7 +324,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun optuserdata(i: Int, c: Class<*>?, defval: Object?): Object {
-        return (arg(i).optuserdata((c)!!, defval))!!
+        return (arg(i)!!.optuserdata((c)!!, defval))!!
     }
 
     /** Return argument i as a LuaValue if it exists, or `defval`.
@@ -461,7 +461,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun checkuserdata(i: Int, c: Class<*>?): Object {
-        return (arg(i).checkuserdata(c))!!
+        return (arg(i)!!.checkuserdata(c))!!
     }
 
     /** Return argument i as a LuaValue if it exists, or throw an error.
@@ -594,7 +594,7 @@ abstract class Varargs {
      * @return java Object value if argument i is a userdata whose instance Class c or a subclass, otherwise null
      */
     fun touserdata(i: Int, c: Class<*>?): Object {
-        return (arg(i).touserdata(c))!!
+        return (arg(i)!!.touserdata(c))!!
     }
 
     /** Convert the list of varargs values to a human readable java String.

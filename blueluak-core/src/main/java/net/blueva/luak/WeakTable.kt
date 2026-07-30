@@ -224,7 +224,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun set(value: LuaValue?): Slot? {
-            this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
+            this.value = net.blueva.luak.WeakTable.Companion.weaken((value)!!)
             return this
         }
 
@@ -261,7 +261,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun set(value: LuaValue?): Slot? {
-            this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
+            this.value = net.blueva.luak.WeakTable.Companion.weaken((value)!!)
             return this
         }
 
@@ -299,16 +299,16 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun toString(): String {
-            return "weak<" + ref.get() + ">"
+            return "weak<" + ref!!.get() + ">"
         }
 
         override fun strongvalue(): LuaValue {
-            val o: Object? = ref.get()
+            val o: Object? = ref!!.get()
             return (o as LuaValue?)!!
         }
 
         fun raweq(rhs: LuaValue): Boolean {
-            val o: Object? = ref.get()
+            val o: Object? = ref!!.get()
             return o != null && rhs.raweq(o as LuaValue)
         }
     }
@@ -326,7 +326,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongvalue(): LuaValue {
-            val u: Object? = ref.get()
+            val u: Object? = ref!!.get()
             if (u != null) return u as LuaValue
             val o: Object? = ob.get()
             if (o != null) {

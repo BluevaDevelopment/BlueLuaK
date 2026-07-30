@@ -767,7 +767,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val fs: FuncState = this.fs!!
         val f: Prototype = fs.f!!
         if (f.locvars == null || fs.nlocvars + 1 > f.locvars.size) f.locvars = realloc(f.locvars, fs.nlocvars * 2 + 1)
-        f.locvars[fs.nlocvars] = LocVars(varname, 0, 0)
+        f.locvars[(fs.nlocvars).toInt()] = LocVars(varname, 0, 0)
         return fs.nlocvars++
     }
 
