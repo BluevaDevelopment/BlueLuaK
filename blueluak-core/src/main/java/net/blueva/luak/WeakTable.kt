@@ -55,15 +55,15 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         return backing
     }
 
-    fun entry(key: LuaValue, value: LuaValue?): Slot? {
+    override fun entry(key: LuaValue?, value: LuaValue?): Slot? {
         var value: LuaValue? = value
         value = value!!.strongvalue()
         if (value == null) return null
-        if (weakkeys && !(key.isnumber() || key.isstring() || key.isboolean())) {
+        if (weakkeys && !(key!!.isnumber() || key.isstring() || key.isboolean())) {
             if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
-                return net.blueva.luak.WeakTable.WeakKeyAndValueSlot(key, value, null)
+                return net.blueva.luak.WeakTable.WeakKeyAndValueSlot(key!!, value, null)
             } else {
-                return net.blueva.luak.WeakTable.WeakKeySlot(key, value, null)
+                return net.blueva.luak.WeakTable.WeakKeySlot(key!!, value, null)
             }
         }
         if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
@@ -339,12 +339,12 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
     }
 
-    fun wrap(value: LuaValue): LuaValue? {
-        return if (weakvalues) net.blueva.luak.WeakTable.Companion.weaken(value) else value
+    override fun wrap(value: LuaValue?): LuaValue? {
+        return if (weakvalues) net.blueva.luak.WeakTable.Companion.weaken(value!!) else value
     }
 
-    fun arrayget(array: Array<LuaValue?>, index: Int): LuaValue? {
-        var value: LuaValue? = array[index]
+    override fun arrayget(array: Array<LuaValue?>?, index: Int): LuaValue? {
+        var value: LuaValue? = array!![index]
         if (value != null) {
             value = net.blueva.luak.WeakTable.Companion.strengthen(value)
             if (value == null) {

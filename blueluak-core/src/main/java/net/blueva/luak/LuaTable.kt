@@ -691,8 +691,8 @@ open class LuaTable : LuaValue, Metatable {
         hashEntries -= movingToArray
     }
 
-    fun entry(key: LuaValue, value: LuaValue): Slot {
-        return net.blueva.luak.LuaTable.Companion.defaultEntry(key, value)
+    override fun entry(key: LuaValue?, value: LuaValue?): Slot? {
+        return net.blueva.luak.LuaTable.Companion.defaultEntry(key!!, value!!)
     }
 
     // ----------------- sort support -----------------------------
@@ -1275,8 +1275,8 @@ open class LuaTable : LuaValue, Metatable {
         return value
     }
 
-    fun arrayget(array: Array<LuaValue?>, index: Int): LuaValue? {
-        return array[index]
+    override fun arrayget(array: Array<LuaValue?>?, index: Int): LuaValue? {
+        return array!![index]
     }
 
     companion object {
