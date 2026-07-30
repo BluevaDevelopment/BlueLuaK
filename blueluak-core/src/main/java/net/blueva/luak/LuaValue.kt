@@ -3741,12 +3741,15 @@ open class LuaValue : Varargs() {
         )
 
         /** LuaValue constant corresponding to lua `#NIL`  */
+        @JvmField
         val NIL: LuaValue = LuaNil._NIL
 
         /** LuaBoolean constant corresponding to lua `true`  */
+        @JvmField
         val TRUE: LuaBoolean? = LuaBoolean._TRUE
 
         /** LuaBoolean constant corresponding to lua `false`  */
+        @JvmField
         val FALSE: LuaBoolean? = LuaBoolean._FALSE
 
         /** LuaValue constant corresponding to a [Varargs] list of no values  */
@@ -3893,6 +3896,7 @@ open class LuaValue : Varargs() {
          * @param b boolean value to convert
          * @return [.TRUE] if not  or [.FALSE] if false
          */
+        @JvmStatic
         fun valueOf(b: Boolean): LuaBoolean? {
             return if (b) net.blueva.luak.LuaValue.Companion.TRUE else net.blueva.luak.LuaValue.Companion.FALSE
         }
