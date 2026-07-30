@@ -118,7 +118,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
                 lexstate.dyd == null
                         || (lexstate.dyd.n_actvar === 0 && lexstate.dyd.n_gt === 0 && lexstate.dyd.n_label === 0)
             )
-            return funcstate.f
+            return funcstate.f!!
         }
 
         // look up and keep at most one copy of each string

@@ -235,7 +235,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class pcall : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val func: LuaValue = args.checkvalue(1)
-            if (globals != null && globals.debuglib != null) globals.debuglib.onCall(this)
+            if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
             try {
                 return (varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
@@ -245,7 +245,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
             } finally {
-                if (globals != null && globals.debuglib != null) globals.debuglib.onReturn()
+                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }
     }
@@ -383,7 +383,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             val preverror: LuaValue? = t.errorfunc
             t.errorfunc = args.checkvalue(2)
             try {
-                if (globals != null && globals.debuglib != null) globals.debuglib.onCall(this)
+                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
@@ -393,7 +393,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
                     val m: String? = e.message
                     return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
                 } finally {
-                    if (globals != null && globals.debuglib != null) globals.debuglib.onReturn()
+                    if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
             } finally {
                 t.errorfunc = preverror

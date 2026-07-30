@@ -131,7 +131,7 @@ internal class FuncState internal constructor() : Constants() {
 
     fun newupvalue(name: LuaString?, v: expdesc): Int {
         checklimit(nups + 1, LUAI_MAXUPVAL, "upvalues")
-        if (f!!.upvalues == null || nups + 1 > f!!.upvalues.size) f!!.upvalues =
+        if (f!!.upvalues == null || nups + 1 > f!!.upvalues!!.size) f!!.upvalues =
             realloc(f!!.upvalues, if (nups > 0) nups * 2 else 1)
         f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
         return (nups++).toInt()
@@ -249,7 +249,7 @@ internal class FuncState internal constructor() : Constants() {
                 ) { /* can connect both? */
                     if (pfrom < from) from = pfrom /* from = min(from, pfrom) */
                     if (pl > l) l = pl /* l = max(l, pl) */
-                    val previous: InstructionPtr = InstructionPtr(this.f!!.code, this.pc - 1)
+                    val previous: InstructionPtr = InstructionPtr(this.f!!.code!!, this.pc - 1)
                     SETARG_A(previous, from)
                     SETARG_B(previous, l - from)
                     return
@@ -381,7 +381,7 @@ internal class FuncState internal constructor() : Constants() {
                 GET_OPCODE(f!!.code!![list]) === OP_JMP
                         && (GETARG_A(f!!.code!![list]) === 0 || GETARG_A(f!!.code!![list]) >= level)
             )
-            SETARG_A(f!!.code, list, level)
+            SETARG_A(f!!.code!!, list, level)
             list = next
         }
     }
@@ -436,7 +436,7 @@ internal class FuncState internal constructor() : Constants() {
         val idx = this.nk
         this.h!!.put(v, Integer(idx))
         val f: Prototype = this.f
-        if (f.k == null || nk + 1 >= f.k.size) f.k = realloc(f.k, nk * 2 + 1)
+        if (f.k == null || nk + 1 >= f.k!!.size) f.k = realloc(f.k, nk * 2 + 1)
         f.k!![this.nk++] = v
         return idx
     }
@@ -985,10 +985,10 @@ internal class FuncState internal constructor() : Constants() {
         val f: Prototype = this.f
         this.dischargejpc() /* `pc' will change */
         /* put new instruction in code array */
-        if (f.code == null || this.pc + 1 > f.code.size) f.code = realloc(f.code, this.pc * 2 + 1)
+        if (f.code == null || this.pc + 1 > f.code!!.size) f.code = realloc(f.code, this.pc * 2 + 1)
         f.code!![this.pc] = instruction
         /* save corresponding line information */
-        if (f.lineinfo == null || this.pc + 1 > f.lineinfo.size) f.lineinfo = realloc(
+        if (f.lineinfo == null || this.pc + 1 > f.lineinfo!!.size) f.lineinfo = realloc(
             f.lineinfo,
             this.pc * 2 + 1
         )

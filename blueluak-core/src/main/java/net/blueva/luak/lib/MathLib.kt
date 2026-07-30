@@ -313,7 +313,7 @@ open class MathLib : TwoArgFunction() {
         /** compute power using installed math library, or default if there is no math library installed  */
         fun dpow(a: Double, b: Double): LuaValue {
             return LuaDouble.valueOf(
-                if (net.blueva.luak.lib.MathLib.Companion.MATHLIB != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB.dpow_lib(
+                if (net.blueva.luak.lib.MathLib.Companion.MATHLIB!! != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB!!.dpow_lib(
                     a,
                     b
                 ) else net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
@@ -321,7 +321,7 @@ open class MathLib : TwoArgFunction() {
         }
 
         fun dpow_d(a: Double, b: Double): Double {
-            return if (net.blueva.luak.lib.MathLib.Companion.MATHLIB != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB.dpow_lib(
+            return if (net.blueva.luak.lib.MathLib.Companion.MATHLIB!! != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB!!.dpow_lib(
                 a,
                 b
             ) else net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)

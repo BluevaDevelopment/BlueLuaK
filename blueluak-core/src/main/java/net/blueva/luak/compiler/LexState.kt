@@ -939,7 +939,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun addprototype(): Prototype? {
         val clp: Prototype?
         val f: Prototype = fs!!.f /* prototype of current function */
-        if (f.p == null || fs!!.np >= f.p.size) {
+        if (f.p == null || fs!!.np >= f.p!!.size) {
             f.p = realloc(f.p, Math.max(1, fs!!.np * 2))
         }
         clp = Prototype()

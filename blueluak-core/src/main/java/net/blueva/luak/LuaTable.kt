@@ -188,15 +188,15 @@ open class LuaTable : LuaValue, Metatable {
         get() = hash.size
 
     override fun getmetatable(): LuaValue? {
-        return if (m_metatable != null) m_metatable.toLuaValue() else null
+        return if (m_metatable != null) m_metatable!!.toLuaValue() else null
     }
 
     override fun setmetatable(metatable: LuaValue?): LuaValue? {
-        val hadWeakKeys = m_metatable != null && m_metatable.useWeakKeys()
-        val hadWeakValues = m_metatable != null && m_metatable.useWeakValues()
+        val hadWeakKeys = m_metatable != null && m_metatable!!.useWeakKeys()
+        val hadWeakValues = m_metatable != null && m_metatable!!.useWeakValues()
         m_metatable = metatableOf(metatable)
-        if ((hadWeakKeys != (m_metatable != null && m_metatable.useWeakKeys())) ||
-            (hadWeakValues != (m_metatable != null && m_metatable.useWeakValues()))
+        if ((hadWeakKeys != (m_metatable != null && m_metatable!!.useWeakKeys())) ||
+            (hadWeakValues != (m_metatable != null && m_metatable!!.useWeakValues()))
         ) {
             // force a rehash
             rehash(0)
@@ -216,7 +216,7 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun rawget(key: Int): LuaValue {
         if (key > 0 && key <= array.size) {
-            val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable.arrayget(array, key - 1)
+            val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable!!.arrayget(array, key - 1)
             return if (v != null) v else NIL
         }
         return hashget((LuaInteger.valueOf(key))!!)
@@ -229,7 +229,7 @@ open class LuaTable : LuaValue, Metatable {
                 val v: LuaValue? = if (m_metatable == null)
                     array[ikey - 1]
                 else
-                    m_metatable.arrayget(array, ikey - 1)
+                    m_metatable!!.arrayget(array, ikey - 1)
                 return if (v != null) v else NIL
             }
         }
@@ -275,7 +275,7 @@ open class LuaTable : LuaValue, Metatable {
     /** Set an array element  */
     private fun arrayset(key: Int, value: LuaValue): Boolean {
         if (key > 0 && key <= array.size) {
-            array[key - 1] = if (value.isnil()) null else (if (m_metatable != null) m_metatable.wrap(value) else value)
+            array[key - 1] = if (value.isnil()) null else (if (m_metatable != null) m_metatable!!.wrap(value) else value)
             return true
         }
         return false
@@ -407,7 +407,7 @@ open class LuaTable : LuaValue, Metatable {
         // check array part
         while (i < array.size) {
             if (array[i] != null) {
-                val value: LuaValue? = if (m_metatable == null) array[i] else m_metatable.arrayget(array, i)
+                val value: LuaValue? = if (m_metatable == null) array[i] else m_metatable!!.arrayget(array, i)
                 if (value != null) {
                     return (varargsOf(LuaInteger.valueOf(i + 1), value))!!
                 }
@@ -465,7 +465,7 @@ open class LuaTable : LuaValue, Metatable {
                 }
             }
             if (checkLoadFactor()) {
-                if ((m_metatable == null || !m_metatable.useWeakValues())
+                if ((m_metatable == null || !m_metatable!!.useWeakValues())
                     && key.isinttype() && key.toint() > 0
                 ) {
                     // a rehash might make room in the array portion for this key.
@@ -477,7 +477,7 @@ open class LuaTable : LuaValue, Metatable {
                 index = hashSlot(key)
             }
             val entry: Slot? = if (m_metatable != null)
-                m_metatable.entry(key, value)
+                m_metatable!!.entry(key, value)
             else
                 net.blueva.luak.LuaTable.Companion.defaultEntry(key, value)
             hash[index] = if (hash[index] != null) hash[index]!!.add(entry) else entry
@@ -572,10 +572,10 @@ open class LuaTable : LuaValue, Metatable {
 	 * newKey < 0 next key will go in hash part
 	 */
     private fun rehash(newKey: Int) {
-        if (m_metatable != null && (m_metatable.useWeakKeys() || m_metatable.useWeakValues())) {
+        if (m_metatable != null && (m_metatable!!.useWeakKeys() || m_metatable!!.useWeakValues())) {
             // If this table has weak entries, hashEntries is just an upper bound.
             hashEntries = countHashKeys()
-            if (m_metatable.useWeakValues()) {
+            if (m_metatable!!.useWeakValues()) {
                 dropWeakArrayValues()
             }
         }
@@ -675,7 +675,7 @@ open class LuaTable : LuaValue, Metatable {
                 val slot: Int = net.blueva.luak.LuaTable.Companion.hashmod(LuaInteger.hashCode(i), newHashMask)
                 val newEntry: Slot?
                 if (m_metatable != null) {
-                    newEntry = m_metatable.entry(valueOf(i), v)
+                    newEntry = m_metatable!!.entry(valueOf(i), v)
                     if (newEntry == null) {
                         continue
                     }
@@ -706,7 +706,7 @@ open class LuaTable : LuaValue, Metatable {
      */
     fun sort(comparator: LuaValue) {
         if (len().tolong() >= Integer.MAX_VALUE as Long) throw LuaError("array too big: " + len().tolong())
-        if (m_metatable != null && m_metatable.useWeakValues()) {
+        if (m_metatable != null && m_metatable!!.useWeakValues()) {
             dropWeakArrayValues()
         }
         val n = length()
@@ -793,7 +793,7 @@ open class LuaTable : LuaValue, Metatable {
         if (this === `val`) return true
         if (m_metatable == null || !`val`.istable()) return false
         val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, (m_metatable.toLuaValue())!!, `val`, valmt)
+        return valmt != null && LuaValue.eqmtcall(this, (m_metatable!!.toLuaValue())!!, `val`, valmt)
     }
 
     /** Unpack all the elements of this table  */

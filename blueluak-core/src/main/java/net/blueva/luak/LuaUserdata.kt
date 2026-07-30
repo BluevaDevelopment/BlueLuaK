@@ -117,7 +117,7 @@ class LuaUserdata : LuaValue {
         if (`val`.raweq(this)) return true
         if (m_metatable == null || !`val`.isuserdata()) return false
         val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, m_metatable, `val`, valmt)
+        return valmt != null && LuaValue.eqmtcall(this, m_metatable!!, `val`, valmt)
     }
 
     // equality w/o metatable processing
@@ -133,7 +133,7 @@ class LuaUserdata : LuaValue {
     fun eqmt(`val`: LuaValue): Boolean {
         return if (m_metatable != null && `val`.isuserdata()) LuaValue.eqmtcall(
             this,
-            m_metatable,
+            m_metatable!!,
             `val`,
             `val`.getmetatable()
         ) else false

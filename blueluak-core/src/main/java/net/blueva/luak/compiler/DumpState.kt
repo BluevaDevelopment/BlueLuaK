@@ -166,7 +166,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpFunction((f.p[i])!!)
+            dumpFunction((f.p!![i])!!)
             i++
         }
     }
@@ -176,8 +176,8 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         val n: Int = f.upvalues!!.size
         dumpInt(n)
         for (i in 0..<n) {
-            writer!!.writeByte(if (f.upvalues[i]!!.instack) 1 else 0)
-            writer!!.writeByte(f.upvalues[i]!!.idx)
+            writer!!.writeByte(if (f.upvalues!![i]!!.instack) 1 else 0)
+            writer!!.writeByte(f.upvalues!![i]!!.idx)
         }
     }
 

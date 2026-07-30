@@ -94,10 +94,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
     override fun initupvalue1(env: LuaValue?) {
-        if (p.upvalues == null || p.upvalues.size === 0) this.upValues =
+        if (p.upvalues == null || p.upvalues!!.size === 0) this.upValues =
             net.blueva.luak.LuaClosure.Companion.NOUPVALUES
         else {
-            this.upValues = arrayOfNulls<UpValue>(p.upvalues.size)
+            this.upValues = arrayOfNulls<UpValue>(p.upvalues!!.size)
             this.upValues[0] = UpValue(arrayOf<LuaValue?>(env), 0)
         }
     }
@@ -214,12 +214,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
 
         // allow for debug hooks
-        if (globals != null && globals.debuglib != null) globals.debuglib.onCall(this, varargs, stack)
+        if (globals != null && globals.debuglib != null) globals.debuglib!!.onCall(this, varargs, stack)
 
         // process instructions
         try {
             while (true) {
-                if (globals != null && globals.debuglib != null) globals.debuglib.onInstruction(pc, v, top)
+                if (globals != null && globals.debuglib != null) globals.debuglib!!.onInstruction(pc, v, top)
 
 
                 // pull out instruction
@@ -729,7 +729,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     if (openups[u] != null) openups[u]!!.close()
                 }
             }
-            if (globals != null && globals.debuglib != null) globals.debuglib.onReturn()
+            if (globals != null && globals.debuglib != null) globals.debuglib!!.onReturn()
         }
     }
 
@@ -740,7 +740,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     fun errorHook(msg: String?, level: Int): String? {
         if (globals == null) return msg
         val r: LuaThread = globals.running
-        if (r.errorfunc == null) return if (globals.debuglib != null) msg.toString() + "\n" + globals.debuglib.traceback(
+        if (r.errorfunc == null) return if (globals.debuglib != null) msg.toString() + "\n" + globals.debuglib!!.traceback(
             level
         ) else msg
         val e: LuaValue = r.errorfunc
@@ -760,7 +760,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         run {
             var frame: CallFrame? = null
             if (globals != null && globals.debuglib != null) {
-                frame = globals.debuglib.getCallFrame(le.level)
+                frame = globals.debuglib!!.getCallFrame(le.level)
                 if (frame != null) {
                     val src: String? = frame.shortsource()
                     file = if (src != null) src else "?"
@@ -768,8 +768,8 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 }
             }
             if (frame == null) {
-                file = if (p.source != null) p.source.tojstring() else "?"
-                line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo.size) p.lineinfo[pc] else -1
+                file = if (p.source != null) p.source!!.tojstring() else "?"
+                line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo!!.size) p.lineinfo!![pc] else -1
             }
         }
         le.fileline = file.toString() + ":" + line

@@ -133,7 +133,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun add(entry: Slot?): Slot? {
-            next = if (next != null) next.add(entry) else entry
+            next = if (next != null) next!!.add(entry) else entry
             if (strongkey() != null && strongvalue() != null) {
                 return this
             } else {

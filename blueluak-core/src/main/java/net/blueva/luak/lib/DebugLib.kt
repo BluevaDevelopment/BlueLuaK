@@ -419,7 +419,7 @@ class DebugLib : TwoArgFunction() {
         if (s.inhook || s.hookfunc == null) return
         s.inhook = true
         try {
-            s.hookfunc.call(type, arg)
+            s.hookfunc!!.call(type, arg)
         } catch (e: LuaError) {
             throw e
         } catch (e: RuntimeException) {
@@ -453,7 +453,7 @@ class DebugLib : TwoArgFunction() {
         fun funcinfo(f: LuaFunction) {
             if (f.isclosure()) {
                 val p: Prototype = f.checkclosure()!!.p
-                this.source = if (p.source != null) p.source.tojstring() else "=?"
+                this.source = if (p.source != null) p.source!!.tojstring() else "=?"
                 this.linedefined = p.linedefined
                 this.lastlinedefined = p.lastlinedefined
                 this.what = if (this.linedefined == 0) "main" else "Lua"
@@ -583,7 +583,7 @@ class DebugLib : TwoArgFunction() {
                         /* calling function is a known Lua function? */
                         if (ci != null && ci.previous != null) {
                             if (ci.previous!!.f!!.isclosure()) {
-                                val nw: NameWhat? = net.blueva.luak.lib.DebugLib.Companion.getfuncname(ci.previous)
+                                val nw: NameWhat? = net.blueva.luak.lib.DebugLib.Companion.getfuncname(ci.previous!!)
                                 if (nw != null) {
                                     ar.name = nw.name
                                     ar.namewhat = nw.namewhat
@@ -724,7 +724,7 @@ class DebugLib : TwoArgFunction() {
 
         fun findupvalue(c: LuaClosure, up: Int): LuaString? {
             if (c.upValues != null && up > 0 && up <= c.upValues.size) {
-                if (c.p.upvalues != null && up <= c.p.upvalues.size) return c.p.upvalues[up - 1]!!.name
+                if (c.p.upvalues != null && up <= c.p.upvalues!!.size) return c.p.upvalues!![up - 1]!!.name
                 else return LuaString.valueOf("." + up)
             }
             return null
@@ -796,7 +796,7 @@ class DebugLib : TwoArgFunction() {
                         val vn: LuaString? = if (Lua.GET_OPCODE(i) === Lua.OP_GETTABLE)
                             p.getlocalname(t + 1, pc)
                         else
-                            (if (t < p.upvalues!!.size) p.upvalues[t]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
+                            (if (t < p.upvalues!!.size) p.upvalues!![t]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
                         val jname: String = net.blueva.luak.lib.DebugLib.Companion.kname(p, pc, k)
                         return net.blueva.luak.lib.DebugLib.NameWhat(
                             jname,
@@ -807,7 +807,7 @@ class DebugLib : TwoArgFunction() {
                     Lua.OP_GETUPVAL -> {
                         val u: Int = Lua.GETARG_B(i) /* upvalue index */
                         name =
-                            if (u < p.upvalues!!.size) p.upvalues[u]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK
+                            if (u < p.upvalues!!.size) p.upvalues!![u]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK
                         return if (name == null) null else net.blueva.luak.lib.DebugLib.NameWhat(
                             name.tojstring(),
                             "upvalue"
