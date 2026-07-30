@@ -78,8 +78,8 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
      * @throws IOException
      */
     @kotlin.Throws(IOException::class)
-    fun compile(stream: InputStream, chunkname: String?): Prototype {
-        return (net.blueva.luak.compiler.LuaC.CompileState()).luaY_parser(stream, chunkname)
+    override fun compile(stream: InputStream?, chunkname: String?): Prototype {
+        return CompileState().luaY_parser(stream!!, chunkname)
     }
 
     @kotlin.Throws(IOException::class)
@@ -98,7 +98,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
 
     internal class CompileState {
         var nCcalls: Int = 0
-        private val strings: Hashtable = Hashtable()
+        private val strings: Hashtable<LuaString, LuaString> = Hashtable()
 
         /** Parse the input  */
         @kotlin.Throws(IOException::class)
@@ -112,9 +112,9 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
             funcstate.f = Prototype()
             funcstate.f!!.source = LuaValue.valueOf(name) as LuaString?
             lexstate.mainfunc(funcstate)
-            _assert(funcstate.prev == null)
+            compilerAssert(funcstate.prev == null)
             /* all scopes should be correctly finished */
-            _assert(
+            compilerAssert(
                 lexstate.dyd == null
                         || (lexstate.dyd.n_actvar === 0 && lexstate.dyd.n_gt === 0 && lexstate.dyd.n_label === 0)
             )
@@ -132,14 +132,18 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
         }
 
         fun cachedLuaString(s: LuaString?): LuaString? {
-            val c: LuaString? = strings.get(s) as LuaString?
+            val c: LuaString? = strings[s]
             if (c != null) return c
-            strings!![s] = s
+            strings[s!!] = s
             return s
         }
 
         fun pushfstring(string: String?): String? {
             return string
+        }
+
+        private fun compilerAssert(condition: Boolean) {
+            if (!condition) throw net.blueva.luak.LuaError("compiler assert failed")
         }
     }
 

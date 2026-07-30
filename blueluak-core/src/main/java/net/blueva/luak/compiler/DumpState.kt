@@ -116,13 +116,13 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpConstants(f: Prototype) {
-        val k: Array<LuaValue> = f.k!!
+        val k: Array<LuaValue?> = f.k!!
         var i: Int
         var n = k.size
         dumpInt(n)
         i = 0
         while (i < n) {
-            val o: LuaValue = k[i]
+            val o: LuaValue = k[i]!!
             when (o.type()) {
                 LuaValue.TNIL -> writer!!.write(LuaValue.TNIL)
                 LuaValue.TBOOLEAN -> {
