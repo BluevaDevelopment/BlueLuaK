@@ -53,7 +53,7 @@ abstract class Varargs {
      * @see arg1
      * @see LuaValue.NIL
      */
-    abstract fun arg(i: Int): LuaValue?
+    abstract fun arg(i: Int): LuaValue
 
     /**
      * Get the number of arguments, or 0 if there are none.
@@ -67,7 +67,7 @@ abstract class Varargs {
      * @see arg
      * @see LuaValue.NIL
      */
-    abstract fun arg1(): LuaValue?
+    abstract fun arg1(): LuaValue
 
     /**
      * Evaluate any pending tail call and return result.
@@ -634,13 +634,13 @@ abstract class Varargs {
      * @see Varargs.subargs
      */
     internal class SubVarargs(private val v: Varargs, private val start: Int, private val end: Int) : Varargs() {
-        override fun arg(i: Int): LuaValue? {
+        override fun arg(i: Int): LuaValue {
             var i = i
             i += start - 1
             return if (i >= start && i <= end) v.arg(i) else LuaValue.NIL
         }
 
-        override fun arg1(): LuaValue? {
+        override fun arg1(): LuaValue {
             return v.arg(start)
         }
 
@@ -689,16 +689,16 @@ abstract class Varargs {
             this.v2 = v2
         }
 
-        override fun arg(i: Int): LuaValue? {
-            return if (i == 1) v1 else v2.arg(i - 1)
+        override fun arg(i: Int): LuaValue {
+            return if (i == 1) v1!! else v2.arg(i - 1)
         }
 
         override fun narg(): Int {
             return 1 + v2.narg()
         }
 
-        override fun arg1(): LuaValue? {
-            return v1
+        override fun arg1(): LuaValue {
+            return v1!!
         }
 
         override fun subargs(start: Int): Varargs? {
@@ -736,16 +736,16 @@ abstract class Varargs {
             this.r = r
         }
 
-        override fun arg(i: Int): LuaValue? {
-            return if (i < 1) LuaValue.NIL else if (i <= v.size) v[i - 1] else r.arg(i - v.size)
+        override fun arg(i: Int): LuaValue {
+            return if (i < 1) LuaValue.NIL!! else if (i <= v.size) v[i - 1]!! else r.arg(i - v.size)
         }
 
         override fun narg(): Int {
             return v.size + r.narg()
         }
 
-        override fun arg1(): LuaValue? {
-            return if (v.size > 0) v[0] else r.arg1()
+        override fun arg1(): LuaValue {
+            return if (v.size > 0) v[0]!! else r.arg1()
         }
 
         override fun subargs(start: Int): Varargs? {
@@ -789,7 +789,7 @@ abstract class Varargs {
             this.v = v
             this.offset = offset
             this.length = length
-            this.more = LuaValue.NONE
+            this.more = LuaValue.NONE!!
         }
 
         /** Construct a Varargs from an array of LuaValue and additional arguments.
@@ -807,16 +807,16 @@ abstract class Varargs {
             this.more = more
         }
 
-        override fun arg(i: Int): LuaValue? {
-            return if (i < 1) LuaValue.NIL else if (i <= length) v[offset + i - 1] else more.arg(i - length)
+        override fun arg(i: Int): LuaValue {
+            return if (i < 1) LuaValue.NIL!! else if (i <= length) v[offset + i - 1]!! else more.arg(i - length)
         }
 
         override fun narg(): Int {
             return length + more.narg()
         }
 
-        override fun arg1(): LuaValue? {
-            return if (length > 0) v[offset] else more.arg1()
+        override fun arg1(): LuaValue {
+            return if (length > 0) v[offset]!! else more.arg1()
         }
 
         override fun subargs(start: Int): Varargs? {
@@ -847,10 +847,10 @@ abstract class Varargs {
      * @exclude
      * @hide
      */
-    fun dealias(): Varargs? {
+    fun dealias(): Varargs {
         val n = narg()
         when (n) {
-            0 -> return LuaValue.NONE
+            0 -> return LuaValue.NONE!!
             1 -> return arg1()
             2 -> return net.blueva.luak.Varargs.PairVarargs(arg1(), (arg(2))!!)
             else -> {

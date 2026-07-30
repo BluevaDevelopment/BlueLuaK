@@ -1416,7 +1416,7 @@ open class LuaValue : Varargs() {
     }
 
     // varargs references
-    override fun arg(index: Int): LuaValue? {
+    override fun arg(index: Int): LuaValue {
         return if (index == 1) this else net.blueva.luak.LuaValue.Companion.NIL
     }
 
@@ -1819,7 +1819,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(): Varargs? {
+    open fun invoke(): Varargs {
         return invoke((net.blueva.luak.LuaValue.Companion.NONE)!!)
     }
 
@@ -1848,7 +1848,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(args: Varargs): Varargs? {
+    open fun invoke(args: Varargs): Varargs {
         return callmt().invoke(this, args)
     }
 
@@ -1877,7 +1877,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(arg: LuaValue?, varargs: Varargs): Varargs? {
+    open fun invoke(arg: LuaValue?, varargs: Varargs): Varargs {
         return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(arg, varargs))!!)
     }
 
@@ -1907,7 +1907,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(arg1: LuaValue?, arg2: LuaValue?, varargs: Varargs): Varargs? {
+    open fun invoke(arg1: LuaValue?, arg2: LuaValue?, varargs: Varargs): Varargs {
         return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg1, arg2, varargs))
     }
 
@@ -1935,7 +1935,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(args: Array<LuaValue?>): Varargs? {
+    open fun invoke(args: Array<LuaValue?>): Varargs {
         return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(args))!!)
     }
 
@@ -1966,7 +1966,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun invoke(args: Array<LuaValue?>, varargs: Varargs): Varargs? {
+    open fun invoke(args: Array<LuaValue?>, varargs: Varargs): Varargs {
         return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(args, varargs))!!)
     }
 
@@ -3663,7 +3663,7 @@ open class LuaValue : Varargs() {
 
         override fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
             var offset = offset
-            open var length = length
+            var length = length
             while (length > 0) {
                 dest[offset++] = net.blueva.luak.LuaValue.Companion.NIL
                 length--
@@ -4136,10 +4136,10 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<out LuaValue?>): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>): Varargs {
             when (v.size) {
-                0 -> return net.blueva.luak.LuaValue.Companion.NONE
-                1 -> return v[0]
+                0 -> return net.blueva.luak.LuaValue.Companion.NONE!!
+                1 -> return v[0]!!
                 2 -> return PairVarargs(v[0], (v[1])!!)
                 else -> return ArrayVarargs(v, (net.blueva.luak.LuaValue.Companion.NONE)!!)
             }
@@ -4153,10 +4153,10 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<out LuaValue?>, r: Varargs): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, r: Varargs): Varargs {
             when (v.size) {
                 0 -> return r
-                1 -> return if (r.narg() > 0) PairVarargs(v[0], r) as Varargs else v[0] as Varargs?
+                1 -> return if (r.narg() > 0) PairVarargs(v[0], r) else v[0]!!
                 2 -> return if (r.narg() > 0) ArrayVarargs(v, r) as Varargs else PairVarargs(v[0], (v[1])!!) as Varargs
                 else -> return ArrayVarargs(v, r)
             }
@@ -4171,10 +4171,10 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int): Varargs {
             when (length) {
-                0 -> return net.blueva.luak.LuaValue.Companion.NONE
-                1 -> return v[offset]
+                0 -> return net.blueva.luak.LuaValue.Companion.NONE!!
+                1 -> return v[offset]!!
                 2 -> return PairVarargs(v[offset + 0], (v[offset + 1])!!)
                 else -> return ArrayPartVarargs(v, offset, length, (net.blueva.luak.LuaValue.Companion.NONE)!!)
             }
@@ -4193,10 +4193,10 @@ open class LuaValue : Varargs() {
          * @see LuaValue.varargsOf
          * @see LuaValue.varargsOf
          */
-        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int, more: Varargs): Varargs? {
+        fun varargsOf(v: Array<out LuaValue?>, offset: Int, length: Int, more: Varargs): Varargs {
             when (length) {
                 0 -> return more
-                1 -> return if (more.narg() > 0) PairVarargs(v[offset], more) as Varargs else v[offset] as Varargs?
+                1 -> return if (more.narg() > 0) PairVarargs(v[offset], more) else v[offset]!!
                 2 -> return if (more.narg() > 0) ArrayPartVarargs(
                     v,
                     offset,
@@ -4219,9 +4219,9 @@ open class LuaValue : Varargs() {
          * or [Varargs]s supplying all values beyond the first
          * @return [Varargs] wrapping the supplied values.
          */
-        fun varargsOf(v: LuaValue?, r: Varargs): Varargs? {
+        fun varargsOf(v: LuaValue?, r: Varargs): Varargs {
             when (r.narg()) {
-                0 -> return v
+                0 -> return v!!
                 else -> return PairVarargs(v, r)
             }
         }

@@ -1003,12 +1003,12 @@ open class LuaTable : LuaValue, Metatable {
             return 0
         }
 
-        override fun arg(i: Int): LuaValue? {
+        override fun arg(i: Int): LuaValue {
             when (i) {
-                1 -> return key()
+                1 -> return key()!!
                 2 -> return value()
             }
-            return NIL
+            return NIL!!
         }
 
         override fun narg(): Int {
@@ -1022,8 +1022,8 @@ open class LuaTable : LuaValue, Metatable {
             return (varargsOf(key(), value()))!!
         }
 
-        override fun arg1(): LuaValue? {
-            return key()
+        override fun arg1(): LuaValue {
+            return key()!!
         }
 
         override fun subargs(start: Int): Varargs? {

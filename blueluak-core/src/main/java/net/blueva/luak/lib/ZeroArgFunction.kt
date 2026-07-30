@@ -52,7 +52,7 @@ abstract class ZeroArgFunction
     abstract override fun call(): LuaValue?
 
     override fun call(arg: LuaValue?): LuaValue? {
-        return call()
+        return call()!!
     }
 
     override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
@@ -63,7 +63,7 @@ abstract class ZeroArgFunction
         return call()
     }
 
-    fun invoke(varargs: Varargs?): Varargs? {
+    fun invoke(varargs: Varargs?): Varargs {
         return call()
     }
 }
