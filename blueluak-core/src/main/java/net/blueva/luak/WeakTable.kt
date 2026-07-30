@@ -316,7 +316,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
     /** Internal class to implement weak userdata values.
      * @see WeakTable
      */
-    internal class WeakUserdata private constructor(value: LuaValue) : WeakValue(value) {
+    internal class WeakUserdata internal constructor(value: LuaValue) : WeakValue(value) {
         private val ob: WeakReference
         private val mt: LuaValue?
 

@@ -598,7 +598,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             var ind_idx: Short = 0 // index (R/K)
             var ind_t: Short = 0 // table(register or upvalue)
             var ind_vt: Short = 0 // whether 't' is register (VLOCAL) or (UPVALUE)
-            private var _nval: LuaValue? = null
+            internal var _nval: LuaValue? = null
             var info: Int = 0
             fun setNval(r: LuaValue?) {
                 _nval = r

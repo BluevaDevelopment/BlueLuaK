@@ -79,7 +79,7 @@ class LuaString private constructor(
      * from different contexts, it will generally show up as a cache hit and resolve
      * to the same value.   */
     private object RecentShortStrings {
-        private val recent_short_strings: Array<LuaString?>? =
+        internal val recent_short_strings: Array<LuaString?>? =
             arrayOfNulls<LuaString>(net.blueva.luak.LuaString.Companion.RECENT_STRINGS_CACHE_SIZE)
     }
 
