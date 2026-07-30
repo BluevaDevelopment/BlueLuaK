@@ -128,7 +128,7 @@ class IoLib : TwoArgFunction() {
         }
 
         // displays as "file" type
-        override fun tojstring(): String? {
+        override fun tojstring(): String {
             return "file: " + Integer.toHexString(hashCode())
         }
 
@@ -286,7 +286,7 @@ class IoLib : TwoArgFunction() {
             this.iolib = iolib
         }
 
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             try {
                 when (opcode) {
                     net.blueva.luak.lib.IoLib.Companion.IO_FLUSH -> return iolib!!._io_flush()

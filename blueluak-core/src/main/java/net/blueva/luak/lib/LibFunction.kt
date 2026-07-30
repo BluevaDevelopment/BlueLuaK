@@ -96,7 +96,7 @@ protected constructor() : LuaFunction() {
      */
     protected var name: String? = null
 
-    override fun tojstring(): String? {
+    override fun tojstring(): String {
         return if (name != null) "function: " + name else super.tojstring()
     }
 

@@ -40,7 +40,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return LuaValue.TNIL
     }
 
-    override fun toString(): String? {
+    override fun toString(): String {
         return "nil"
     }
 
@@ -48,7 +48,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return "nil"
     }
 
-    override fun tojstring(): String? {
+    override fun tojstring(): String {
         return "nil"
     }
 
@@ -137,7 +137,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return defval
     }
 
-    override fun optvalue(defval: LuaValue?): LuaValue? {
+    override fun optvalue(defval: LuaValue?): LuaValue {
         return defval
     }
 

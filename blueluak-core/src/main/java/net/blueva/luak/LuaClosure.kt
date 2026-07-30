@@ -115,7 +115,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         return this
     }
 
-    override fun tojstring(): String? {
+    override fun tojstring(): String {
         return "function: " + p.toString()
     }
 
@@ -792,7 +792,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         upValues[i].setValue(v)
     }
 
-    override fun name(): String? {
+    override fun name(): String {
         return "<" + p.shortsource() + ":" + p.linedefined + ">"
     }
 

@@ -191,7 +191,7 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.getlocal ([thread,] f, local)
     internal inner class getlocal : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
             val level: Int = args.checkint(a++)
@@ -211,7 +211,7 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.getregistry ()
     internal inner class getregistry : ZeroArgFunction() {
-        override fun call(): LuaValue? {
+        override fun call(): LuaValue {
             return globals
         }
     }
@@ -268,7 +268,7 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.setlocal ([thread,] level, local, value)
     internal inner class setlocal : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
             val level: Int = args.checkint(a++)
@@ -298,7 +298,7 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.setupvalue (f, up, value)
     internal class setupvalue : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             val func: LuaValue? = args.checkfunction(1)
             val up: Int = args.checkint(2)
             val value: LuaValue? = args.arg(3)

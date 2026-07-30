@@ -119,7 +119,7 @@ class LuaString private constructor(
     }
 
     // unary operators
-    override fun neg(): LuaValue? {
+    override fun neg(): LuaValue {
         val d = scannumber()
         return if ((d).isNaN()) super.neg() else valueOf(-d)
     }
@@ -130,11 +130,11 @@ class LuaString private constructor(
         return if ((d).isNaN()) arithmt(ADD, rhs) else rhs.add(d)
     }
 
-    override fun add(rhs: Double): LuaValue? {
+    override fun add(rhs: Double): LuaValue {
         return valueOf(checkarith() + rhs)
     }
 
-    override fun add(rhs: Int): LuaValue? {
+    override fun add(rhs: Int): LuaValue {
         return valueOf(checkarith() + rhs)
     }
 
@@ -151,7 +151,7 @@ class LuaString private constructor(
         return valueOf(checkarith() - rhs)
     }
 
-    override fun subFrom(lhs: Double): LuaValue? {
+    override fun subFrom(lhs: Double): LuaValue {
         return valueOf(lhs - checkarith())
     }
 
@@ -160,11 +160,11 @@ class LuaString private constructor(
         return if ((d).isNaN()) arithmt(MUL, rhs) else rhs.mul(d)
     }
 
-    override fun mul(rhs: Double): LuaValue? {
+    override fun mul(rhs: Double): LuaValue {
         return valueOf(checkarith() * rhs)
     }
 
-    override fun mul(rhs: Int): LuaValue? {
+    override fun mul(rhs: Int): LuaValue {
         return valueOf(checkarith() * rhs)
     }
 
@@ -305,7 +305,7 @@ class LuaString private constructor(
         return rhs.concatTo(this)
     }
 
-    override fun concatTo(lhs: LuaNumber): LuaValue? {
+    override fun concatTo(lhs: LuaNumber): LuaValue {
         return concatTo(lhs.strvalue())
     }
 
@@ -441,7 +441,7 @@ class LuaString private constructor(
         return this
     }
 
-    override fun tostring(): LuaValue? {
+    override fun tostring(): LuaValue {
         return this
     }
 
@@ -659,7 +659,7 @@ class LuaString private constructor(
      * @return IntValue, DoubleValue, or NIL depending on the content of the string.
      * @see LuaValue.tonumber
      */
-    override fun tonumber(): LuaValue? {
+    override fun tonumber(): LuaValue {
         val d = scannumber()
         return if ((d).isNaN()) NIL else valueOf(d)
     }

@@ -209,7 +209,7 @@ open class LuaTable : LuaValue, Metatable {
         return if (v.isnil() && m_metatable != null) gettable(this, valueOf(key)) else v
     }
 
-    override fun get(key: LuaValue): LuaValue? {
+    override fun get(key: LuaValue): LuaValue {
         val v: LuaValue = rawget(key)
         return if (v.isnil() && m_metatable != null) gettable(this, key) else v
     }
@@ -914,7 +914,7 @@ open class LuaTable : LuaValue, Metatable {
             return entry.keyindex(hashMask)
         }
 
-        override fun value(): LuaValue? {
+        override fun value(): LuaValue {
             return entry.value()
         }
 
@@ -994,7 +994,7 @@ open class LuaTable : LuaValue, Metatable {
      */
     internal abstract class Entry : Varargs(), StrongSlot {
         abstract override fun key(): LuaValue?
-        abstract override fun value(): LuaValue?
+        abstract override fun value(): LuaValue
         abstract fun set(value: LuaValue?): Entry
         abstract override fun keyeq(key: LuaValue?): Boolean
         abstract override fun keyindex(hashMask: Int): Int
@@ -1076,7 +1076,7 @@ open class LuaTable : LuaValue, Metatable {
             return key
         }
 
-        override fun value(): LuaValue? {
+        override fun value(): LuaValue {
             return value
         }
 
@@ -1085,7 +1085,7 @@ open class LuaTable : LuaValue, Metatable {
             return this
         }
 
-        override fun toVarargs(): Varargs? {
+        override fun toVarargs(): Varargs {
             return this
         }
 
@@ -1113,7 +1113,7 @@ open class LuaTable : LuaValue, Metatable {
             return if (key >= 1 && key <= max) key else 0
         }
 
-        override fun value(): LuaValue? {
+        override fun value(): LuaValue {
             return value
         }
 
@@ -1228,7 +1228,7 @@ open class LuaTable : LuaValue, Metatable {
             return if (next != null) next!!.add(newEntry) else newEntry
         }
 
-        override fun remove(target: StrongSlot?): Slot? {
+        override fun remove(target: StrongSlot?): Slot {
             if (key() != null) {
                 next = next!!.remove(target)
                 return this

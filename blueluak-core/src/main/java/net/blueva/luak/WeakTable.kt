@@ -298,11 +298,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return null
         }
 
-        override fun toString(): String? {
+        override fun toString(): String {
             return "weak<" + ref.get() + ">"
         }
 
-        override fun strongvalue(): LuaValue? {
+        override fun strongvalue(): LuaValue {
             val o: Object? = ref.get()
             return o as LuaValue?
         }
@@ -325,7 +325,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             mt = value.getmetatable()
         }
 
-        override fun strongvalue(): LuaValue? {
+        override fun strongvalue(): LuaValue {
             val u: Object? = ref.get()
             if (u != null) return u as LuaValue
             val o: Object? = ob.get()

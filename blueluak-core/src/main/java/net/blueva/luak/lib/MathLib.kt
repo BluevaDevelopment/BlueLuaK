@@ -242,7 +242,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class min : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             var m: LuaValue? = args.checkvalue(1)
             var i = 2
             val n: Int = args.narg()

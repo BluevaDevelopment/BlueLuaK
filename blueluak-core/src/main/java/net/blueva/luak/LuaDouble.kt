@@ -117,7 +117,7 @@ class LuaDouble
     }
 
     // unary operators
-    override fun neg(): LuaValue? {
+    override fun neg(): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.valueOf(-v)
     }
 
@@ -153,7 +153,7 @@ class LuaDouble
         return rhs.add(v)
     }
 
-    override fun add(lhs: Double): LuaValue? {
+    override fun add(lhs: Double): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.valueOf(lhs + v)
     }
 
@@ -169,7 +169,7 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.valueOf(v - rhs)
     }
 
-    override fun subFrom(lhs: Double): LuaValue? {
+    override fun subFrom(lhs: Double): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v)
     }
 
@@ -177,11 +177,11 @@ class LuaDouble
         return rhs.mul(v)
     }
 
-    override fun mul(lhs: Double): LuaValue? {
+    override fun mul(lhs: Double): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v)
     }
 
-    override fun mul(lhs: Int): LuaValue? {
+    override fun mul(lhs: Int): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v)
     }
 
@@ -217,7 +217,7 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.ddiv(v, rhs.toDouble())
     }
 
-    override fun divInto(lhs: Double): LuaValue? {
+    override fun divInto(lhs: Double): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.ddiv(lhs, v)
     }
 
@@ -233,7 +233,7 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.dmod(v, rhs.toDouble())
     }
 
-    override fun modFrom(lhs: Double): LuaValue? {
+    override fun modFrom(lhs: Double): LuaValue {
         return net.blueva.luak.LuaDouble.Companion.dmod(lhs, v)
     }
 
@@ -341,7 +341,7 @@ class LuaDouble
         return 0
     }
 
-    override fun tojstring(): String? {
+    override fun tojstring(): String {
         /*
 		if ( v == 0.0 ) { // never occurs in J2me
 			long bits = ( v ).toBits();
@@ -371,7 +371,7 @@ class LuaDouble
         return tojstring()
     }
 
-    override fun optnumber(defval: LuaNumber?): LuaNumber? {
+    override fun optnumber(defval: LuaNumber?): LuaNumber {
         return this
     }
 
@@ -383,7 +383,7 @@ class LuaDouble
         return true
     }
 
-    override fun tonumber(): LuaValue? {
+    override fun tonumber(): LuaValue {
         return this
     }
 
@@ -395,7 +395,7 @@ class LuaDouble
         return v.toLong()
     }
 
-    override fun checknumber(): LuaNumber? {
+    override fun checknumber(): LuaNumber {
         return this
     }
 

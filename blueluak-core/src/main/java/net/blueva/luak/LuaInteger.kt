@@ -137,7 +137,7 @@ class LuaInteger
     }
 
     // unary operators
-    override fun neg(): LuaValue? {
+    override fun neg(): LuaValue {
         return net.blueva.luak.LuaInteger.Companion.valueOf(-v.toLong())
     }
 
@@ -177,7 +177,7 @@ class LuaInteger
         return LuaDouble.valueOf(lhs + v)
     }
 
-    override fun add(lhs: Int): LuaValue? {
+    override fun add(lhs: Int): LuaValue {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs + v.toLong())
     }
 
@@ -197,7 +197,7 @@ class LuaInteger
         return LuaDouble.valueOf(lhs - v)
     }
 
-    override fun subFrom(lhs: Int): LuaValue? {
+    override fun subFrom(lhs: Int): LuaValue {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs - v.toLong())
     }
 
@@ -209,7 +209,7 @@ class LuaInteger
         return LuaDouble.valueOf(lhs * v)
     }
 
-    override fun mul(lhs: Int): LuaValue? {
+    override fun mul(lhs: Int): LuaValue {
         return net.blueva.luak.LuaInteger.Companion.valueOf(lhs * v.toLong())
     }
 

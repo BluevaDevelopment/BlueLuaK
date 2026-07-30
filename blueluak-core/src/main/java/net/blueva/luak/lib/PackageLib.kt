@@ -129,7 +129,7 @@ class PackageLib : TwoArgFunction() {
         package_.set(net.blueva.luak.lib.PackageLib.Companion._PATH, LuaValue.valueOf(newLuaPath))
     }
 
-    override fun tojstring(): String? {
+    override fun tojstring(): String {
         return "package"
     }
 
@@ -211,7 +211,7 @@ class PackageLib : TwoArgFunction() {
     }
 
     inner class preload_searcher : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             val name: LuaString? = args.checkstring(1)
             val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
             return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`

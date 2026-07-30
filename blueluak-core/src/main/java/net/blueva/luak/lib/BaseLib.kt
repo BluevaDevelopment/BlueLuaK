@@ -218,7 +218,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "loadfile", // ( [filename [, mode [, env]]] ) -> chunk | nil, msg
     internal inner class loadfile : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
             val filename: String? = if (args.isstring(1)) args.tojstring(1) else null
             val mode: String? = args.optjstring(2, "bt")

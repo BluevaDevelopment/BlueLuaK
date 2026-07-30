@@ -50,7 +50,7 @@ class LuaNumber : LuaValue() {
         return this
     }
 
-    override fun tonumber(): LuaValue? {
+    override fun tonumber(): LuaValue {
         return this
     }
 
