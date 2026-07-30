@@ -174,7 +174,7 @@ class LuaThread : LuaValue {
                 this.error = t.message
             } finally {
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
-                this.notify()
+                (this as java.lang.Object).notify()
             }
         }
 
@@ -188,12 +188,12 @@ class LuaThread : LuaValue {
                     this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
                     Thread(this, "Coroutine-" + (++net.blueva.luak.LuaThread.Companion.coroutine_count)).start()
                 } else {
-                    this.notify()
+                    (this as java.lang.Object).notify()
                 }
                 if (previous_thread != null) previous_thread.state.status =
                     net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
-                this.wait()
+                (this as java.lang.Object).wait()
                 return (if (this.error != null) LuaValue.varargsOf(
                     LuaValue.FALSE,
                     LuaValue.valueOf(this.error)
@@ -215,9 +215,9 @@ class LuaThread : LuaValue {
             try {
                 this.result = args
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
-                this.notify()
+                (this as java.lang.Object).notify()
                 do {
-                    this.wait(net.blueva.luak.LuaThread.Companion.thread_orphan_check_interval)
+                    (this as java.lang.Object).wait(net.blueva.luak.LuaThread.Companion.thread_orphan_check_interval)
                     if (this.lua_thread.get() == null) {
                         this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
                         throw OrphanedThread()

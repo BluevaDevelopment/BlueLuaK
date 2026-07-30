@@ -777,7 +777,7 @@ open class LuaTable : LuaValue, Metatable {
         while (true) {
             val n: Varargs = next(k)
             if ((n.arg1().also { k = it })!!.isnil()) break
-            l.addElement(k)
+            l.add(k)
         }
         val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(l.size())
         l.copyInto(a)

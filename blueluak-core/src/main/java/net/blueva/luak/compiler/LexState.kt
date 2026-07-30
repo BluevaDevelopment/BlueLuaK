@@ -2024,7 +2024,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         private val RESERVED_LOCAL_VAR_KEYWORDS_TABLE: Hashtable = Hashtable()
 
         init {
-            for (i in net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS.indices) net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS_TABLE.put(
+            for (i in net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS.indices) net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS_TABLE!!.put(
                 net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS[i],
                 Boolean.TRUE
             )
@@ -2153,7 +2153,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             for (i in 0..<net.blueva.luak.compiler.LexState.Companion.NUM_RESERVED) {
                 val ts: LuaString? =
                     LuaValue.valueOf(net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![i]) as LuaString?
-                net.blueva.luak.compiler.LexState.Companion.RESERVED.put(
+                net.blueva.luak.compiler.LexState.Companion.RESERVED!!.put(
                     ts,
                     Integer(net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED + i)
                 )

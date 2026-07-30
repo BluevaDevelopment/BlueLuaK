@@ -132,7 +132,7 @@ protected constructor() : LuaFunction() {
             var i = 0
             val n = names.size
             while (i < n) {
-                val f = factory.newInstance() as LibFunction
+                val f = factory!!.getDeclaredConstructor().newInstance() as LibFunction
                 f.opcode = firstopcode + i
                 f.name = names[i]
                 env.set(f.name, f)

@@ -364,10 +364,10 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             } else if (weakvalues) {
                 mode = LuaString.valueOf("v")
             } else {
-                return LuaTable.tableOf()
+                return LuaValue.tableOf()
             }
-            val table: LuaTable = LuaTable.tableOf()
-            val mt: LuaTable? = LuaTable.tableOf(arrayOf<LuaValue?>(LuaValue.MODE, mode))
+            val table: LuaTable = LuaValue.tableOf()
+            val mt: LuaTable? = LuaValue.tableOf(arrayOf<LuaValue?>(LuaValue.MODE, mode))
             table.setmetatable(mt)
             return table
         }

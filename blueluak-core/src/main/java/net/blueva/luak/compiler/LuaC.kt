@@ -134,7 +134,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
         fun cachedLuaString(s: LuaString?): LuaString? {
             val c: LuaString? = strings.get(s) as LuaString?
             if (c != null) return c
-            strings.put(s, s)
+            strings!![s] = s
             return s
         }
 
