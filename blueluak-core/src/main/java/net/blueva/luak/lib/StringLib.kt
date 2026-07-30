@@ -106,7 +106,8 @@ class StringLib
      * @param args the calling args
      */
     internal class _byte : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            val s: LuaString = args.checkstring(1)
+        override fun invoke(args: Varargs): Varargs {
+            val s: LuaString = args.checkstring(1)
             val l: Int = s.m_length
             var posi: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(2, 1), l)
             var pose: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(3, posi), l)
@@ -140,7 +141,9 @@ class StringLib
      * @param args the calling VM
      */
     internal class _char : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            val n: Int = args.narg()            val bytes = ByteArray(n)
+        override fun invoke(args: Varargs): Varargs {
+            val n: Int = args.narg()
+            val bytes = ByteArray(n)
             var i = 0
             var a = 1
             while (i < n) {
@@ -167,7 +170,9 @@ class StringLib
      */
     internal class dump : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val f: LuaValue = args.checkfunction(1)            val baos: ByteArrayOutputStream = ByteArrayOutputStream()            try {
+            val f: LuaValue = args.checkfunction(1)
+            val baos: ByteArrayOutputStream = ByteArrayOutputStream()
+            try {
                 DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, true))
                 return LuaString.valueUsing(baos.toByteArray())
             } catch (e: IOException) {
@@ -224,7 +229,9 @@ class StringLib
     internal inner class format : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val fmt: LuaString = args.checkstring(1)
-            val n: Int = fmt.length()            val result: Buffer = Buffer(n)            var arg = 1
+            val n: Int = fmt.length()
+            val result: Buffer = Buffer(n)
+            var arg = 1
             var c: Int
 
             var i = 0
@@ -461,7 +468,8 @@ class StringLib
         override fun invoke(args: Varargs?): Varargs {
             while (soffset <= srclen) {
                 ms.reset()
-                val res = ms.match(soffset, 0)                if (res >= 0 && res != lastmatch) {
+                val res = ms.match(soffset, 0)
+                if (res >= 0 && res != lastmatch) {
                     val soff = soffset
                     soffset = res
                     lastmatch = soffset
@@ -524,7 +532,8 @@ class StringLib
             val src: LuaString = args.checkstring(1)
             val srclen: Int = src.length()
             val p: LuaString = args.checkstring(2)
-            var lastmatch = -1 /* end of last match */            val repl: LuaValue = args.arg(3)
+            var lastmatch = -1 /* end of last match */
+            val repl: LuaValue = args.arg(3)
             val max_s: Int = args.optint(4, srclen + 1)
             val anchor = p.length() > 0 && p.charAt(0) === '^'
 
@@ -601,7 +610,9 @@ class StringLib
             val s: LuaString = args.checkstring(1)
             val n: Int = args.checkint(2)
             val bytes = ByteArray(s.length() * n)
-            val len: Int = s.length()            var offset = 0            while (offset < bytes.size) {
+            val len: Int = s.length()
+            var offset = 0
+            while (offset < bytes.size) {
                 s.copyInto(0, bytes, offset, len)
                 offset += len
             }
@@ -648,6 +659,7 @@ class StringLib
 
             var start: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.checkint(2), l)
             var end: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(args.optint(3, -1), l)
+
             if (start < 1) start = 1
             if (end > l) end = l
 

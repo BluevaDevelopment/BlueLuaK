@@ -156,7 +156,7 @@ class LuaInteger
     }
 
     // equality w/o metatable processing
-    override fun raweq(`val`: LuaValue): Boolean {
+    fun raweq(`val`: LuaValue): Boolean {
         return `val`.raweq(v)
     }
 
@@ -414,7 +414,7 @@ class LuaInteger
             ) as LuaNumber) else LuaDouble.valueOf(l) as LuaNumber?
         }
 
-        override fun hashCode(x: Int): Int {
+        fun hashCode(x: Int): Int {
             return x
         }
     }

@@ -119,10 +119,12 @@ class IoLib : TwoArgFunction() {
         }
 
         // essentially a userdata instance
-        override fun type(): Int {            return LuaValue.TUSERDATA
+        override fun type(): Int {
+            return LuaValue.TUSERDATA
         }
 
-        override fun typename(): String? {            return "userdata"
+        override fun typename(): String? {
+            return "userdata"
         }
 
         // displays as "file" type
@@ -615,7 +617,7 @@ class IoLib : TwoArgFunction() {
         var i = 0
         while (i < len) {
             // [rwa][+]?b*
-            val ch: Char = mode[i]
+            val ch: Char = mode.charAt(i)
             if (i == 0 && "rwa".indexOf(ch) >= 0) {
                 i++
                 continue

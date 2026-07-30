@@ -52,6 +52,7 @@ abstract class OneArgFunction
 /** Default constructor  */
     : LibFunction() {
     abstract override fun call(arg: LuaValue?): LuaValue?
+
     override fun call(): LuaValue? {
         return call(NIL)
     }

@@ -50,6 +50,7 @@ abstract class ZeroArgFunction
 /** Default constructor  */
     : LibFunction() {
     abstract override fun call(): LuaValue?
+
     override fun call(arg: LuaValue?): LuaValue? {
         return call()
     }

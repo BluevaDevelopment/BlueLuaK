@@ -120,12 +120,14 @@ class LuaString private constructor(
 
     // unary operators
     override fun neg(): LuaValue? {
-        val d = scannumber()        return if (Double.isNaN(d)) super.neg() else valueOf(-d)
+        val d = scannumber()
+        return if (Double.isNaN(d)) super.neg() else valueOf(-d)
     }
 
     // basic binary arithmetic
     override fun add(rhs: LuaValue): LuaValue {
-        val d = scannumber()        return if (Double.isNaN(d)) arithmt(ADD, rhs) else rhs.add(d)
+        val d = scannumber()
+        return if (Double.isNaN(d)) arithmt(ADD, rhs) else rhs.add(d)
     }
 
     override fun add(rhs: Double): LuaValue? {
@@ -668,7 +670,7 @@ class LuaString private constructor(
      * @return IntValue, DoubleValue, or NIL depending on the content of the string.
      * @see LuaValue.tonumber
      */
-    override fun tonumber(base: Int): LuaValue? {
+    fun tonumber(base: Int): LuaValue? {
         val d = scannumber(base)
         return if (Double.isNaN(d)) NIL else valueOf(d)
     }
@@ -826,7 +828,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueOf(bytes: ByteArray, off: Int = 0, len: Int = bytes.size): LuaString {
+        fun valueOf(bytes: ByteArray, off: Int = 0, len: Int = bytes.length): LuaString {
             if (len > net.blueva.luak.LuaString.Companion.RECENT_STRINGS_MAX_LENGTH) return net.blueva.luak.LuaString.Companion.valueFromCopy(
                 bytes,
                 off,
@@ -874,7 +876,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueUsing(bytes: ByteArray, off: Int = 0, len: Int = bytes.size): LuaString {
+        fun valueUsing(bytes: ByteArray, off: Int = 0, len: Int = bytes.length): LuaString {
             if (bytes.size > net.blueva.luak.LuaString.Companion.RECENT_STRINGS_MAX_LENGTH) return net.blueva.luak.LuaString(
                 bytes,
                 off,
@@ -910,7 +912,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping a copy of the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueOf(bytes: CharArray, off: Int = 0, len: Int = bytes.size): LuaString {
+        fun valueOf(bytes: CharArray, off: Int = 0, len: Int = bytes.length): LuaString {
             val b = ByteArray(len)
             for (i in 0..<len) b[i] = bytes[i + off].code.toByte()
             return net.blueva.luak.LuaString.Companion.valueUsing(b, 0, len)
@@ -923,7 +925,7 @@ class LuaString private constructor(
          * @param length number of bytes starting with offset that are part of the string.
          * @return hash for the string defined by bytes, offset, and length.
          */
-        override fun hashCode(bytes: ByteArray, offset: Int, length: Int): Int {
+        fun hashCode(bytes: ByteArray, offset: Int, length: Int): Int {
             var h = length /* seed */
             val step = (length shr 5) + 1 /* if string is too long, don't hash all its chars */
             var l1 = length
@@ -935,11 +937,11 @@ class LuaString private constructor(
             return h
         }
 
-        override fun equals(a: LuaString, i: Int, b: LuaString, j: Int, n: Int): Boolean {
+        fun equals(a: LuaString, i: Int, b: LuaString, j: Int, n: Int): Boolean {
             return net.blueva.luak.LuaString.Companion.equals(a.m_bytes, a.m_offset + i, b.m_bytes, b.m_offset + j, n)
         }
 
-        override fun equals(a: ByteArray, i: Int, b: ByteArray, j: Int, n: Int): Boolean {
+        fun equals(a: ByteArray, i: Int, b: ByteArray, j: Int, n: Int): Boolean {
             var i = i
             var j = j
             var n = n

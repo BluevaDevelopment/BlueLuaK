@@ -161,7 +161,7 @@ open class LuaTable : LuaValue, Metatable {
             net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
     }
 
-    override fun presize(narray: Int, nhash: Int) {
+    fun presize(narray: Int, nhash: Int) {
         var nhash = nhash
         if (nhash > 0 && nhash < net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY) nhash =
             net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY
@@ -192,7 +192,8 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun setmetatable(metatable: LuaValue?): LuaValue? {
-        val hadWeakKeys = m_metatable != null && m_metatable.useWeakKeys()        val hadWeakValues = m_metatable != null && m_metatable.useWeakValues()
+        val hadWeakKeys = m_metatable != null && m_metatable.useWeakKeys()
+        val hadWeakValues = m_metatable != null && m_metatable.useWeakValues()
         m_metatable = metatableOf(metatable)
         if ((hadWeakKeys != (m_metatable != null && m_metatable.useWeakKeys())) ||
             (hadWeakValues != (m_metatable != null && m_metatable.useWeakValues()))
@@ -204,7 +205,8 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun get(key: Int): LuaValue {
-        val v: LuaValue = rawget(key)        return if (v.isnil() && m_metatable != null) gettable(this, valueOf(key)) else v
+        val v: LuaValue = rawget(key)
+        return if (v.isnil() && m_metatable != null) gettable(this, valueOf(key)) else v
     }
 
     override fun get(key: LuaValue): LuaValue? {
@@ -214,12 +216,13 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun rawget(key: Int): LuaValue {
         if (key > 0 && key <= array.size) {
-            val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable.arrayget(array, key - 1)            return if (v != null) v else NIL
+            val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable.arrayget(array, key - 1)
+            return if (v != null) v else NIL
         }
         return hashget(LuaInteger.valueOf(key))
     }
 
-    override fun rawget(key: LuaValue): LuaValue {
+    fun rawget(key: LuaValue): LuaValue {
         if (key.isinttype()) {
             val ikey: Int = key.toint()
             if (ikey > 0 && ikey <= array.size) {
@@ -335,7 +338,8 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun length(): Int {
         if (m_metatable != null) {
-            val len: LuaValue = len()            if (!len.isint()) throw LuaError("table length is not an integer: " + len)
+            val len: LuaValue = len()
+            if (!len.isint()) throw LuaError("table length is not an integer: " + len)
             return len.toint()
         }
         return rawlen()
@@ -350,7 +354,8 @@ open class LuaTable : LuaValue, Metatable {
     override fun rawlen(): Int {
         val a = this.arrayLength
         var n = a + 1
-        var m = 0        while (!rawget(n).isnil()) {
+        var m = 0
+        while (!rawget(n).isnil()) {
             m = n
             n += a + this.hashLength + 1
         }
@@ -1021,7 +1026,8 @@ open class LuaTable : LuaValue, Metatable {
             return key()
         }
 
-        override fun subargs(start: Int): Varargs? {            when (start) {
+        override fun subargs(start: Int): Varargs? {
+            when (start) {
                 1 -> return this
                 2 -> return value()
             }
@@ -1238,7 +1244,8 @@ open class LuaTable : LuaValue, Metatable {
         override fun toString(): String {
             val buf: StringBuffer = StringBuffer()
             buf.append("<dead")
-            val k: LuaValue? = key()            if (k != null) {
+            val k: LuaValue? = key()
+            if (k != null) {
                 buf.append(": ")
                 buf.append(k.toString())
             }

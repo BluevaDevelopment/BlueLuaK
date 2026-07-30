@@ -52,6 +52,7 @@ abstract class ThreeArgFunction
 /** Default constructor  */
     : LibFunction() {
     abstract override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue?
+
     override fun call(): LuaValue? {
         return call(NIL, NIL, NIL)
     }

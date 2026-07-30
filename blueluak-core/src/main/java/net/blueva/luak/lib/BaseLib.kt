@@ -82,7 +82,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    override fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
         globals = env.checkglobals()
         globals.finder = this
         globals.baselib = this
@@ -127,7 +127,8 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "assert", // ( v [,message] ) -> v, message | ERR
     internal class _assert : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            if (!args.arg1().toboolean()) error(
+        override fun invoke(args: Varargs): Varargs {
+            if (!args.arg1().toboolean()) error(
                 if (args.narg() > 1) args.optjstring(
                     2,
                     "assertion failed!"
@@ -139,7 +140,9 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "collectgarbage", // ( opt [,arg] ) -> value
     internal class collectgarbage : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            val s: String? = args.optjstring(1, "collect")            if ("collect".equals(s)) {
+        override fun invoke(args: Varargs): Varargs {
+            val s: String? = args.optjstring(1, "collect")
+            if ("collect".equals(s)) {
                 System.gc()
                 return ZERO
             } else if ("count".equals(s)) {
@@ -160,7 +163,8 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class dofile : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
-            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            val v: Varargs = if (filename == null) loadStream(
+            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null
+            val v: Varargs = if (filename == null) loadStream(
                 globals.STDIN,
                 "=stdin",
                 "bt",
@@ -172,7 +176,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "error", // ( message [,level] ) -> ERR
     internal class error : TwoArgFunction() {
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
+        fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
             if (arg1.isnil()) throw LuaError(NIL)
             if (!arg1.isstring() || arg2.optint(1) === 0) throw LuaError(arg1)
             throw LuaError(arg1.tojstring(), arg2.optint(1))
@@ -185,7 +189,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             return argerror(1, "value expected")
         }
 
-        override fun call(arg: LuaValue): LuaValue {
+        fun call(arg: LuaValue): LuaValue {
             val mt: LuaValue? = arg.getmetatable()
             return if (mt != null) mt.rawget(METATABLE).optvalue(mt) else NIL
         }
@@ -194,7 +198,8 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     // "load", // ( ld [, source [, mode [, env]]] ) -> chunk | nil, msg
     internal inner class load : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val ld: LuaValue = args.arg1()            if (!ld.isstring() && !ld.isfunction()) {
+            val ld: LuaValue = args.arg1()
+            if (!ld.isstring() && !ld.isfunction()) {
                 throw LuaError("bad argument #1 to 'load' (string or function expected, got " + ld.typename() + ")")
             }
             val source: String? = args.optjstring(2, if (ld.isstring()) ld.tojstring() else "=(load)")
@@ -214,7 +219,9 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class loadfile : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
             args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
-            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            val mode: String? = args.optjstring(2, "bt")            val env: LuaValue? = args.optvalue(3, globals)
+            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null
+            val mode: String? = args.optjstring(2, "bt")
+            val env: LuaValue? = args.optvalue(3, globals)
             return if (filename == null) loadStream(globals.STDIN, "=stdin", mode, env) else loadFile(
                 filename,
                 mode,
@@ -247,7 +254,8 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun invoke(args: Varargs): Varargs {
             val tostring: LuaValue = globals.get("tostring")
             var i = 1
-            val n: Int = args.narg()            while (i <= n) {
+            val n: Int = args.narg()
+            while (i <= n) {
                 if (i > 1) globals.STDOUT.print('\t')
                 val s: LuaString = tostring.call(args.arg(i)).strvalue()
                 globals.STDOUT.print(s.tojstring())
@@ -265,10 +273,11 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             return argerror(1, "value expected")
         }
 
-        override fun call(arg: LuaValue?): LuaValue {            return argerror(2, "value expected")
+        override fun call(arg: LuaValue?): LuaValue {
+            return argerror(2, "value expected")
         }
 
-        override fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {
+        fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {
             return valueOf(arg1.raweq(arg2))
         }
     }
@@ -279,14 +288,15 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             return argerror(2, "value expected")
         }
 
-        override fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {            return arg1.checktable().rawget(arg2)
+        fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {
+            return arg1.checktable().rawget(arg2)
         }
     }
 
 
     // "rawlen", // (v) -> value
     internal class rawlen : LibFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        fun call(arg: LuaValue): LuaValue {
             return valueOf(arg.rawlen())
         }
     }
@@ -301,8 +311,9 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             return argerror(3, "value expected")
         }
 
-        override fun call(table: LuaValue, index: LuaValue, value: LuaValue?): LuaValue {
-            val t: LuaTable = table.checktable()            if (!index.isvalidkey()) argerror(2, "table index is nil")
+        fun call(table: LuaValue, index: LuaValue, value: LuaValue?): LuaValue {
+            val t: LuaTable = table.checktable()
+            if (!index.isvalidkey()) argerror(2, "table index is nil")
             t.rawset(index, value)
             return t
         }
@@ -325,19 +336,20 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             return argerror(2, "nil or table expected")
         }
 
-        override fun call(table: LuaValue, metatable: LuaValue): LuaValue {
-            val mt0: LuaValue? = table.checktable().getmetatable()            if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
+        fun call(table: LuaValue, metatable: LuaValue): LuaValue {
+            val mt0: LuaValue? = table.checktable().getmetatable()
+            if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
             return table.setmetatable(if (metatable.isnil()) null else metatable.checktable())
         }
     }
 
     // "tonumber", // (e [,base]) -> value
     internal class tonumber : LibFunction() {
-        override fun call(e: LuaValue): LuaValue {
+        fun call(e: LuaValue): LuaValue {
             return e.tonumber()
         }
 
-        override fun call(e: LuaValue, base: LuaValue): LuaValue {
+        fun call(e: LuaValue, base: LuaValue): LuaValue {
             if (base.isnil()) return e.tonumber()
             val b: Int = base.checkint()
             if (b < 2 || b > 36) argerror(2, "base out of range")
@@ -347,7 +359,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "tostring", // (e) -> value
     internal class tostring : LibFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        fun call(arg: LuaValue): LuaValue {
             val h: LuaValue = arg.metatag(TOSTRING)
             if (!h.isnil()) return h.call(arg)
             val v: LuaValue = arg.tostring()
@@ -358,7 +370,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "type",  // (v) -> value
     internal class type : LibFunction() {
-        override fun call(arg: LuaValue): LuaValue {
+        fun call(arg: LuaValue): LuaValue {
             return valueOf(arg.typename())
         }
     }

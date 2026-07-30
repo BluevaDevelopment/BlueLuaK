@@ -159,7 +159,7 @@ protected constructor() : LuaFunction() {
         return call(a, b)
     }
 
-    open override fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
         return call(a, b, c)
     }
 

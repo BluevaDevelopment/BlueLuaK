@@ -59,7 +59,8 @@ class LuaDouble
     /** The value being held by this instance.  */
     val v: Double
 ) : LuaNumber() {
-    override fun hashCode(): Int {        val l: Long = Double.doubleToLongBits(v + 1)
+    override fun hashCode(): Int {
+        val l: Long = Double.doubleToLongBits(v + 1)
         return ((l shr 32).toInt()) + l.toInt()
     }
 
@@ -135,7 +136,7 @@ class LuaDouble
     }
 
     // equality w/o metatable processing
-    override fun raweq(`val`: LuaValue): Boolean {
+    fun raweq(`val`: LuaValue): Boolean {
         return `val`.raweq(v)
     }
 

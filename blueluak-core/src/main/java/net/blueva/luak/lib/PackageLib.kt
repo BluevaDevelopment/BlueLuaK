@@ -204,14 +204,16 @@ class PackageLib : TwoArgFunction() {
     }
 
     class loadlib : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            args.checkstring(1)
+        override fun invoke(args: Varargs): Varargs {
+            args.checkstring(1)
             return varargsOf(NIL, valueOf("dynamic libraries not enabled"), valueOf("absent"))
         }
     }
 
     inner class preload_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
-            val name: LuaString? = args.checkstring(1)            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
+            val name: LuaString? = args.checkstring(1)
+            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
             return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`
         }
     }
@@ -219,6 +221,7 @@ class PackageLib : TwoArgFunction() {
     inner class lua_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: LuaString? = args.checkstring(1)
+
 
             // get package path
             val path: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PATH)
@@ -248,7 +251,8 @@ class PackageLib : TwoArgFunction() {
     inner class searchpath : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var name: String = args.checkjstring(1)
-            val path: String = args.checkjstring(2)            val sep: String = args.optjstring(3, ".")
+            val path: String = args.checkjstring(2)
+            val sep: String = args.optjstring(3, ".")
             val rep: String = args.optjstring(4, net.blueva.luak.lib.PackageLib.Companion.FILE_SEP)
 
 
@@ -256,7 +260,7 @@ class PackageLib : TwoArgFunction() {
             var e = -1
             val n: Int = path.length()
             var sb: StringBuffer? = null
-            name = name.replace(sep[0], rep[0])
+            name = name.replace(sep.charAt(0), rep.charAt(0))
             while (e < n) {
                 // find next template
 
@@ -296,7 +300,9 @@ class PackageLib : TwoArgFunction() {
     inner class java_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: String = args.checkjstring(1)
-            val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)            var c: Class? = null            var v: LuaValue? = null
+            val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)
+            var c: Class? = null
+            var v: LuaValue? = null
             try {
                 c = Class.forName(classname)
                 v = c.newInstance() as LuaValue?
@@ -345,11 +351,11 @@ class PackageLib : TwoArgFunction() {
             var j = n
             if (filename.endsWith(".lua")) j -= 4
             for (k in 0..<j) {
-                var c: Char = filename[k]
+                var c: Char = filename.charAt(k)
                 if ((!net.blueva.luak.lib.PackageLib.Companion.isClassnamePart(c)) || (c == '/') || (c == '\\')) {
                     val sb: StringBuffer = StringBuffer(j)
                     for (i in 0..<j) {
-                        c = filename[i]
+                        c = filename.charAt(i)
                         sb.append(
                             if (net.blueva.luak.lib.PackageLib.Companion.isClassnamePart(c)) c else if ((c == '/') || (c == '\\')) '.' else '_'
                         )
