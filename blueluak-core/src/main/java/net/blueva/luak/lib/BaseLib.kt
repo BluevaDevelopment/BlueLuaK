@@ -73,7 +73,7 @@ import java.io.InputStream
  * 
  * @see [Lua 5.2 Base Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.1)
  */
-class BaseLib : TwoArgFunction(), ResourceFinder {
+open class BaseLib : TwoArgFunction(), ResourceFinder {
     var globals: Globals? = null
 
 
@@ -120,7 +120,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
      * 
      * Tries to open the file as a resource, which can work for JSE and JME.
      */
-    override fun findResource(filename: String?): InputStream? {
+    open override fun findResource(filename: String?): InputStream? {
         filename ?: return null
         return javaClass.getResourceAsStream(if (filename.startsWith("/")) filename else "/" + filename)
     }

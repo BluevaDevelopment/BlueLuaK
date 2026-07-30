@@ -50,7 +50,7 @@ import java.io.IOException
  * 
  * @see [Lua 5.2 String Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.4)
  */
-class StringLib
+open class StringLib
 /** Construct a StringLib, which can be initialized by calling it with a
  * modname string, and a global environment table as arguments using
  * [.call].  */
@@ -414,7 +414,7 @@ class StringLib
 
     }
 
-    protected fun format(src: String?, x: Double): String {
+    protected open fun format(src: String?, x: Double): String {
         return (x).toString()
     }
 

@@ -117,7 +117,7 @@ open class MathLib : TwoArgFunction() {
         return math
     }
 
-    internal abstract class UnaryOp : OneArgFunction() {
+    abstract class UnaryOp : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             return valueOf(call(arg!!.checkdouble()))
         }
@@ -125,7 +125,7 @@ open class MathLib : TwoArgFunction() {
         protected abstract fun call(d: Double): Double
     }
 
-    internal abstract class BinaryOp : TwoArgFunction() {
+    abstract class BinaryOp : TwoArgFunction() {
         override fun call(x: LuaValue?, y: LuaValue?): LuaValue? {
             return valueOf(call(x!!.checkdouble(), y!!.checkdouble()))
         }

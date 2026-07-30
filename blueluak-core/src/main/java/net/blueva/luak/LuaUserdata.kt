@@ -17,7 +17,7 @@
 package net.blueva.luak
 
 
-class LuaUserdata : LuaValue {
+open class LuaUserdata : LuaValue {
     var m_instance: Any
     var m_metatable: LuaValue? = null
 

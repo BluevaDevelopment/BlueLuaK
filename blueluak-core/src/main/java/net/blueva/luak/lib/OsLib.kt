@@ -75,7 +75,7 @@ import java.util.Date
  * 
  * @see [http://www.lua.org/manual/5.1/manual.html.5.8](http://www.lua.org/manual/5.1/manual.html.5.8)
  */
-class OsLib
+open class OsLib
 /**
  * Create and OsLib instance.
  */
@@ -327,7 +327,7 @@ class OsLib
      * is available and zero otherwise.
      * @param command command to pass to the system
      */
-    protected fun execute(command: String?): Varargs {
+    protected open fun execute(command: String?): Varargs {
         return varargsOf(NIL, valueOf("exit"), (ONE)!!)
     }
 
@@ -356,7 +356,7 @@ class OsLib
      * @param varname
      * @return String value, or null if not defined
      */
-    protected fun getenv(varname: String?): String {
+    protected open fun getenv(varname: String?): String {
         return System.getProperty(varname)
     }
 
@@ -369,7 +369,7 @@ class OsLib
      * @throws IOException if it fails
      */
     @kotlin.Throws(IOException::class)
-    protected fun remove(filename: String?) {
+    protected open fun remove(filename: String?) {
         throw IOException("not implemented")
     }
 
@@ -382,7 +382,7 @@ class OsLib
      * @throws IOException if it fails
      */
     @kotlin.Throws(IOException::class)
-    protected fun rename(oldname: String?, newname: String?) {
+    protected open fun rename(oldname: String?, newname: String?) {
         throw IOException("not implemented")
     }
 
@@ -448,7 +448,7 @@ class OsLib
      * 
      * @return String filename to use
      */
-    protected fun tmpname(): String {
+    protected open fun tmpname(): String {
         kotlin.synchronized(net.blueva.luak.lib.OsLib::class.java) {
             return net.blueva.luak.lib.OsLib.Companion.TMP_PREFIX + (net.blueva.luak.lib.OsLib.Companion.tmpnames++) + net.blueva.luak.lib.OsLib.Companion.TMP_SUFFIX
         }

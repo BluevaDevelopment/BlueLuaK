@@ -4084,7 +4084,7 @@ open class LuaValue : Varargs() {
          * @throws LuaError if there is a loop in metatag processing
          * @return true if assignment or metatag processing succeeded, false otherwise
          */
-        internal fun settable(t: LuaValue, key: LuaValue?, value: LuaValue?): Boolean {
+        fun settable(t: LuaValue, key: LuaValue?, value: LuaValue?): Boolean {
             var t = t
             var tm: LuaValue? = null
             var loop = 0
