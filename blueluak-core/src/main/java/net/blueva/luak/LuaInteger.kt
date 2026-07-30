@@ -381,11 +381,11 @@ class LuaInteger
     }
 
     override fun checkjstring(): String {
-        return String.valueOf(v)
+        return (v).toString()
     }
 
     override fun checkstring(): LuaString? {
-        return valueOf(String.valueOf(v))
+        return valueOf((v).toString())
     }
 
     companion object {

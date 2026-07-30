@@ -239,33 +239,33 @@ class OsLib
                         'b' -> result.append(net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])
                         'B' -> result.append(net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])
                         'c' -> result.append(date("%a %b %d %H:%M:%S %Y", time))
-                        'd' -> result.append(String.valueOf(100 + d.get(Calendar.DAY_OF_MONTH)).substring(1))
-                        'H' -> result.append(String.valueOf(100 + d.get(Calendar.HOUR_OF_DAY)).substring(1))
-                        'I' -> result.append(String.valueOf(100 + (d.get(Calendar.HOUR_OF_DAY) % 12)).substring(1))
+                        'd' -> result.append((100 + d.get(Calendar.DAY_OF_MONTH)).toString().substring(1))
+                        'H' -> result.append((100 + d.get(Calendar.HOUR_OF_DAY)).toString().substring(1))
+                        'I' -> result.append((100 + (d.get(Calendar.HOUR_OF_DAY) % 12)).toString().substring(1))
                         'j' -> {
                             // day of year.
                             val y0: Calendar = beginningOfYear(d)
                             val dayOfYear =
                                 ((d.getTime().getTime() - y0.getTime().getTime()) / (24 * 3600L * 1000L)) as Int
-                            result.append(String.valueOf(1001 + dayOfYear).substring(1))
+                            result.append((1001 + dayOfYear).toString().substring(1))
                         }
 
-                        'm' -> result.append(String.valueOf(101 + d.get(Calendar.MONTH)).substring(1))
-                        'M' -> result.append(String.valueOf(100 + d.get(Calendar.MINUTE)).substring(1))
+                        'm' -> result.append((101 + d.get(Calendar.MONTH)).toString().substring(1))
+                        'M' -> result.append((100 + d.get(Calendar.MINUTE)).toString().substring(1))
                         'p' -> result.append(if (d.get(Calendar.HOUR_OF_DAY) < 12) "AM" else "PM")
-                        'S' -> result.append(String.valueOf(100 + d.get(Calendar.SECOND)).substring(1))
-                        'U' -> result.append(String.valueOf(weekNumber(d, 0)))
-                        'w' -> result.append(String.valueOf((d.get(Calendar.DAY_OF_WEEK) + 6) % 7))
-                        'W' -> result.append(String.valueOf(weekNumber(d, 1)))
+                        'S' -> result.append((100 + d.get(Calendar.SECOND)).toString().substring(1))
+                        'U' -> result.append((weekNumber(d, 0)).toString())
+                        'w' -> result.append(((d.get(Calendar.DAY_OF_WEEK) + 6) % 7).toString())
+                        'W' -> result.append((weekNumber(d, 1)).toString())
                         'x' -> result.append(date("%m/%d/%y", time))
                         'X' -> result.append(date("%H:%M:%S", time))
-                        'y' -> result.append(String.valueOf(d.get(Calendar.YEAR)).substring(2))
-                        'Y' -> result.append(String.valueOf(d.get(Calendar.YEAR)))
+                        'y' -> result.append((d.get(Calendar.YEAR)).toString().substring(2))
+                        'Y' -> result.append((d.get(Calendar.YEAR)).toString())
                         'z' -> {
                             val tzo = timeZoneOffset(d) / 60
                             val a: Int = Math.abs(tzo)
-                            val h: String? = String.valueOf(100 + a / 60).substring(1)
-                            val m: String? = String.valueOf(100 + a % 60).substring(1)
+                            val h: String? = (100 + a / 60).toString().substring(1)
+                            val m: String? = (100 + a % 60).toString().substring(1)
                             result.append((if (tzo >= 0) "+" else "-") + h + m)
                         }
 

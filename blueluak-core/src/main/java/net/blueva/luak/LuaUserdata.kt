@@ -31,7 +31,7 @@ class LuaUserdata : LuaValue {
     }
 
     override fun tojstring(): String {
-        return String.valueOf(m_instance)
+        return (m_instance).toString()
     }
 
     override fun type(): Int {

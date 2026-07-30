@@ -116,7 +116,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun token2str(token: Int): String? {
         if (token < net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED) {
             return if (net.blueva.luak.compiler.LexState.Companion.iscntrl(token)) L!!.pushfstring("char(" + token + ")") else L!!.pushfstring(
-                String.valueOf(token.toChar())
+                (token.toChar()).toString()
             )
         } else {
             return net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![token - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED]
@@ -2040,7 +2040,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
 
         private fun LUA_QL(o: Object?): String {
-            return net.blueva.luak.compiler.LexState.Companion.LUA_QS(String.valueOf(o))
+            return net.blueva.luak.compiler.LexState.Companion.LUA_QS((o).toString())
         }
 
         private const val LUA_COMPAT_LSTR = 1 // 1 for compatibility, 2 for old behavior

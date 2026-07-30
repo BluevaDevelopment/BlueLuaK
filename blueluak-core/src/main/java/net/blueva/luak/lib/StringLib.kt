@@ -418,7 +418,7 @@ class StringLib
     }
 
     protected fun format(src: String?, x: Double): String {
-        return String.valueOf(x)
+        return (x).toString()
     }
 
     /**
