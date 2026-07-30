@@ -751,7 +751,7 @@ open class LuaValue : Varargs() {
      * @see .TUSERDATA
      */
     open fun optuserdata(c: KClass<*>, defval: Any?): Any? {
-        argerror(c.qualifiedName ?: c.simpleName ?: "userdata")
+        argerror(platformTypeName(c))
         return null
     }
 

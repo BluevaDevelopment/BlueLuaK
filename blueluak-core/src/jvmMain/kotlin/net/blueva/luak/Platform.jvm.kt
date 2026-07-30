@@ -14,6 +14,8 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import kotlin.reflect.KClass
+
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 internal actual fun platformProperty(name: String): String? = System.getProperty(name)
 internal actual fun platformExit(code: Int) = System.exit(code)
@@ -24,3 +26,5 @@ internal actual fun platformLoadLibrary(className: String, globals: Globals): Lu
     if (value is LuaFunction) value.initupvalue1(globals)
     return value
 }
+internal actual fun platformTypeName(type: KClass<*>): String =
+    type.qualifiedName ?: type.simpleName ?: "userdata"

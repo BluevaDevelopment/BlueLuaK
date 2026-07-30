@@ -72,7 +72,7 @@ open class LuaUserdata : LuaValue {
     }
 
     override fun optuserdata(c: KClass<*>, defval: Any?): Any {
-        if (!c!!.isInstance(m_instance)) typerror(c.qualifiedName ?: c.simpleName ?: "userdata")
+        if (!c!!.isInstance(m_instance)) typerror(platformTypeName(c))
         return m_instance
     }
 
@@ -91,7 +91,7 @@ open class LuaUserdata : LuaValue {
 
     override fun checkuserdata(c: KClass<*>?): Any {
         if (c!!.isInstance(m_instance)) return m_instance
-        return (typerror(c.qualifiedName ?: c.simpleName ?: "userdata"))!!
+        return (typerror(platformTypeName(c)))!!
     }
 
     override fun get(key: LuaValue): LuaValue {
