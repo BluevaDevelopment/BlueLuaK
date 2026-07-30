@@ -62,8 +62,8 @@ class CoroutineLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
         val coroutine: LuaTable = LuaTable()
         coroutine.set("create", create())
         coroutine.set("resume", net.blueva.luak.lib.CoroutineLib.resume())
@@ -71,14 +71,14 @@ class CoroutineLib : TwoArgFunction() {
         coroutine.set("status", net.blueva.luak.lib.CoroutineLib.status())
         coroutine.set("yield", YieldFunction())
         coroutine.set("wrap", wrap())
-        env.set("coroutine", coroutine)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
+        env!!.set("coroutine", coroutine)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
         return coroutine
     }
 
     internal inner class create : LibFunction() {
-        fun call(f: LuaValue): LuaValue {
-            return LuaThread((globals)!!, f.checkfunction())
+        override fun call(f: LuaValue?): LuaValue? {
+            return LuaThread((globals)!!, f!!.checkfunction())
         }
     }
 
@@ -97,8 +97,8 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal class status : LibFunction() {
-        fun call(t: LuaValue): LuaValue {
-            val lt: LuaThread = t.checkthread()!!
+        override fun call(t: LuaValue?): LuaValue? {
+            val lt: LuaThread = t!!.checkthread()!!
             return valueOf(lt.status)
         }
     }
@@ -110,8 +110,8 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal inner class wrap : LibFunction() {
-        fun call(f: LuaValue): LuaValue {
-            val func: LuaValue? = f.checkfunction()
+        override fun call(f: LuaValue?): LuaValue? {
+            val func: LuaValue? = f!!.checkfunction()
             val thread: LuaThread = LuaThread((globals)!!, func)
             return net.blueva.luak.lib.CoroutineLib.wrapper(thread)
         }

@@ -78,8 +78,8 @@ class DebugLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
         globals!!.debuglib = this
         val debug: LuaTable = LuaTable()
         debug.set("debug", net.blueva.luak.lib.DebugLib.debug())
@@ -98,14 +98,14 @@ class DebugLib : TwoArgFunction() {
         debug.set("traceback", traceback())
         debug.set("upvalueid", net.blueva.luak.lib.DebugLib.upvalueid())
         debug.set("upvaluejoin", net.blueva.luak.lib.DebugLib.upvaluejoin())
-        env.set("debug", debug)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("debug", debug)
+        env!!.set("debug", debug)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("debug", debug)
         return debug
     }
 
     // debug.debug()
     internal class debug : ZeroArgFunction() {
-        override fun call(): LuaValue {
+        override fun call(): LuaValue? {
             return (NONE)!!
         }
     }
@@ -203,15 +203,15 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.getmetatable (value)
     internal class getmetatable : LibFunction() {
-        fun call(v: LuaValue): LuaValue? {
-            val mt: LuaValue? = v.getmetatable()
+        override fun call(v: LuaValue?): LuaValue? {
+            val mt: LuaValue? = v!!.getmetatable()
             return if (mt != null) mt else NIL
         }
     }
 
     //	debug.getregistry ()
     internal inner class getregistry : ZeroArgFunction() {
-        override fun call(): LuaValue {
+        override fun call(): LuaValue? {
             return (globals)!!
         }
     }
@@ -234,8 +234,8 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.getuservalue (u)
     internal class getuservalue : LibFunction() {
-        fun call(u: LuaValue): LuaValue? {
-            return if (u.isuserdata()) u else NIL
+        override fun call(u: LuaValue?): LuaValue? {
+            return if (u!!.isuserdata()) u else NIL
         }
     }
 
@@ -281,16 +281,16 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.setmetatable (value, table)
     internal class setmetatable : TwoArgFunction() {
-        fun call(value: LuaValue, table: LuaValue): LuaValue {
-            val mt: LuaValue? = table.opttable(null)
-            when (value.type()) {
+        override fun call(value: LuaValue?, table: LuaValue?): LuaValue? {
+            val mt: LuaValue? = table!!.opttable(null)
+            when (value!!.type()) {
                 TNIL -> LuaNil.s_metatable = mt
                 TNUMBER -> LuaNumber.s_metatable = mt
                 TBOOLEAN -> LuaBoolean.s_metatable = mt
                 TSTRING -> LuaString.s_metatable = mt
                 TFUNCTION -> LuaFunction.s_metatable = mt
                 TTHREAD -> LuaThread.s_metatable = mt
-                else -> value.setmetatable(mt)
+                else -> value!!.setmetatable(mt)
             }
             return value
         }

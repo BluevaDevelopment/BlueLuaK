@@ -52,7 +52,7 @@ class TableLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val table: LuaTable = LuaTable()
         table.set("concat", net.blueva.luak.lib.TableLib.concat())
         table.set("insert", net.blueva.luak.lib.TableLib.insert())
@@ -60,27 +60,27 @@ class TableLib : TwoArgFunction() {
         table.set("remove", net.blueva.luak.lib.TableLib.remove())
         table.set("sort", net.blueva.luak.lib.TableLib.sort())
         table.set("unpack", net.blueva.luak.lib.TableLib.unpack())
-        env.set("table", table)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("table", table)
+        env!!.set("table", table)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("table", table)
         return NIL
     }
 
     // "concat" (table [, sep [, i [, j]]]) -> string
     internal class concat : TableLibFunction() {
-        fun call(list: LuaValue): LuaValue {
-            return list.checktable()!!.concat(EMPTYSTRING, 1, list.length())
+        override fun call(list: LuaValue?): LuaValue? {
+            return list!!.checktable()!!.concat(EMPTYSTRING, 1, list!!.length())
         }
 
-        fun call(list: LuaValue, sep: LuaValue): LuaValue {
-            return list.checktable()!!.concat(sep.checkstring(), 1, list.length())
+        override fun call(list: LuaValue?, sep: LuaValue?): LuaValue? {
+            return list!!.checktable()!!.concat(sep!!.checkstring(), 1, list!!.length())
         }
 
-        fun call(list: LuaValue, sep: LuaValue, i: LuaValue): LuaValue {
-            return list.checktable()!!.concat(sep.checkstring(), i.checkint(), list.length())
+        override fun call(list: LuaValue?, sep: LuaValue?, i: LuaValue?): LuaValue? {
+            return list!!.checktable()!!.concat(sep!!.checkstring(), i!!.checkint(), list!!.length())
         }
 
-        fun call(list: LuaValue, sep: LuaValue, i: LuaValue, j: LuaValue): LuaValue {
-            return list.checktable()!!.concat(sep.checkstring(), i.checkint(), j.checkint())
+        override fun call(list: LuaValue?, sep: LuaValue?, i: LuaValue?, j: LuaValue?): LuaValue? {
+            return list!!.checktable()!!.concat(sep!!.checkstring(), i!!.checkint(), j!!.checkint())
         }
     }
 

@@ -211,8 +211,8 @@ class IoLib : TwoArgFunction() {
 
     protected var globals: Globals? = null
 
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
 
 
         // io lib functions
@@ -247,8 +247,8 @@ class IoLib : TwoArgFunction() {
 
 
         // return the table
-        env.set("io", t)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("io", t)
+        env!!.set("io", t)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("io", t)
         return t
     }
 

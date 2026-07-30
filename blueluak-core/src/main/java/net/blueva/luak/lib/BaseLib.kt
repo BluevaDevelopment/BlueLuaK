@@ -82,36 +82,36 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
         globals!!.finder = this
         globals!!.baselib = this
-        env.set("_G", env)
-        env.set("_VERSION", Lua._VERSION)
-        env.set("assert", net.blueva.luak.lib.BaseLib._assert())
-        env.set("collectgarbage", net.blueva.luak.lib.BaseLib.collectgarbage())
-        env.set("dofile", dofile())
-        env.set("error", net.blueva.luak.lib.BaseLib.error())
-        env.set("getmetatable", net.blueva.luak.lib.BaseLib.getmetatable())
-        env.set("load", load())
-        env.set("loadfile", loadfile())
-        env.set("pcall", pcall())
-        env.set("print", print(this))
-        env.set("rawequal", net.blueva.luak.lib.BaseLib.rawequal())
-        env.set("rawget", net.blueva.luak.lib.BaseLib.rawget())
-        env.set("rawlen", net.blueva.luak.lib.BaseLib.rawlen())
-        env.set("rawset", net.blueva.luak.lib.BaseLib.rawset())
-        env.set("select", net.blueva.luak.lib.BaseLib.select())
-        env.set("setmetatable", net.blueva.luak.lib.BaseLib.setmetatable())
-        env.set("tonumber", net.blueva.luak.lib.BaseLib.tonumber())
-        env.set("tostring", net.blueva.luak.lib.BaseLib.tostring())
-        env.set("type", net.blueva.luak.lib.BaseLib.type())
-        env.set("xpcall", xpcall())
+        env!!.set("_G", env)
+        env!!.set("_VERSION", Lua._VERSION)
+        env!!.set("assert", net.blueva.luak.lib.BaseLib._assert())
+        env!!.set("collectgarbage", net.blueva.luak.lib.BaseLib.collectgarbage())
+        env!!.set("dofile", dofile())
+        env!!.set("error", net.blueva.luak.lib.BaseLib.error())
+        env!!.set("getmetatable", net.blueva.luak.lib.BaseLib.getmetatable())
+        env!!.set("load", load())
+        env!!.set("loadfile", loadfile())
+        env!!.set("pcall", pcall())
+        env!!.set("print", print(this))
+        env!!.set("rawequal", net.blueva.luak.lib.BaseLib.rawequal())
+        env!!.set("rawget", net.blueva.luak.lib.BaseLib.rawget())
+        env!!.set("rawlen", net.blueva.luak.lib.BaseLib.rawlen())
+        env!!.set("rawset", net.blueva.luak.lib.BaseLib.rawset())
+        env!!.set("select", net.blueva.luak.lib.BaseLib.select())
+        env!!.set("setmetatable", net.blueva.luak.lib.BaseLib.setmetatable())
+        env!!.set("tonumber", net.blueva.luak.lib.BaseLib.tonumber())
+        env!!.set("tostring", net.blueva.luak.lib.BaseLib.tostring())
+        env!!.set("type", net.blueva.luak.lib.BaseLib.type())
+        env!!.set("xpcall", xpcall())
 
         val next: next?
-        env.set("next", net.blueva.luak.lib.BaseLib.next().also { next = it })
-        env.set("pairs", net.blueva.luak.lib.BaseLib.pairs((next)!!))
-        env.set("ipairs", net.blueva.luak.lib.BaseLib.ipairs())
+        env!!.set("next", net.blueva.luak.lib.BaseLib.next().also { next = it })
+        env!!.set("pairs", net.blueva.luak.lib.BaseLib.pairs((next)!!))
+        env!!.set("ipairs", net.blueva.luak.lib.BaseLib.ipairs())
 
         return env
     }
@@ -177,21 +177,21 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "error", // ( message [,level] ) -> ERR
     internal class error : TwoArgFunction() {
-        fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
-            if (arg1.isnil()) throw LuaError(NIL)
-            if (!arg1.isstring() || arg2.optint(1) === 0) throw LuaError(arg1)
-            throw LuaError(arg1.tojstring(), arg2.optint(1))
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+            if (arg1!!.isnil()) throw LuaError(NIL)
+            if (!arg1!!.isstring() || arg2!!.optint(1) === 0) throw LuaError(arg1)
+            throw LuaError(arg1!!.tojstring(), arg2!!.optint(1))
         }
     }
 
     // "getmetatable", // ( object ) -> table
     internal class getmetatable : LibFunction() {
-        override fun call(): LuaValue {
+        override fun call(): LuaValue? {
             return (argerror(1, "value expected"))!!
         }
 
-        fun call(arg: LuaValue): LuaValue {
-            val mt: LuaValue? = arg.getmetatable()
+        override fun call(arg: LuaValue?): LuaValue? {
+            val mt: LuaValue? = arg!!.getmetatable()
             return if (mt != null) mt.rawget(METATABLE).optvalue(mt) else NIL
         }
     }
@@ -270,51 +270,51 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "rawequal", // (v1, v2) -> boolean
     internal class rawequal : LibFunction() {
-        override fun call(): LuaValue {
+        override fun call(): LuaValue? {
             return (argerror(1, "value expected"))!!
         }
 
-        override fun call(arg: LuaValue?): LuaValue {
+        override fun call(arg: LuaValue?): LuaValue? {
             return (argerror(2, "value expected"))!!
         }
 
-        fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {
-            return (valueOf(arg1.raweq(arg2)))!!
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+            return (valueOf(arg1!!.raweq(arg2)))!!
         }
     }
 
     // "rawget", // (table, index) -> value
     internal class rawget : TableLibFunction() {
-        override fun call(arg: LuaValue?): LuaValue {
+        override fun call(arg: LuaValue?): LuaValue? {
             return (argerror(2, "value expected"))!!
         }
 
-        fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue {
-            return arg1.checktable()!!.rawget(arg2)
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+            return arg1!!.checktable()!!.rawget(arg2)
         }
     }
 
 
     // "rawlen", // (v) -> value
     internal class rawlen : LibFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.rawlen())
+        override fun call(arg: LuaValue?): LuaValue? {
+            return valueOf(arg!!.rawlen())
         }
     }
 
     // "rawset", // (table, index, value) -> table
     internal class rawset : TableLibFunction() {
-        override fun call(table: LuaValue?): LuaValue {
+        override fun call(table: LuaValue?): LuaValue? {
             return (argerror(2, "value expected"))!!
         }
 
-        override fun call(table: LuaValue?, index: LuaValue?): LuaValue {
+        override fun call(table: LuaValue?, index: LuaValue?): LuaValue? {
             return (argerror(3, "value expected"))!!
         }
 
-        fun call(table: LuaValue, index: LuaValue, value: LuaValue?): LuaValue {
-            val t: LuaTable = table.checktable()!!
-            if (!index.isvalidkey()) argerror(2, "table index is nil")
+        override fun call(table: LuaValue?, index: LuaValue?, value: LuaValue?): LuaValue? {
+            val t: LuaTable = table!!.checktable()!!
+            if (!index!!.isvalidkey()) argerror(2, "table index is nil")
             t.rawset(index, value)
             return t
         }
@@ -333,46 +333,46 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "setmetatable", // (table, metatable) -> table
     internal class setmetatable : TableLibFunction() {
-        override fun call(table: LuaValue?): LuaValue {
+        override fun call(table: LuaValue?): LuaValue? {
             return (argerror(2, "nil or table expected"))!!
         }
 
-        fun call(table: LuaValue, metatable: LuaValue): LuaValue {
-            val mt0: LuaValue? = table.checktable()!!.getmetatable()
+        override fun call(table: LuaValue?, metatable: LuaValue?): LuaValue? {
+            val mt0: LuaValue? = table!!.checktable()!!.getmetatable()
             if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
-            return (table.setmetatable(if (metatable.isnil()) null else metatable.checktable()))!!
+            return (table!!.setmetatable(if (metatable!!.isnil()) null else metatable!!.checktable()))!!
         }
     }
 
     // "tonumber", // (e [,base]) -> value
     internal class tonumber : LibFunction() {
-        fun call(e: LuaValue): LuaValue {
-            return e.tonumber()
+        override fun call(e: LuaValue?): LuaValue? {
+            return e!!.tonumber()
         }
 
-        fun call(e: LuaValue, base: LuaValue): LuaValue {
-            if (base.isnil()) return e.tonumber()
-            val b: Int = base.checkint()
+        override fun call(e: LuaValue?, base: LuaValue?): LuaValue? {
+            if (base!!.isnil()) return e!!.tonumber()
+            val b: Int = base!!.checkint()
             if (b < 2 || b > 36) argerror(2, "base out of range")
-            return (e.checkstring()!!.tonumber(b))!!
+            return (e!!.checkstring()!!.tonumber(b))!!
         }
     }
 
     // "tostring", // (e) -> value
     internal class tostring : LibFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            val h: LuaValue = arg.metatag(TOSTRING)
+        override fun call(arg: LuaValue?): LuaValue? {
+            val h: LuaValue = arg!!.metatag(TOSTRING)
             if (!h.isnil()) return h.call(arg)
-            val v: LuaValue = arg.tostring()
+            val v: LuaValue = arg!!.tostring()
             if (!v.isnil()) return v
-            return valueOf(arg.tojstring())
+            return valueOf(arg!!.tojstring())
         }
     }
 
     // "type",  // (v) -> value
     internal class type : LibFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.typename())
+        override fun call(arg: LuaValue?): LuaValue? {
+            return valueOf(arg!!.typename())
         }
     }
 

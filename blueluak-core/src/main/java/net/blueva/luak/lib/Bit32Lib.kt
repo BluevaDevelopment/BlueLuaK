@@ -50,7 +50,7 @@ class Bit32Lib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val t: LuaTable = LuaTable()
         bind(
             t, net.blueva.luak.lib.Bit32Lib.Bit32LibV::class.java, arrayOf<String?>(
@@ -93,7 +93,7 @@ class Bit32Lib : TwoArgFunction() {
     }
 
     internal class Bit32Lib2 : TwoArgFunction() {
-        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
             when (opcode) {
                 0 -> return net.blueva.luak.lib.Bit32Lib.Companion.arshift(arg1!!.checkint(), arg2!!.checkint())
                 1 -> return (net.blueva.luak.lib.Bit32Lib.Companion.lrotate(arg1!!.checkint(), arg2!!.checkint()))!!

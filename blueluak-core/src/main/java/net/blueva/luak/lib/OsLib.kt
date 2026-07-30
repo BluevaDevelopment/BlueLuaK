@@ -88,15 +88,15 @@ class OsLib
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
         val os: LuaTable = LuaTable()
         for (i in net.blueva.luak.lib.OsLib.Companion.NAMES.indices) os.set(
             net.blueva.luak.lib.OsLib.Companion.NAMES[i],
             OsLibFunc(i, Companion.NAMES[i])
         )
-        env.set("os", os)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("os", os)
+        env!!.set("os", os)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("os", os)
         return os
     }
 

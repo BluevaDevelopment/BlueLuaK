@@ -69,7 +69,7 @@ class StringLib
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
     </P> */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val string: LuaTable = LuaTable()
         string.set("byte", net.blueva.luak.lib.StringLib._byte())
         string.set("char", net.blueva.luak.lib.StringLib._char())
@@ -86,8 +86,8 @@ class StringLib
         string.set("sub", net.blueva.luak.lib.StringLib.sub())
         string.set("upper", net.blueva.luak.lib.StringLib.upper())
 
-        env.set("string", string)
-        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("string", string)
+        env!!.set("string", string)
+        if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("string", string)
         if (LuaString.s_metatable == null) {
             LuaString.s_metatable = LuaValue.tableOf(arrayOf<LuaValue?>(INDEX, string))
         }
@@ -567,8 +567,8 @@ class StringLib
      * Embedded zeros are counted, so "a\000bc\000" has length 5.
      */
     internal class len : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            return arg.checkstring()!!.len()
+        override fun call(arg: LuaValue?): LuaValue? {
+            return arg!!.checkstring()!!.len()
         }
     }
 
@@ -580,8 +580,8 @@ class StringLib
      * The definition of what an uppercase letter is depends on the current locale.
      */
     internal class lower : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.checkjstring()!!.toLowerCase())
+        override fun call(arg: LuaValue?): LuaValue? {
+            return valueOf(arg!!.checkjstring()!!.toLowerCase())
         }
     }
 
@@ -626,8 +626,8 @@ class StringLib
      * Returns a string that is the string s reversed.
      */
     internal class reverse : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            val s: LuaString = arg.checkstring()!!
+        override fun call(arg: LuaValue?): LuaValue? {
+            val s: LuaString = arg!!.checkstring()!!
             val n: Int = s.length()
             val b = ByteArray(n)
             var i = 0
@@ -679,8 +679,8 @@ class StringLib
      * The definition of what a lowercase letter is depends on the current locale.
      */
     internal class upper : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.checkjstring()!!.toUpperCase())
+        override fun call(arg: LuaValue?): LuaValue? {
+            return valueOf(arg!!.checkjstring()!!.toUpperCase())
         }
     }
 

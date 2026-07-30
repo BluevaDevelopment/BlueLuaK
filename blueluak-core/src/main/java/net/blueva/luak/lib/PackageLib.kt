@@ -93,9 +93,9 @@ class PackageLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
-        globals = env.checkglobals()
-        globals.set("require", require())
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
+        globals = env!!.checkglobals()
+        globals!!.set("require", require())
         package_ = LuaTable()
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._LOADED, LuaTable())
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._PRELOAD, LuaTable())
@@ -112,7 +112,7 @@ class PackageLib : TwoArgFunction() {
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._SEARCHERS, searchers)
         package_!!.set("config", net.blueva.luak.lib.PackageLib.Companion.FILE_SEP.toString() + "\n;\n?\n!\n-\n")
         package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set("package", package_)
-        env.set("package", package_)
+        env!!.set("package", package_)
         globals!!.package_ = this
         return env
     }
@@ -162,8 +162,8 @@ class PackageLib : TwoArgFunction() {
      * then require raises an error.
      */
     inner class require : OneArgFunction() {
-        fun call(arg: LuaValue): LuaValue {
-            val name: LuaString? = arg.checkstring()
+        override fun call(arg: LuaValue?): LuaValue? {
+            val name: LuaString? = arg!!.checkstring()
             val loaded: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!)
             var result: LuaValue = loaded.get((name)!!)
             if (result.toboolean()) {

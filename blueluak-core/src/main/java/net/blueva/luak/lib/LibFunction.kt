@@ -143,23 +143,23 @@ protected constructor() : LuaFunction() {
         }
     }
 
-    open override fun call(): LuaValue {
+    open override fun call(): LuaValue? {
         return (argerror(1, "value expected"))!!
     }
 
-    open override fun call(a: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?): LuaValue? {
         return call()
     }
 
-    open override fun call(a: LuaValue?, b: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?, b: LuaValue?): LuaValue? {
         return call(a)
     }
 
-    open override fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue {
+    open override fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue? {
         return call(a, b)
     }
 
-    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue? {
         return call(a, b, c)
     }
 
