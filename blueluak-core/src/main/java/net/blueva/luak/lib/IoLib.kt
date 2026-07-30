@@ -578,7 +578,7 @@ class IoLib : TwoArgFunction() {
 
                 LuaValue.TSTRING -> {
                     fmt = ai!!.checkstring()
-                    if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*') {
+                    if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*'.code.toByte()) {
                         when (fmt.m_bytes[fmt.m_offset + 1]) {
                             'n'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadnumber(f)

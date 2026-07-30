@@ -276,7 +276,7 @@ class LoadState private constructor(
     fun loadHeader() {
         luacVersion = `is`.readByte().toInt()
         luacFormat = `is`.readByte().toInt()
-        luacLittleEndian = (0 != `is`.readByte())
+        luacLittleEndian = (0 != `is`.readByte().toInt())
         luacSizeofInt = `is`.readByte().toInt()
         luacSizeofSizeT = `is`.readByte().toInt()
         luacSizeofInstruction = `is`.readByte().toInt()
