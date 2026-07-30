@@ -764,8 +764,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
 
     fun registerlocalvar(varname: LuaString?): Int {
-        val fs: FuncState = this.fs
-        val f: Prototype = fs.f
+        val fs: FuncState = this.fs!!
+        val f: Prototype = fs.f!!
         if (f.locvars == null || fs.nlocvars + 1 > f.locvars.size) f.locvars = realloc(f.locvars, fs.nlocvars * 2 + 1)
         f.locvars[fs.nlocvars] = LocVars(varname, 0, 0)
         return fs.nlocvars++
@@ -786,7 +786,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun adjustlocalvars(nvars: Int) {
         var nvars = nvars
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         fs.nactvar = (fs.nactvar + nvars) as Short
         while (nvars > 0) {
             fs.getlocvar(fs.nactvar - nvars).startpc = fs.pc
@@ -795,13 +795,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     fun removevars(tolevel: Int) {
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         while (fs.nactvar > tolevel) fs.getlocvar(--(fs.nactvar).toInt()).endpc = fs.pc
     }
 
     internal fun singlevar(`var`: expdesc) {
         val varname: LuaString? = this.str_checkname()
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         if (FuncState.singlevaraux(
                 fs,
                 (varname)!!,
@@ -818,7 +818,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         var extra = nvars - nexps
         if (hasmultret(e.k)) {
             /* includes call itself */
@@ -850,12 +850,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun closegoto(g: Int, label: Labeldesc) {
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val gl = this.dyd.gt
         val gt = gl[g]
         _assert(gt.name!!.eq_b(label.name))
         if (gt.nactvar < label.nactvar) {
-            val vname: LuaString = fs.getlocvar((gt.nactvar).toInt()).varname
+            val vname: LuaString = fs.getlocvar((gt.nactvar).toInt()).varname!!
             val msg: String? = L!!.pushfstring(
                 ("<goto " + gt.name + "> at line "
                         + gt.line + " jumps into the scope of local '"
@@ -874,7 +874,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 	 */
     fun findlabel(g: Int): Boolean {
         var i: Int
-        val bl: BlockCnt = fs!!.bl
+        val bl: BlockCnt = fs!!.bl!!
         val dyd = this.dyd
         val gt = dyd.gt[g]
         /* check labels in current block for a match */
@@ -938,7 +938,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun addprototype(): Prototype? {
         val clp: Prototype?
-        val f: Prototype = fs!!.f /* prototype of current function */
+        val f: Prototype = fs!!.f!! /* prototype of current function */
         if (f.p == null || fs!!.np >= f.p!!.size) {
             f.p = realloc(f.p, Math.max(1, fs!!.np * 2))
         }
@@ -948,7 +948,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun codeclosure(v: expdesc) {
-        val fs: FuncState = this.fs!!.prev
+        val fs: FuncState = this.fs!!.prev!!
         v.init(net.blueva.luak.compiler.LexState.Companion.VRELOCABLE, fs.codeABx(OP_CLOSURE, 0, fs.np - 1))
         fs.exp2nextreg(v) /* fix it at stack top (for GC) */
     }
@@ -974,8 +974,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     fun close_func() {
-        val fs: FuncState = this.fs
-        val f: Prototype = fs.f
+        val fs: FuncState = this.fs!!
+        val f: Prototype = fs.f!!
         fs.ret(0, 0) /* final return */
         fs.leaveblock()
         f.code = realloc(f.code, fs.pc)
@@ -993,7 +993,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     /*============================================================*/ /* GRAMMAR RULES */ /*============================================================*/
     internal fun fieldsel(v: expdesc?) {
         /* fieldsel -> ['.' | ':'] NAME */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         fs.exp2anyregup((v)!!)
         this.next() /* skip the dot or colon */
@@ -1054,7 +1054,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     internal fun constructor(t: expdesc) {
         /* constructor -> ?? */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val line = this.linenumber
         val pc: Int = fs.codeABC(Lua.OP_NEWTABLE, 0, 0, 0)
         val cc: ConsControl = net.blueva.luak.compiler.LexState.ConsControl()
@@ -1100,8 +1100,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     /* }====================================================================== */
     fun parlist() {
         /* parlist -> [ param { `,' param } ] */
-        val fs: FuncState = this.fs
-        val f: Prototype = fs.f
+        val fs: FuncState = this.fs!!
+        val f: Prototype = fs.f!!
         var nparams = 0
         f.is_vararg = 0
         if (this.t.token != ')'.code) {  /* is `parlist' not empty? */
@@ -1168,7 +1168,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
 
     internal fun funcargs(f: expdesc, line: Int) {
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val args: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val base: Int
         val nparams: Int
@@ -1315,7 +1315,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
             net.blueva.luak.compiler.LexState.Companion.TK_DOTS -> {
                 /* vararg */
-                val fs: FuncState = this.fs
+                val fs: FuncState = this.fs!!
                 this.check_condition(
                     fs.f!!.is_vararg !== 0, ("cannot use " + net.blueva.luak.compiler.LexState.Companion.LUA_QL("...")
                             + " outside a vararg function")
@@ -1444,7 +1444,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun block() {
         /* block -> chunk */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val bl: BlockCnt = BlockCnt()
         fs.enterblock(bl, false)
         this.statlist()
@@ -1472,7 +1472,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 	*/
     internal fun check_conflict(lh: LHS_assign?, v: expdesc) {
         var lh = lh
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val extra = fs.freereg as Short /* eventual position to save local variable */
         var conflict = false
         while (lh != null) {
@@ -1587,7 +1587,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun whilestat(line: Int) {
         /* whilestat -> WHILE cond DO block END */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val whileinit: Int
         val condexit: Int
         val bl: BlockCnt = BlockCnt()
@@ -1610,7 +1610,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun repeatstat(line: Int) {
         /* repeatstat -> REPEAT block UNTIL cond */
         val condexit: Int
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val repeat_init: Int = fs.getlabel()
         val bl1: BlockCnt = BlockCnt()
         val bl2: BlockCnt = BlockCnt()
@@ -1646,7 +1646,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun forbody(base: Int, line: Int, nvars: Int, isnum: Boolean) {
         /* forbody -> DO block */
         val bl: BlockCnt = BlockCnt()
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val prep: Int
         val endfor: Int
         this.adjustlocalvars(3) /* control variables */
@@ -1676,7 +1676,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun fornum(varname: LuaString?, line: Int) {
         /* fornum -> NAME = exp1,exp1[,exp1] forbody */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val base: Int = fs.freereg.toInt()
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_LIMIT)
@@ -1697,7 +1697,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun forlist(indexname: LuaString?) {
         /* forlist -> NAME {,NAME} IN explist1 forbody */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         var nvars = 4 /* gen, state, control, plus at least one declared var */
         val line: Int
@@ -1722,7 +1722,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun forstat(line: Int) {
         /* forstat -> FOR (fornum | forlist) END */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val varname: LuaString?
         val bl: BlockCnt = BlockCnt()
         fs.enterblock(bl, true) /* scope for loop and control variables */
@@ -1794,7 +1794,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun localfunc() {
         val b: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         this.new_localvar(this.str_checkname())
         this.adjustlocalvars(1)
         this.body(b, false, this.linenumber)
@@ -1850,7 +1850,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun exprstat() {
         /* stat -> func | assignment */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val v: LHS_assign = net.blueva.luak.compiler.LexState.LHS_assign()
         this.suffixedexp(v.v)
         if (t.token == '='.code || t.token == ','.code) { /* stat -> assignment ? */
@@ -1864,7 +1864,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun retstat() {
         /* stat -> RETURN explist */
-        val fs: FuncState = this.fs
+        val fs: FuncState = this.fs!!
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val first: Int
         var nret: Int /* registers with returned values */

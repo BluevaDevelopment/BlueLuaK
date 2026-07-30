@@ -108,7 +108,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpCode(f: Prototype) {
-        val code: IntArray = f.code
+        val code: IntArray = f.code!!
         val n = code.size
         dumpInt(n)
         for (i in 0..<n) dumpInt(code[i])
@@ -116,7 +116,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpConstants(f: Prototype) {
-        val k: Array<LuaValue> = f.k
+        val k: Array<LuaValue> = f.k!!
         var i: Int
         var n = k.size
         dumpInt(n)
@@ -198,7 +198,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            val lvi: LocVars = f.locvars[i]
+            val lvi: LocVars = f.locvars[i]!!
             dumpString((lvi.varname)!!)
             dumpInt(lvi.startpc)
             dumpInt(lvi.endpc)

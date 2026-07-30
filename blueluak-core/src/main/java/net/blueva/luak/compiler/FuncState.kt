@@ -435,7 +435,7 @@ internal class FuncState internal constructor() : Constants() {
         }
         val idx = this.nk
         this.h!!.put(v, Integer(idx))
-        val f: Prototype = this.f
+        val f: Prototype = this.f!!
         if (f.k == null || nk + 1 >= f.k!!.size) f.k = realloc(f.k, nk * 2 + 1)
         f.k!![this.nk++] = v
         return idx
@@ -982,7 +982,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun code(instruction: Int, line: Int): Int {
-        val f: Prototype = this.f
+        val f: Prototype = this.f!!
         this.dischargejpc() /* `pc' will change */
         /* put new instruction in code array */
         if (f.code == null || this.pc + 1 > f.code!!.size) f.code = realloc(f.code, this.pc * 2 + 1)
