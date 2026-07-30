@@ -70,7 +70,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
             val `is`: InputStream = Utf8Encoder(script)
             try {
                 val g: Globals = context.globals
-                val f: LuaFunction = g.load(script, "script")!!.checkfunction()!!
+                val f: LuaFunction = g.load(`is`, "script", "t", g)!!.checkfunction()!!
                 return LuajCompiledScript(f, g)
             } catch (lee: LuaError) {
                 throw ScriptException(lee.message)
@@ -201,8 +201,8 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
 
     companion object {
         private val __ENGINE_VERSION__ = Lua._VERSION
-        private const val __NAME__ = "Luaj"
-        private const val __SHORT_NAME__ = "Luaj"
+        private const val __NAME__ = "BlueLuaK"
+        private const val __SHORT_NAME__ = "BlueLuaK"
         private const val __LANGUAGE__ = "lua"
         private const val __LANGUAGE_VERSION__ = "5.2"
         private const val __ARGV__ = "arg"
@@ -220,7 +220,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
             when (luajValue.type()) {
                 LuaValue.TNIL -> return null
                 LuaValue.TSTRING -> return luajValue.tojstring()
-                LuaValue.TUSERDATA -> return luajValue.checkuserdata(Any::class.java)
+                LuaValue.TUSERDATA -> return luajValue.checkuserdata(Any::class)
                 LuaValue.TNUMBER -> return if (luajValue.isinttype()) luajValue.toint() as Any else luajValue.todouble() as Any
                 else -> return luajValue
             }
