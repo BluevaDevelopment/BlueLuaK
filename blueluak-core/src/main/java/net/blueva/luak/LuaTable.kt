@@ -1050,7 +1050,7 @@ open class LuaTable : LuaValue, Metatable {
             return set(value)
         }
 
-        override fun add(entry: Slot): Slot {
+        override fun add(entry: Slot?): Slot? {
             return net.blueva.luak.LuaTable.LinkSlot(this, entry)
         }
 
@@ -1093,7 +1093,7 @@ open class LuaTable : LuaValue, Metatable {
             return net.blueva.luak.LuaTable.Companion.hashSlot(key, hashMask)
         }
 
-        override fun keyeq(key: LuaValue): Boolean {
+        override fun keyeq(key: LuaValue?): Boolean {
             return key.raweq(this.key)
         }
     }
@@ -1126,7 +1126,7 @@ open class LuaTable : LuaValue, Metatable {
             return net.blueva.luak.LuaTable.Companion.hashmod(LuaInteger.hashCode(key), mask)
         }
 
-        override fun keyeq(key: LuaValue): Boolean {
+        override fun keyeq(key: LuaValue?): Boolean {
             return key.raweq(this.key)
         }
     }
@@ -1151,7 +1151,7 @@ open class LuaTable : LuaValue, Metatable {
             return valueOf(value)
         }
 
-        public override fun set(value: LuaValue): Entry {
+        public override fun set(value: LuaValue?): Entry {
             if (value.type() === TNUMBER) {
                 val n: LuaValue = value.tonumber()
                 if (!n.isnil()) {
@@ -1166,7 +1166,7 @@ open class LuaTable : LuaValue, Metatable {
             return net.blueva.luak.LuaTable.Companion.hashSlot(key, mask)
         }
 
-        override fun keyeq(key: LuaValue): Boolean {
+        override fun keyeq(key: LuaValue?): Boolean {
             return key.raweq(this.key)
         }
     }
@@ -1199,7 +1199,7 @@ open class LuaTable : LuaValue, Metatable {
             return null
         }
 
-        override fun keyeq(key: LuaValue): Boolean {
+        override fun keyeq(key: LuaValue?): Boolean {
             val k: LuaValue? = key()
             return k != null && key.raweq(k)
         }

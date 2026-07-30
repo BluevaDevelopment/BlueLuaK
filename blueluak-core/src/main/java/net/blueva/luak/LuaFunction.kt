@@ -81,7 +81,7 @@ class LuaFunction : LuaValue() {
      * Is overridden by LuaClosure to return the source file and line, and by LibFunctions to return the name.
      * @return common name for this function.
      */
-    override fun name(): String {
+    open fun name(): String {
         return classnamestub()
     }
 

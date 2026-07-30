@@ -223,7 +223,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return LuaTable.hashSlot((strongkey())!!, mask)
         }
 
-        override fun set(value: LuaValue): Slot? {
+        override fun set(value: LuaValue?): Slot? {
             this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
             return this
         }
@@ -260,7 +260,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return LuaTable.hashmod(keyhash, hashMask)
         }
 
-        override fun set(value: LuaValue): Slot? {
+        override fun set(value: LuaValue?): Slot? {
             this.value = net.blueva.luak.WeakTable.Companion.weaken(value)
             return this
         }
