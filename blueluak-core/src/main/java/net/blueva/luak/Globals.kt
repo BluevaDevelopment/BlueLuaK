@@ -351,7 +351,7 @@ class Globals : LuaTable() {
     /* Abstract base class to provide basic buffered input storage and delivery.
 	 * This class may be moved to its own package in the future.
 	 */
-    internal abstract class AbstractBufferedStream protected constructor(buflen: Int) : InputStream() {
+    abstract class AbstractBufferedStream protected constructor(buflen: Int) : InputStream() {
         protected var b: ByteArray
         protected var i: Int = 0
         protected var j: Int = 0
@@ -436,7 +436,7 @@ class Globals : LuaTable() {
      * as well as speed up normal compilation and reading of lua scripts.
      * This class may be moved to its own package in the future.
      */
-    internal class BufferedStream(buflen: Int, s: InputStream) : AbstractBufferedStream(buflen) {
+    class BufferedStream(buflen: Int, s: InputStream) : AbstractBufferedStream(buflen) {
         private val s: InputStream
 
         constructor(s: InputStream) : this(128, s)

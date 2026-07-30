@@ -672,7 +672,7 @@ abstract class Varargs {
      * 
      * @see LuaValue.varargsOf
      */
-    internal class PairVarargs(v1: LuaValue?, v2: Varargs) : Varargs() {
+    class PairVarargs(v1: LuaValue?, v2: Varargs) : Varargs() {
         private val v1: LuaValue?
         private val v2: Varargs
 
@@ -771,7 +771,7 @@ abstract class Varargs {
      * @see LuaValue.varargsOf
      * @see LuaValue.varargsOf
      */
-    internal class ArrayPartVarargs : Varargs {
+    class ArrayPartVarargs : Varargs {
         private val offset: Int
         private val v: Array<out LuaValue?>
         private val length: Int
