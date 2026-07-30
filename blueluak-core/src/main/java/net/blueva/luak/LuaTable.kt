@@ -70,7 +70,7 @@ open class LuaTable : LuaValue, Metatable {
     protected lateinit var hash: Array<Slot?>
 
     /** the number of hash entries  */
-    protected var hashEntries: Int = 0
+    var hashEntries: Int = 0
 
     /** metatable for this table, or null  */
     protected var m_metatable: Metatable? = null

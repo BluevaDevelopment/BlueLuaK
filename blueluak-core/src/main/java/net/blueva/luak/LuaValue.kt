@@ -3746,11 +3746,11 @@ open class LuaValue : Varargs() {
 
         /** LuaBoolean constant corresponding to lua `true`  */
         @JvmField
-        val TRUE: LuaBoolean? = LuaBoolean._TRUE
+        val TRUE: LuaBoolean = LuaBoolean._TRUE
 
         /** LuaBoolean constant corresponding to lua `false`  */
         @JvmField
-        val FALSE: LuaBoolean? = LuaBoolean._FALSE
+        val FALSE: LuaBoolean = LuaBoolean._FALSE
 
         /** LuaValue constant corresponding to a [Varargs] list of no values  */
         val NONE: LuaValue? = net.blueva.luak.LuaValue.None.Companion._NONE

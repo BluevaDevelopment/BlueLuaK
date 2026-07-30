@@ -103,7 +103,7 @@ object CoerceJavaToLua {
      * @see LuaUserdata
      */
     @JvmStatic
-    fun coerce(o: Any?): LuaValue? {
+    fun coerce(o: Any?): LuaValue {
         if (o == null) return LuaValue.NIL
         val clazz: Class<*> = o.javaClass
         var c = COERCIONS.get(clazz) as Coercion?
@@ -121,39 +121,39 @@ object CoerceJavaToLua {
     private val luaCoercion: Coercion = LuaCoercion()
 
     internal interface Coercion {
-        fun coerce(javaValue: Any?): LuaValue?
+        fun coerce(javaValue: Any?): LuaValue
     }
 
     private class BoolCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             val b = javaValue as Boolean
             return if (b) LuaValue.TRUE else LuaValue.FALSE
         }
     }
 
     private class IntCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             val n = javaValue as Number
-            return LuaInteger.valueOf(n.toInt())
+            return LuaInteger.valueOf(n.toInt())!!
         }
     }
 
     private class CharCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             val c = javaValue as Char
-            return LuaInteger.valueOf(c.code)
+            return LuaInteger.valueOf(c.code)!!
         }
     }
 
     private class DoubleCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             val n = javaValue as Number
-            return LuaDouble.valueOf(n.toDouble())
+            return LuaDouble.valueOf(n.toDouble())!!
         }
     }
 
     private class StringCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             return LuaString.valueOf(javaValue.toString())
         }
     }
@@ -165,7 +165,7 @@ object CoerceJavaToLua {
     }
 
     private class ClassCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
+        override fun coerce(javaValue: Any?): LuaValue {
             return JavaClass.Companion.forClass(javaValue as Class<*>?)
         }
     }
@@ -184,8 +184,8 @@ object CoerceJavaToLua {
     }
 
     private class LuaCoercion : Coercion {
-        override fun coerce(javaValue: Any?): LuaValue? {
-            return javaValue as LuaValue?
+        override fun coerce(javaValue: Any?): LuaValue {
+            return javaValue as LuaValue
         }
     }
 }
