@@ -50,40 +50,42 @@ class Bit32Lib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, which must be a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val t: LuaTable = LuaTable()
         bind(
-            t, net.blueva.luak.lib.Bit32Lib.Bit32LibV::class.java, arrayOf<String>(
+            t, net.blueva.luak.lib.Bit32Lib.Bit32LibV::class.java, arrayOf<String?>(
                 "band", "bnot", "bor", "btest", "bxor", "extract", "replace"
             )
         )
         bind(
-            t, net.blueva.luak.lib.Bit32Lib.Bit32Lib2::class.java, arrayOf<String>(
+            t, net.blueva.luak.lib.Bit32Lib.Bit32Lib2::class.java, arrayOf<String?>(
                 "arshift", "lrotate", "lshift", "rrotate", "rshift"
             )
         )
-        env.set("bit32", t)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("bit32", t)
+        val e = env!!
+        e.set("bit32", t)
+        if (!e.get("package").isnil()) e.get("package").get("loaded").set("bit32", t)
         return t
     }
 
     internal class Bit32LibV : VarArgFunction() {
-        fun invoke(args: Varargs): Varargs {
+        override fun invoke(args: Varargs?): Varargs {
+            val a = args!!
             when (opcode) {
-                0 -> return net.blueva.luak.lib.Bit32Lib.Companion.band(args)
-                1 -> return net.blueva.luak.lib.Bit32Lib.Companion.bnot(args)
-                2 -> return net.blueva.luak.lib.Bit32Lib.Companion.bor(args)
-                3 -> return net.blueva.luak.lib.Bit32Lib.Companion.btest(args)
-                4 -> return net.blueva.luak.lib.Bit32Lib.Companion.bxor(args)
+                0 -> return net.blueva.luak.lib.Bit32Lib.Companion.band(a)
+                1 -> return net.blueva.luak.lib.Bit32Lib.Companion.bnot(a)
+                2 -> return net.blueva.luak.lib.Bit32Lib.Companion.bor(a)
+                3 -> return net.blueva.luak.lib.Bit32Lib.Companion.btest(a)
+                4 -> return net.blueva.luak.lib.Bit32Lib.Companion.bxor(a)
                 5 -> return net.blueva.luak.lib.Bit32Lib.Companion.extract(
-                    args.checkint(1),
-                    args.checkint(2),
-                    args.optint(3, 1)
+                    a.checkint(1),
+                    a.checkint(2),
+                    a.optint(3, 1)
                 )
 
                 6 -> return net.blueva.luak.lib.Bit32Lib.Companion.replace(
-                    args.checkint(1), args.checkint(2),
-                    args.checkint(3), args.optint(4, 1)
+                    a.checkint(1), a.checkint(2),
+                    a.checkint(3), a.optint(4, 1)
                 )
             }
             return NIL
@@ -91,13 +93,13 @@ class Bit32Lib : TwoArgFunction() {
     }
 
     internal class Bit32Lib2 : TwoArgFunction() {
-        fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
             when (opcode) {
-                0 -> return net.blueva.luak.lib.Bit32Lib.Companion.arshift(arg1.checkint(), arg2.checkint())
-                1 -> return net.blueva.luak.lib.Bit32Lib.Companion.lrotate(arg1.checkint(), arg2.checkint())
-                2 -> return net.blueva.luak.lib.Bit32Lib.Companion.lshift(arg1.checkint(), arg2.checkint())
-                3 -> return net.blueva.luak.lib.Bit32Lib.Companion.rrotate(arg1.checkint(), arg2.checkint())
-                4 -> return net.blueva.luak.lib.Bit32Lib.Companion.rshift(arg1.checkint(), arg2.checkint())
+                0 -> return net.blueva.luak.lib.Bit32Lib.Companion.arshift(arg1!!.checkint(), arg2!!.checkint())
+                1 -> return net.blueva.luak.lib.Bit32Lib.Companion.lrotate(arg1!!.checkint(), arg2!!.checkint())
+                2 -> return net.blueva.luak.lib.Bit32Lib.Companion.lshift(arg1!!.checkint(), arg2!!.checkint())
+                3 -> return net.blueva.luak.lib.Bit32Lib.Companion.rrotate(arg1!!.checkint(), arg2!!.checkint())
+                4 -> return net.blueva.luak.lib.Bit32Lib.Companion.rshift(arg1!!.checkint(), arg2!!.checkint())
             }
             return NIL
         }
@@ -114,7 +116,7 @@ class Bit32Lib : TwoArgFunction() {
 
         fun rshift(x: Int, disp: Int): LuaValue {
             if (disp >= 32 || disp <= -32) {
-                return ZERO
+                return ZERO!!
             } else if (disp >= 0) {
                 return net.blueva.luak.lib.Bit32Lib.Companion.bitsToValue(x ushr disp)
             } else {
@@ -124,7 +126,7 @@ class Bit32Lib : TwoArgFunction() {
 
         fun lshift(x: Int, disp: Int): LuaValue {
             if (disp >= 32 || disp <= -32) {
-                return ZERO
+                return ZERO!!
             } else if (disp >= 0) {
                 return net.blueva.luak.lib.Bit32Lib.Companion.bitsToValue(x shl disp)
             } else {
@@ -157,7 +159,7 @@ class Bit32Lib : TwoArgFunction() {
             for (i in 1..args.narg()) {
                 bits = bits and args.checkint(i)
             }
-            return valueOf(bits != 0)
+            return valueOf(bits != 0)!!
         }
 
         fun bxor(args: Varargs): Varargs {

@@ -143,27 +143,27 @@ protected constructor() : LuaFunction() {
         }
     }
 
-    fun call(): LuaValue {
+    open fun call(): LuaValue {
         return argerror(1, "value expected")
     }
 
-    fun call(a: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?): LuaValue {
         return call()
     }
 
-    fun call(a: LuaValue?, b: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?, b: LuaValue?): LuaValue {
         return call(a)
     }
 
-    fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?): LuaValue {
         return call(a, b)
     }
 
-    fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
+    open fun call(a: LuaValue?, b: LuaValue?, c: LuaValue?, d: LuaValue?): LuaValue {
         return call(a, b, c)
     }
 
-    fun invoke(args: Varargs): Varargs {
+    open fun invoke(args: Varargs): Varargs {
         when (args.narg()) {
             0 -> return call()
             1 -> return call(args.arg1())

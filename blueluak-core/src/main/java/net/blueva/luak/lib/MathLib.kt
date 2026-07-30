@@ -74,7 +74,7 @@ import java.util.Random
  * 
  * @see [Lua 5.2 Math Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.6)
  */
-class MathLib : TwoArgFunction() {
+open class MathLib : TwoArgFunction() {
     /** Construct a MathLib, which can be initialized by calling it with a
      * modname string, and a global environment table as arguments using
      * [.call].  */
@@ -88,7 +88,7 @@ class MathLib : TwoArgFunction() {
      * @param modname the module name supplied if this is loaded via 'require'.
      * @param env the environment to load into, typically a Globals instance.
      */
-    fun call(modname: LuaValue?, env: LuaValue): LuaValue {
+    open fun call(modname: LuaValue?, env: LuaValue): LuaValue {
         val math: LuaTable = LuaTable(0, 30)
         math.set("abs", net.blueva.luak.lib.MathLib.abs())
         math.set("ceil", net.blueva.luak.lib.MathLib.ceil())
@@ -300,7 +300,7 @@ class MathLib : TwoArgFunction() {
     /**
      * Hook to override default dpow behavior with faster implementation.
      */
-    fun dpow_lib(a: Double, b: Double): Double {
+    open fun dpow_lib(a: Double, b: Double): Double {
         return net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
     }
 

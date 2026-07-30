@@ -71,7 +71,7 @@ abstract class VarArgFunction : LibFunction() {
      * - function has a possibility of returning a TailcallVarargs
      * @param args the arguments to the function call.
      */
-    fun invoke(args: Varargs?): Varargs {
+    open fun invoke(args: Varargs?): Varargs {
         return onInvoke(args).eval()
     }
 
