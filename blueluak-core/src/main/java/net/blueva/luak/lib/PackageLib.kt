@@ -173,7 +173,7 @@ class PackageLib : TwoArgFunction() {
 
 
             /* else must load it; iterate over available loaders */
-            val tbl: LuaTable = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!).checktable()
+            val tbl: LuaTable = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!).checktable()!!
             val sb: StringBuffer = StringBuffer()
             var loader: Varargs? = null
             var i = 1
@@ -235,7 +235,7 @@ class PackageLib : TwoArgFunction() {
 
             // Did we get a result?
             if (!v.isstring(1)) return v.arg(2)!!.tostring()
-            val filename: LuaString = v.arg1()!!.strvalue()
+            val filename: LuaString = v.arg1()!!.strvalue()!!
 
 
             // Try to load the file.

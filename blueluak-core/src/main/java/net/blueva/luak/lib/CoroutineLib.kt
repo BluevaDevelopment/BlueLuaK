@@ -98,7 +98,7 @@ class CoroutineLib : TwoArgFunction() {
 
     internal class status : LibFunction() {
         fun call(t: LuaValue): LuaValue {
-            val lt: LuaThread = t.checkthread()
+            val lt: LuaThread = t.checkthread()!!
             return valueOf(lt.status)
         }
     }

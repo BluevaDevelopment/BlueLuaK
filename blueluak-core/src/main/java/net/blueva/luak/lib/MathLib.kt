@@ -229,11 +229,11 @@ open class MathLib : TwoArgFunction() {
 
     internal class max : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            var m: LuaValue = args.checkvalue(1)
+            var m: LuaValue = args.checkvalue(1)!!
             var i = 2
             val n: Int = args.narg()
             while (i <= n) {
-                val v: LuaValue = args.checkvalue(i)
+                val v: LuaValue = args.checkvalue(i)!!
                 if (m.lt_b(v)) m = v
                 ++i
             }
@@ -247,7 +247,7 @@ open class MathLib : TwoArgFunction() {
             var i = 2
             val n: Int = args.narg()
             while (i <= n) {
-                val v: LuaValue = args.checkvalue(i)
+                val v: LuaValue = args.checkvalue(i)!!
                 if (v.lt_b((m)!!)) m = v
                 ++i
             }
@@ -257,7 +257,7 @@ open class MathLib : TwoArgFunction() {
 
     internal class modf : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val n: LuaValue = args.arg1()
+            val n: LuaValue = args.arg1()!!
             /* number is its own integer part, no fractional part */
             if (n.islong()) return (varargsOf(n, valueOf(0.0)))!!
             val x: Double = n.checkdouble()

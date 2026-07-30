@@ -318,7 +318,7 @@ class DebugLib : TwoArgFunction() {
     internal class setuservalue : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val o: Object? = args.checkuserdata(1)
-            val v: LuaValue = args.checkvalue(2)
+            val v: LuaValue = args.checkvalue(2)!!
             val u: LuaUserdata = args.arg1() as LuaUserdata
             u.m_instance = v.checkuserdata()
             u.m_metatable = v.getmetatable()
@@ -839,7 +839,7 @@ class DebugLib : TwoArgFunction() {
 
         fun kname(p: Prototype, pc: Int, c: Int): String {
             if (Lua.ISK(c)) {  /* is 'c' a constant? */
-                val k: LuaValue = p.k!![Lua.INDEXK(c)]
+                val k: LuaValue = p.k!![Lua.INDEXK(c)]!!
                 if (k.isstring()) {  /* literal constant? */
                     return k.tojstring() /* it is its own name */
                 } /* else no reasonable name found */

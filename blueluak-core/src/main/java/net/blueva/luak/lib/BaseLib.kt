@@ -199,7 +199,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     // "load", // ( ld [, source [, mode [, env]]] ) -> chunk | nil, msg
     internal inner class load : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val ld: LuaValue = args.arg1()
+            val ld: LuaValue = args.arg1()!!
             if (!ld.isstring() && !ld.isfunction()) {
                 throw LuaError("bad argument #1 to 'load' (string or function expected, got " + ld.typename() + ")")
             }
@@ -234,7 +234,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     // "pcall", // (f, arg1, ...) -> status, result1, ...
     internal inner class pcall : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val func: LuaValue = args.checkvalue(1)
+            val func: LuaValue = args.checkvalue(1)!!
             if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
             try {
                 return (varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!))!!
@@ -253,12 +253,12 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     // "print", // (...) -> void
     internal inner class print(val baselib: BaseLib) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val tostring: LuaValue = globals!!.get("tostring")
+            val tostring: LuaValue = globals!!.get("tostring")!!
             var i = 1
             val n: Int = args.narg()
             while (i <= n) {
                 if (i > 1) globals!!.STDOUT!!.print('\t')
-                val s: LuaString = tostring.call(args.arg(i)).strvalue()
+                val s: LuaString = tostring.call(args.arg(i)).strvalue()!!
                 globals!!.STDOUT!!.print(s.tojstring())
                 i++
             }
@@ -313,7 +313,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         }
 
         fun call(table: LuaValue, index: LuaValue, value: LuaValue?): LuaValue {
-            val t: LuaTable = table.checktable()
+            val t: LuaTable = table.checktable()!!
             if (!index.isvalidkey()) argerror(2, "table index is nil")
             t.rawset(index, value)
             return t
@@ -476,7 +476,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             if (remaining == 0) {
                 val s: LuaValue = func.call()
                 if (s.isnil()) return (-1).also { remaining = it }
-                val ls: LuaString = s.strvalue()
+                val ls: LuaString = s.strvalue()!!
                 bytes = ls.m_bytes
                 offset = ls.m_offset
                 remaining = ls.m_length

@@ -533,7 +533,7 @@ class StringLib
             val srclen: Int = src.length()
             val p: LuaString = args.checkstring(2)
             var lastmatch = -1 /* end of last match */
-            val repl: LuaValue = args.arg(3)
+            val repl: LuaValue = args.arg(3)!!
             val max_s: Int = args.optint(4, srclen + 1)
             val anchor = p.length() > 0 && p.charAt(0) == '^'
 
@@ -627,7 +627,7 @@ class StringLib
      */
     internal class reverse : OneArgFunction() {
         fun call(arg: LuaValue): LuaValue {
-            val s: LuaString = arg.checkstring()
+            val s: LuaString = arg.checkstring()!!
             val n: Int = s.length()
             val b = ByteArray(n)
             var i = 0
