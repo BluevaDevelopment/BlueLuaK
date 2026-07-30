@@ -120,7 +120,7 @@ internal class FuncState internal constructor() : Constants() {
 
     fun searchupvalue(name: LuaString?): Int {
         var i: Int
-        val up: Array<Upvaldesc?> = f!!.upvalues
+        val up: Array<Upvaldesc?> = f!!.upvalues!!
         i = 0
         while (i < nups) {
             if (up[i]!!.name!!.eq_b(name)) return i
@@ -161,11 +161,11 @@ internal class FuncState internal constructor() : Constants() {
 	*/
     fun movegotosout(bl: BlockCnt) {
         var i = bl.firstgoto.toInt()
-        val gl: Array<LexState.Labeldesc> = ls!!.dyd.gt
+        val gl: Array<LexState.Labeldesc?> = ls!!.dyd.gt
         /* correct pending gotos to current block and try to close it
 		   with visible labels */
         while (i < ls!!.dyd.n_gt) {
-            val gt: LexState.Labeldesc = gl[i]
+            val gt: LexState.Labeldesc = gl[i]!!
             if (gt.nactvar > bl.nactvar) {
                 if (bl.upval) patchclose(gt.pc, bl.nactvar.toInt())
                 gt.nactvar = bl.nactvar
@@ -198,11 +198,11 @@ internal class FuncState internal constructor() : Constants() {
         this.removevars(bl.nactvar.toInt())
         _assert(bl.nactvar == this.nactvar)
         this.freereg = this.nactvar /* free registers */
-        ls!!.dyd.n_label = bl.firstlabel /* remove local labels */
+        ls!!.dyd.n_label = bl.firstlabel.toInt() /* remove local labels */
         if (bl.previous != null)  /* inner block? */
             this.movegotosout(bl) /* update pending gotos to outer block */
         else if (bl.firstgoto < ls!!.dyd.n_gt)  /* pending gotos in outer block? */
-            ls!!.undefgoto(ls!!.dyd.gt[bl.firstgoto.toInt()]) /* error */
+            ls!!.undefgoto(ls!!.dyd.gt[bl.firstgoto.toInt()]!!) /* error */
     }
 
     fun closelistfield(cc: ConsControl) {
@@ -428,13 +428,11 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun addk(v: LuaValue?): Int {
-        if (this.h == null) {
-            this.h = Hashtable()
-        } else if (this.h.containsKey(v)) {
-            return (h.get(v) as Integer).toInt()
-        }
+        if (this.h == null) this.h = Hashtable()
+        val constants = this.h!!
+        if (constants.containsKey(v)) return constants[v]!!
         val idx = this.nk
-        this.h!!.put(v, Integer(idx))
+        constants[v] = idx
         val f: Prototype = this.f!!
         if (f.k == null || nk + 1 >= f.k!!.size) f.k = realloc(f.k, nk * 2 + 1)
         f.k!![this.nk++] = v
@@ -450,7 +448,7 @@ internal class FuncState internal constructor() : Constants() {
         if (r is LuaDouble) {
             val d: Double = r.todouble()
             val i = d.toInt()
-            if (d == i.toDouble()) r = LuaInteger.valueOf(i)
+            if (d == i.toDouble()) r = LuaInteger.valueOf(i)!!
         }
         return this.addk(r)
     }
@@ -629,7 +627,7 @@ internal class FuncState internal constructor() : Constants() {
                         this.boolK((e.k === LexState.VTRUE))
                     e.k = LexState.VK
                     return RKASK(e.u.info)
-                } else break
+                }
             }
 
             LexState.VKNUM -> {
@@ -640,14 +638,14 @@ internal class FuncState internal constructor() : Constants() {
                 run {
                     if (e.u.info <= MAXINDEXRK)  /* constant fit in argC? */
                         return RKASK(e.u.info)
-                    else break
+                    else Unit
                 }
             }
 
             LexState.VK -> {
                 if (e.u.info <= MAXINDEXRK)
                     return RKASK(e.u.info)
-                else break
+                else Unit
             }
 
             else -> {}
@@ -811,13 +809,13 @@ internal class FuncState internal constructor() : Constants() {
     fun constfolding(op: Int, e1: expdesc, e2: expdesc): Boolean {
         val v1: LuaValue
         val v2: LuaValue
-        val r: LuaValue
+        var r: LuaValue? = null
         if (!e1.isnumeral() || !e2.isnumeral()) return false
         if ((op == OP_DIV || op == OP_MOD) && e2.u.nval()
                 !!.eq_b(LuaValue.ZERO)
         ) return false /* do not attempt to divide by 0 */
-        v1 = e1.u.nval()
-        v2 = e2.u.nval()
+        v1 = e1.u.nval()!!
+        v2 = e2.u.nval()!!
         when (op) {
             OP_ADD -> r = v1.add(v2)
             OP_SUB -> r = v1.sub(v2)
@@ -834,7 +832,7 @@ internal class FuncState internal constructor() : Constants() {
                 r = null
             }
         }
-        if ((r.todouble()).isNaN()) return false /* do not attempt to produce NaN */
+        if ((r!!.todouble()).isNaN()) return false /* do not attempt to produce NaN */
         e1.u.setNval(r)
         return true
     }
