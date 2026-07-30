@@ -3979,7 +3979,7 @@ open class LuaValue : Varargs() {
          * @param unnamedValues array of [LuaValue] containing the values to use in initialization
          * @return new [LuaTable] instance with sequential elements coming from the array.
          */
-        fun listOf(unnamedValues: Array<LuaValue?>?): LuaTable {
+        fun listOf(unnamedValues: Array<out LuaValue?>?): LuaTable {
             return LuaTable(null, unnamedValues, null)
         }
 
@@ -3989,7 +3989,7 @@ open class LuaValue : Varargs() {
          * to be put after the last unnamedValues element
          * @return new [LuaTable] instance with sequential elements coming from the array and varargs.
          */
-        fun listOf(unnamedValues: Array<LuaValue?>?, lastarg: Varargs?): LuaTable {
+        fun listOf(unnamedValues: Array<out LuaValue?>?, lastarg: Varargs?): LuaTable {
             return LuaTable(null, unnamedValues, lastarg)
         }
 
@@ -3998,7 +3998,7 @@ open class LuaValue : Varargs() {
          * in order `{key-a, value-a, key-b, value-b, ...} `
          * @return new [LuaTable] instance with non-sequential keys coming from the supplied array.
          */
-        fun tableOf(namedValues: Array<LuaValue?>?): LuaTable {
+        fun tableOf(namedValues: Array<out LuaValue?>?): LuaTable {
             return LuaTable(namedValues, null, null)
         }
 
@@ -4011,7 +4011,7 @@ open class LuaValue : Varargs() {
          * in order `{value-1, value-2, ...} `, or null if there are none
          * @return new [LuaTable] instance with named and sequential values supplied.
          */
-        fun tableOf(namedValues: Array<LuaValue?>?, unnamedValues: Array<LuaValue?>?): LuaTable {
+        fun tableOf(namedValues: Array<out LuaValue?>?, unnamedValues: Array<out LuaValue?>?): LuaTable {
             return LuaTable(namedValues, unnamedValues, null)
         }
 
@@ -4026,7 +4026,7 @@ open class LuaValue : Varargs() {
          * to be put after the last unnamedValues element
          * @return new [LuaTable] instance with named and sequential values supplied.
          */
-        fun tableOf(namedValues: Array<LuaValue?>?, unnamedValues: Array<LuaValue?>?, lastarg: Varargs?): LuaTable {
+        fun tableOf(namedValues: Array<out LuaValue?>?, unnamedValues: Array<out LuaValue?>?, lastarg: Varargs?): LuaTable {
             return LuaTable(namedValues, unnamedValues, lastarg)
         }
 

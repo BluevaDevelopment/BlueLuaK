@@ -96,7 +96,7 @@ open class LuaTable : LuaValue, Metatable {
      * @param unnamed Unnamed elements in order `value-1, value-2, ... `
      * @param lastarg Additional unnamed values beyond `unnamed.length`
      */
-    constructor(named: Array<LuaValue?>?, unnamed: Array<LuaValue?>?, lastarg: Varargs?) {
+    constructor(named: Array<out LuaValue?>?, unnamed: Array<out LuaValue?>?, lastarg: Varargs?) {
         val nn = (if (named != null) named.size else 0)
         val nu = (if (unnamed != null) unnamed.size else 0)
         val nl = (if (lastarg != null) lastarg.narg() else 0)
@@ -173,14 +173,14 @@ open class LuaTable : LuaValue, Metatable {
         hashEntries = 0
     }
 
-    protected val arrayLength: Int
+    protected val arrayLengthValue: Int
         /**
          * Get the length of the array part of the table.
          * @return length of the array part, does not relate to count of objects in the table.
          */
         get() = array.size
 
-    protected val hashLength: Int
+    protected val hashLengthValue: Int
         /**
          * Get the length of the hash part of the table.
          * @return length of the hash part, does not relate to count of objects in the table.
@@ -258,6 +258,10 @@ open class LuaTable : LuaValue, Metatable {
             value
         )
     }
+
+    fun getArrayLength(): Int = arrayLengthValue
+
+    fun getHashLength(): Int = hashLengthValue
 
     /** caller must ensure key is not nil  */
     override fun set(key: LuaValue?, value: LuaValue?) {
@@ -357,12 +361,12 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun rawlen(): Int {
-        val a = this.arrayLength
+        val a = this.arrayLengthValue
         var n = a + 1
         var m = 0
         while (!rawget(n).isnil()) {
             m = n
-            n += a + this.hashLength + 1
+            n += a + this.hashLengthValue + 1
         }
         while (n > m + 1) {
             val k = (n + m) / 2
