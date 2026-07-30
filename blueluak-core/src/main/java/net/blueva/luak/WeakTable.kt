@@ -304,7 +304,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
 
         override fun strongvalue(): LuaValue {
             val o: Object? = ref.get()
-            return o as LuaValue?
+            return (o as LuaValue?)!!
         }
 
         fun raweq(rhs: LuaValue): Boolean {
@@ -332,7 +332,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             if (o != null) {
                 val ud: LuaValue? = LuaValue.userdataOf(o, mt)
                 ref = WeakReference(ud)
-                return ud
+                return (ud)!!
             } else {
                 return null
             }

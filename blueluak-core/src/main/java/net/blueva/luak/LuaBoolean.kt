@@ -56,7 +56,7 @@ class LuaBoolean internal constructor(
     }
 
     override fun not(): LuaValue {
-        return if (v) FALSE else LuaValue.TRUE
+        return (if (v) FALSE else LuaValue.TRUE)!!
     }
 
     /**

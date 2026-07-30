@@ -90,7 +90,7 @@ class LuaUserdata : LuaValue {
 
     override fun checkuserdata(c: Class<*>): Object {
         if (c!!.isAssignableFrom(m_instance.javaClass)) return m_instance
-        return typerror(c.name)
+        return (typerror(c.name))!!
     }
 
     fun get(key: LuaValue?): LuaValue {
@@ -110,7 +110,7 @@ class LuaUserdata : LuaValue {
 
     // equality w/ metatable processing
     fun eq(`val`: LuaValue): LuaValue {
-        return if (eq_b(`val`)) TRUE else FALSE
+        return (if (eq_b(`val`)) TRUE else FALSE)!!
     }
 
     fun eq_b(`val`: LuaValue): Boolean {

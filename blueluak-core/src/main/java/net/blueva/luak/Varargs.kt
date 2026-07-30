@@ -214,7 +214,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua closure
      */
     fun optclosure(i: Int, defval: LuaClosure?): LuaClosure {
-        return arg(i)!!.optclosure(defval)
+        return (arg(i)!!.optclosure(defval))!!
     }
 
     /** Return argument i as a double, `defval` if nil, or throw a LuaError if it cannot be converted to one.
@@ -232,7 +232,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua function or closure
      */
     fun optfunction(i: Int, defval: LuaFunction?): LuaFunction {
-        return arg(i)!!.optfunction(defval)
+        return (arg(i)!!.optfunction(defval))!!
     }
 
     /** Return argument i as a java int value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -250,7 +250,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java int value
      */
     fun optinteger(i: Int, defval: LuaInteger?): LuaInteger {
-        return arg(i)!!.optinteger(defval)
+        return (arg(i)!!.optinteger(defval))!!
     }
 
     /** Return argument i as a java long value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -268,7 +268,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun optnumber(i: Int, defval: LuaNumber?): LuaNumber {
-        return arg(i)!!.optnumber(defval)
+        return (arg(i)!!.optnumber(defval))!!
     }
 
     /** Return argument i as a java String if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -277,7 +277,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun optjstring(i: Int, defval: String?): String {
-        return arg(i)!!.optjstring(defval)
+        return (arg(i)!!.optjstring(defval))!!
     }
 
     /** Return argument i as a LuaString if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -286,7 +286,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun optstring(i: Int, defval: LuaString?): LuaString {
-        return arg(i)!!.optstring(defval)
+        return (arg(i)!!.optstring(defval))!!
     }
 
     /** Return argument i as a LuaTable if a lua table, `defval` if nil, or throw a LuaError  if any other type.
@@ -295,7 +295,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua table
      */
     fun opttable(i: Int, defval: LuaTable?): LuaTable {
-        return arg(i)!!.opttable(defval)
+        return (arg(i)!!.opttable(defval))!!
     }
 
     /** Return argument i as a LuaThread if a lua thread, `defval` if nil, or throw a LuaError  if any other type.
@@ -304,7 +304,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua thread
      */
     fun optthread(i: Int, defval: LuaThread?): LuaThread {
-        return arg(i)!!.optthread(defval)
+        return (arg(i)!!.optthread(defval))!!
     }
 
     /** Return argument i as a java Object if a userdata, `defval` if nil, or throw a LuaError  if any other type.
@@ -313,7 +313,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata
      */
     fun optuserdata(i: Int, defval: Object?): Object {
-        return arg(i)!!.optuserdata(defval)
+        return (arg(i)!!.optuserdata(defval))!!
     }
 
     /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass,
@@ -324,7 +324,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun optuserdata(i: Int, c: Class<*>?, defval: Object?): Object {
-        return arg(i).optuserdata((c)!!, defval)
+        return (arg(i).optuserdata((c)!!, defval))!!
     }
 
     /** Return argument i as a LuaValue if it exists, or `defval`.
@@ -351,7 +351,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua closure
      */
     fun checkclosure(i: Int): LuaClosure {
-        return arg(i)!!.checkclosure()
+        return (arg(i)!!.checkclosure())!!
     }
 
     /** Return argument i as a double, or throw an error if it cannot be converted to one.
@@ -369,7 +369,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua function or closure
      */
     fun checkfunction(i: Int): LuaFunction {
-        return arg(i)!!.checkfunction()
+        return (arg(i)!!.checkfunction())!!
     }
 
     /** Return argument i as a java int value, or throw an error if it cannot be converted to one.
@@ -387,7 +387,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java int value
      */
     fun checkinteger(i: Int): LuaInteger {
-        return arg(i)!!.checkinteger()
+        return (arg(i)!!.checkinteger())!!
     }
 
     /** Return argument i as a java long value, or throw an error if it cannot be converted to one.
@@ -405,7 +405,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun checknumber(i: Int): LuaNumber {
-        return arg(i)!!.checknumber()
+        return (arg(i)!!.checknumber())!!
     }
 
     /** Return argument i as a java String if a string or number, or throw an error if any other type
@@ -414,7 +414,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun checkjstring(i: Int): String {
-        return arg(i)!!.checkjstring()
+        return (arg(i)!!.checkjstring())!!
     }
 
     /** Return argument i as a LuaString if a string or number, or throw an error if any other type
@@ -423,7 +423,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun checkstring(i: Int): LuaString {
-        return arg(i)!!.checkstring()
+        return (arg(i)!!.checkstring())!!
     }
 
     /** Return argument i as a LuaTable if a lua table, or throw an error if any other type.
@@ -432,7 +432,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua table
      */
     fun checktable(i: Int): LuaTable {
-        return arg(i)!!.checktable()
+        return (arg(i)!!.checktable())!!
     }
 
     /** Return argument i as a LuaThread if a lua thread, or throw an error if any other type.
@@ -441,7 +441,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua thread
      */
     fun checkthread(i: Int): LuaThread {
-        return arg(i)!!.checkthread()
+        return (arg(i)!!.checkthread())!!
     }
 
     /** Return argument i as a java Object if a userdata, or throw an error if any other type.
@@ -450,7 +450,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata
      */
     fun checkuserdata(i: Int): Object {
-        return arg(i)!!.checkuserdata()
+        return (arg(i)!!.checkuserdata())!!
     }
 
     /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass,
@@ -461,7 +461,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun checkuserdata(i: Int, c: Class<*>?): Object {
-        return arg(i).checkuserdata(c)
+        return (arg(i).checkuserdata(c))!!
     }
 
     /** Return argument i as a LuaValue if it exists, or throw an error.
@@ -585,7 +585,7 @@ abstract class Varargs {
      * @return java Object value if argument i is a userdata, otherwise null
      */
     fun touserdata(i: Int): Object {
-        return arg(i)!!.touserdata()
+        return (arg(i)!!.touserdata())!!
     }
 
     /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass, or null.
@@ -594,7 +594,7 @@ abstract class Varargs {
      * @return java Object value if argument i is a userdata whose instance Class c or a subclass, otherwise null
      */
     fun touserdata(i: Int, c: Class<*>?): Object {
-        return arg(i).touserdata(c)
+        return (arg(i).touserdata(c))!!
     }
 
     /** Convert the list of varargs values to a human readable java String.

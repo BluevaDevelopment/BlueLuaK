@@ -195,15 +195,15 @@ class LuaString private constructor(
     }
 
     override fun div(rhs: Double): LuaValue {
-        return LuaDouble.ddiv(checkarith(), rhs)
+        return (LuaDouble.ddiv(checkarith(), rhs))!!
     }
 
     override fun div(rhs: Int): LuaValue {
-        return LuaDouble.ddiv(checkarith(), rhs)
+        return (LuaDouble.ddiv(checkarith(), rhs))!!
     }
 
     override fun divInto(lhs: Double): LuaValue {
-        return LuaDouble.ddiv(lhs, checkarith())
+        return (LuaDouble.ddiv(lhs, checkarith()))!!
     }
 
     override fun mod(rhs: LuaValue): LuaValue {
@@ -212,20 +212,20 @@ class LuaString private constructor(
     }
 
     override fun mod(rhs: Double): LuaValue {
-        return LuaDouble.dmod(checkarith(), rhs)
+        return (LuaDouble.dmod(checkarith(), rhs))!!
     }
 
     override fun mod(rhs: Int): LuaValue {
-        return LuaDouble.dmod(checkarith(), rhs)
+        return (LuaDouble.dmod(checkarith(), rhs))!!
     }
 
     override fun modFrom(lhs: Double): LuaValue {
-        return LuaDouble.dmod(lhs, checkarith())
+        return (LuaDouble.dmod(lhs, checkarith()))!!
     }
 
     // relational operators, these only work with other strings
     override fun lt(rhs: LuaValue): LuaValue {
-        return if (rhs.isstring()) (if (rhs.strcmp(this) > 0) LuaValue.TRUE else FALSE) else super.lt(rhs)
+        return (if (rhs.isstring()) (if (rhs.strcmp(this) > 0) LuaValue.TRUE else FALSE) else super.lt(rhs))!!
     }
 
     override fun lt_b(rhs: LuaValue): Boolean {
@@ -243,7 +243,7 @@ class LuaString private constructor(
     }
 
     override fun lteq(rhs: LuaValue): LuaValue {
-        return if (rhs.isstring()) (if (rhs.strcmp(this) >= 0) LuaValue.TRUE else FALSE) else super.lteq(rhs)
+        return (if (rhs.isstring()) (if (rhs.strcmp(this) >= 0) LuaValue.TRUE else FALSE) else super.lteq(rhs))!!
     }
 
     override fun lteq_b(rhs: LuaValue): Boolean {
@@ -261,7 +261,7 @@ class LuaString private constructor(
     }
 
     override fun gt(rhs: LuaValue): LuaValue {
-        return if (rhs.isstring()) (if (rhs.strcmp(this) < 0) LuaValue.TRUE else FALSE) else super.gt(rhs)
+        return (if (rhs.isstring()) (if (rhs.strcmp(this) < 0) LuaValue.TRUE else FALSE) else super.gt(rhs))!!
     }
 
     override fun gt_b(rhs: LuaValue): Boolean {
@@ -279,7 +279,7 @@ class LuaString private constructor(
     }
 
     override fun gteq(rhs: LuaValue): LuaValue {
-        return if (rhs.isstring()) (if (rhs.strcmp(this) <= 0) LuaValue.TRUE else FALSE) else super.gteq(rhs)
+        return (if (rhs.isstring()) (if (rhs.strcmp(this) <= 0) LuaValue.TRUE else FALSE) else super.gteq(rhs))!!
     }
 
     override fun gteq_b(rhs: LuaValue): Boolean {
@@ -483,7 +483,7 @@ class LuaString private constructor(
 
     // equality w/ metatable processing
     fun eq(`val`: LuaValue): LuaValue {
-        return if (`val`.raweq(this)) TRUE else FALSE
+        return (if (`val`.raweq(this)) TRUE else FALSE)!!
     }
 
     fun eq_b(`val`: LuaValue): Boolean {
@@ -515,7 +515,7 @@ class LuaString private constructor(
     }
 
     override fun len(): LuaValue {
-        return LuaInteger.valueOf(m_length)
+        return (LuaInteger.valueOf(m_length))!!
     }
 
     override fun length(): Int {

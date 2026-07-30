@@ -105,7 +105,7 @@ class LuaDouble
     }
 
     override fun optinteger(defval: LuaInteger?): LuaInteger {
-        return LuaInteger.valueOf(v.toLong().toInt())
+        return (LuaInteger.valueOf(v.toLong().toInt()))!!
     }
 
     override fun optlong(defval: Long): Long {
@@ -113,12 +113,12 @@ class LuaDouble
     }
 
     override fun checkinteger(): LuaInteger {
-        return LuaInteger.valueOf(v.toLong().toInt())
+        return (LuaInteger.valueOf(v.toLong().toInt()))!!
     }
 
     // unary operators
     override fun neg(): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.valueOf(-v)
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(-v))!!
     }
 
     // object equality, used for key comparison
@@ -128,7 +128,7 @@ class LuaDouble
 
     // equality w/ metatable processing
     fun eq(`val`: LuaValue): LuaValue {
-        return if (`val`.raweq(v)) TRUE else FALSE
+        return (if (`val`.raweq(v)) TRUE else FALSE)!!
     }
 
     fun eq_b(`val`: LuaValue): Boolean {
@@ -154,7 +154,7 @@ class LuaDouble
     }
 
     override fun add(lhs: Double): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.valueOf(lhs + v)
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs + v))!!
     }
 
     override fun sub(rhs: LuaValue): LuaValue {
@@ -170,7 +170,7 @@ class LuaDouble
     }
 
     override fun subFrom(lhs: Double): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v)
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v))!!
     }
 
     override fun mul(rhs: LuaValue): LuaValue {
@@ -178,11 +178,11 @@ class LuaDouble
     }
 
     override fun mul(lhs: Double): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v)
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v))!!
     }
 
     override fun mul(lhs: Int): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v)
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v))!!
     }
 
     override fun pow(rhs: LuaValue): LuaValue {
@@ -218,7 +218,7 @@ class LuaDouble
     }
 
     override fun divInto(lhs: Double): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.ddiv(lhs, v)
+        return (net.blueva.luak.LuaDouble.Companion.ddiv(lhs, v))!!
     }
 
     override fun mod(rhs: LuaValue): LuaValue {
@@ -234,21 +234,21 @@ class LuaDouble
     }
 
     override fun modFrom(lhs: Double): LuaValue {
-        return net.blueva.luak.LuaDouble.Companion.dmod(lhs, v)
+        return (net.blueva.luak.LuaDouble.Companion.dmod(lhs, v))!!
     }
 
 
     // relational operators
     override fun lt(rhs: LuaValue): LuaValue {
-        return if (rhs is LuaNumber) (if (rhs.gt_b(v)) TRUE else FALSE) else super.lt(rhs)
+        return (if (rhs is LuaNumber) (if (rhs.gt_b(v)) TRUE else FALSE) else super.lt(rhs))!!
     }
 
     override fun lt(rhs: Double): LuaValue {
-        return if (v < rhs) TRUE else FALSE
+        return (if (v < rhs) TRUE else FALSE)!!
     }
 
     override fun lt(rhs: Int): LuaValue {
-        return if (v < rhs) TRUE else FALSE
+        return (if (v < rhs) TRUE else FALSE)!!
     }
 
     override fun lt_b(rhs: LuaValue): Boolean {
@@ -264,15 +264,15 @@ class LuaDouble
     }
 
     override fun lteq(rhs: LuaValue): LuaValue {
-        return if (rhs is LuaNumber) (if (rhs.gteq_b(v)) TRUE else FALSE) else super.lteq(rhs)
+        return (if (rhs is LuaNumber) (if (rhs.gteq_b(v)) TRUE else FALSE) else super.lteq(rhs))!!
     }
 
     override fun lteq(rhs: Double): LuaValue {
-        return if (v <= rhs) TRUE else FALSE
+        return (if (v <= rhs) TRUE else FALSE)!!
     }
 
     override fun lteq(rhs: Int): LuaValue {
-        return if (v <= rhs) TRUE else FALSE
+        return (if (v <= rhs) TRUE else FALSE)!!
     }
 
     override fun lteq_b(rhs: LuaValue): Boolean {
@@ -288,15 +288,15 @@ class LuaDouble
     }
 
     override fun gt(rhs: LuaValue): LuaValue {
-        return if (rhs is LuaNumber) (if (rhs.lt_b(v)) TRUE else FALSE) else super.gt(rhs)
+        return (if (rhs is LuaNumber) (if (rhs.lt_b(v)) TRUE else FALSE) else super.gt(rhs))!!
     }
 
     override fun gt(rhs: Double): LuaValue {
-        return if (v > rhs) TRUE else FALSE
+        return (if (v > rhs) TRUE else FALSE)!!
     }
 
     override fun gt(rhs: Int): LuaValue {
-        return if (v > rhs) TRUE else FALSE
+        return (if (v > rhs) TRUE else FALSE)!!
     }
 
     override fun gt_b(rhs: LuaValue): Boolean {
@@ -312,15 +312,15 @@ class LuaDouble
     }
 
     override fun gteq(rhs: LuaValue): LuaValue {
-        return if (rhs is LuaNumber) (if (rhs.lteq_b(v)) TRUE else FALSE) else super.gteq(rhs)
+        return (if (rhs is LuaNumber) (if (rhs.lteq_b(v)) TRUE else FALSE) else super.gteq(rhs))!!
     }
 
     override fun gteq(rhs: Double): LuaValue {
-        return if (v >= rhs) TRUE else FALSE
+        return (if (v >= rhs) TRUE else FALSE)!!
     }
 
     override fun gteq(rhs: Int): LuaValue {
-        return if (v >= rhs) TRUE else FALSE
+        return (if (v >= rhs) TRUE else FALSE)!!
     }
 
     override fun gteq_b(rhs: LuaValue): Boolean {

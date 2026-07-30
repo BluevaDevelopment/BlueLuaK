@@ -53,7 +53,7 @@ open class LuaNil internal constructor() : LuaValue() {
     }
 
     override fun not(): LuaValue {
-        return LuaValue.TRUE
+        return (LuaValue.TRUE)!!
     }
 
     override fun toboolean(): Boolean {
@@ -73,7 +73,7 @@ open class LuaNil internal constructor() : LuaValue() {
     }
 
     override fun checknotnil(): LuaValue {
-        return argerror("value")
+        return (argerror("value"))!!
     }
 
     override fun isvalidkey(): Boolean {
@@ -138,7 +138,7 @@ open class LuaNil internal constructor() : LuaValue() {
     }
 
     override fun optvalue(defval: LuaValue?): LuaValue {
-        return defval
+        return (defval)!!
     }
 
     companion object {

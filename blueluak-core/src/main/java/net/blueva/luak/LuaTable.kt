@@ -348,7 +348,7 @@ open class LuaTable : LuaValue, Metatable {
     override fun len(): LuaValue {
         val h: LuaValue = metatag(LEN)
         if (h.toboolean()) return h.call(this)
-        return LuaInteger.valueOf(rawlen())
+        return (LuaInteger.valueOf(rawlen()))!!
     }
 
     override fun rawlen(): Int {
@@ -409,7 +409,7 @@ open class LuaTable : LuaValue, Metatable {
             if (array[i] != null) {
                 val value: LuaValue? = if (m_metatable == null) array[i] else m_metatable.arrayget(array, i)
                 if (value != null) {
-                    return varargsOf(LuaInteger.valueOf(i + 1), value)
+                    return (varargsOf(LuaInteger.valueOf(i + 1), value))!!
                 }
             }
             ++i
@@ -440,7 +440,7 @@ open class LuaTable : LuaValue, Metatable {
     fun inext(key: LuaValue): Varargs {
         val k: Int = key.checkint() + 1
         val v: LuaValue = rawget(k)
-        return if (v.isnil()) NONE else varargsOf(LuaInteger.valueOf(k), v)
+        return (if (v.isnil()) NONE else varargsOf(LuaInteger.valueOf(k), v))!!
     }
 
     /**
@@ -786,7 +786,7 @@ open class LuaTable : LuaValue, Metatable {
 
     // equality w/ metatable processing
     fun eq(`val`: LuaValue): LuaValue {
-        return if (eq_b(`val`)) TRUE else FALSE
+        return (if (eq_b(`val`)) TRUE else FALSE)!!
     }
 
     fun eq_b(`val`: LuaValue): Boolean {
@@ -808,7 +808,7 @@ open class LuaTable : LuaValue, Metatable {
 
     /** Unpack the elements from i to j inclusive  */
     fun unpack(i: Int, j: Int): Varargs {
-        if (j < i) return NONE
+        if (j < i) return (NONE)!!
         val count = j - i
         if (count < 0) throw LuaError("too many results to unpack: greater " + Integer.MAX_VALUE) // integer overflow
 
@@ -816,15 +816,15 @@ open class LuaTable : LuaValue, Metatable {
         if (count >= max) throw LuaError("too many results to unpack: " + count + " (max is " + max + ')')
         var n = j + 1 - i
         when (n) {
-            0 -> return NONE
+            0 -> return (NONE)!!
             1 -> return get(i)
-            2 -> return varargsOf(get(i), get(i + 1))
+            2 -> return (varargsOf(get(i), get(i + 1)))!!
             else -> {
-                if (n < 0) return NONE
+                if (n < 0) return (NONE)!!
                 try {
                     val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
                     while (--n >= 0) v[n] = get(i + n)
-                    return varargsOf(v)
+                    return (varargsOf(v))!!
                 } catch (e: OutOfMemoryError) {
                     throw LuaError("too many results to unpack [out of memory]: " + n)
                 }
@@ -1019,7 +1019,7 @@ open class LuaTable : LuaValue, Metatable {
          * Subclasses should redefine as "return this;" whenever possible.
          */
         override fun toVarargs(): Varargs {
-            return varargsOf(key(), value())
+            return (varargsOf(key(), value()))!!
         }
 
         override fun arg1(): LuaValue? {
@@ -1077,7 +1077,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun value(): LuaValue {
-            return value
+            return (value)!!
         }
 
         public override fun set(value: LuaValue?): Entry {
@@ -1114,7 +1114,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun value(): LuaValue {
-            return value
+            return (value)!!
         }
 
         public override fun set(value: LuaValue?): Entry {
@@ -1233,7 +1233,7 @@ open class LuaTable : LuaValue, Metatable {
                 next = next!!.remove(target)
                 return this
             } else {
-                return next
+                return (next)!!
             }
         }
 

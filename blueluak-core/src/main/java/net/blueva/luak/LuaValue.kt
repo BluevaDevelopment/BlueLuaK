@@ -1604,7 +1604,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
-        return callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1()
+        return (callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1())!!
     }
 
     /** Call named method on `this` with 0 arguments, including metatag processing,
@@ -3903,7 +3903,7 @@ open class LuaValue : Varargs() {
          * @return [LuaInteger] instance, possibly pooled, whose value is i
          */
         fun valueOf(i: Int): LuaInteger {
-            return LuaInteger.valueOf(i)
+            return (LuaInteger.valueOf(i))!!
         }
 
         /** Convert java double to a [LuaValue].
@@ -3914,7 +3914,7 @@ open class LuaValue : Varargs() {
          * @return [LuaNumber] instance, possibly pooled, whose value is d
          */
         fun valueOf(d: Double): LuaNumber {
-            return LuaDouble.valueOf(d)
+            return (LuaDouble.valueOf(d))!!
         }
 
         /** Convert java string to a [LuaValue].

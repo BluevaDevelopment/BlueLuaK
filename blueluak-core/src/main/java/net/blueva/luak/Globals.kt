@@ -314,7 +314,7 @@ class Globals : LuaTable() {
     fun yield(args: Varargs?): Varargs {
         if (running == null || running.isMainThread) throw LuaError("cannot yield main thread")
         val s: LuaThread.State = running.state
-        return s.lua_yield(args) ?: LuaValue.NONE
+        return (s.lua_yield(args) ?: LuaValue.NONE)!!
     }
 
     /** Reader implementation to read chars from a String in JME or JSE.  */
