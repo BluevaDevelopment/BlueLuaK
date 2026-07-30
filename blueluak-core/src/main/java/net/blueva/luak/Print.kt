@@ -86,7 +86,7 @@ class Print : Lua() {
             var i = 0
             val n: Int = s.m_length
             while (i < n) {
-                val c: Int = s.m_bytes[s.m_offset + i]
+                val c: Int = s.m_bytes[s.m_offset + i].toInt()
                 if (c >= ' '.code && c <= '~'.code && c != '\"'.code && c != '\\'.code) ps.print(c.toChar())
                 else {
                     when (c) {

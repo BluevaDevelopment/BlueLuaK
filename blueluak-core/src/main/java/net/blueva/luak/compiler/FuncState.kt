@@ -107,7 +107,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun getlocvar(i: Int): LocVars {
-        val idx: Int = ls!!.dyd.actvar!![firstlocal + i]!!.idx
+        val idx: Int = ls!!.dyd.actvar!![firstlocal + i]!!.idx.toInt()
         _assert(idx < nlocvars)
         return (f!!.locvars[idx])!!
     }

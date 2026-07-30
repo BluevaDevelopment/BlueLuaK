@@ -831,7 +831,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             /* close last expression */
             if (e.k != net.blueva.luak.compiler.LexState.Companion.VVOID) fs.exp2nextreg(e)
             if (extra > 0) {
-                val reg: Int = fs.freereg
+                val reg: Int = fs.freereg.toInt()
                 fs.reserveregs(extra)
                 fs.nil(reg, extra)
             }
@@ -905,7 +905,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 	 */
     internal fun findgotos(lb: Labeldesc) {
         val gl = dyd.gt
-        var i: Int = fs!!.bl!!.firstgoto
+        var i: Int = fs!!.bl!!.firstgoto.toInt()
         while (i < dyd.n_gt) {
             if (gl[i].name!!.eq_b(lb.name)) closegoto(i, lb)
             else i++
@@ -1027,7 +1027,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun recfield(cc: ConsControl) {
         /* recfield -> (NAME | `['exp1`]') = exp1 */
         val fs: FuncState? = this.fs
-        val reg: Int = this.fs!!.freereg
+        val reg: Int = this.fs!!.freereg.toInt()
         val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val `val`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val rkkey: Int
@@ -1677,7 +1677,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun fornum(varname: LuaString?, line: Int) {
         /* fornum -> NAME = exp1,exp1[,exp1] forbody */
         val fs: FuncState = this.fs
-        val base: Int = fs.freereg
+        val base: Int = fs.freereg.toInt()
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_LIMIT)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STEP)
@@ -1701,7 +1701,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         var nvars = 4 /* gen, state, control, plus at least one declared var */
         val line: Int
-        val base: Int = fs.freereg
+        val base: Int = fs.freereg.toInt()
         /* create control variables */
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_GENERATOR)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STATE)
