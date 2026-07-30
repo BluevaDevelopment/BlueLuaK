@@ -16,11 +16,23 @@
  ******************************************************************************/
 package net.blueva.luak.ast
 
-class TableConstructor : Exp() {
-    @JvmField
-    var fields: MutableList<TableField?>? = null
+class FuncName(name: String?) : SyntaxElement() {
+    // example: a.b.c.d:e
+    // initial base name: "a"
+    val name: Name
 
-    override fun accept(visitor: Visitor?) {
-        visitor?.visit(this)
+    // intermediate field accesses: "b", "c", "d"
+    var dots: MutableList<String?>? = null
+
+    // optional final method name: "e"
+        var method: String? = null
+
+    init {
+        this.name = Name(name)
+    }
+
+    fun adddot(dot: String?) {
+        if (dots == null) dots = ArrayList<String?>()
+        dots!!.add(dot)
     }
 }

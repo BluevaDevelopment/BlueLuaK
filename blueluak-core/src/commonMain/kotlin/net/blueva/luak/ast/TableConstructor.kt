@@ -16,25 +16,10 @@
  ******************************************************************************/
 package net.blueva.luak.ast
 
-class TableField(val index: Exp?, val name: String?, val rhs: Exp?) : SyntaxElement() {
-    fun accept(visitor: Visitor) {
-        visitor.visit(this)
-    }
+class TableConstructor : Exp() {
+        var fields: MutableList<TableField?>? = null
 
-    companion object {
-        @JvmStatic
-        fun keyedField(index: Exp?, rhs: Exp?): TableField {
-            return TableField(index, null, rhs)
-        }
-
-        @JvmStatic
-        fun namedField(name: String?, rhs: Exp?): TableField {
-            return TableField(null, name, rhs)
-        }
-
-        @JvmStatic
-        fun listField(rhs: Exp?): TableField {
-            return TableField(null, null, rhs)
-        }
+    override fun accept(visitor: Visitor?) {
+        visitor?.visit(this)
     }
 }

@@ -17,26 +17,22 @@
 package net.blueva.luak.ast
 
 import net.blueva.luak.LuaString
-import java.io.ByteArrayOutputStream
-import java.io.UnsupportedEncodingException
+import net.blueva.luak.io.ByteArrayOutputStream
 
 object Str {
-    @JvmStatic
-    fun quoteString(image: String): LuaString {
+        fun quoteString(image: String): LuaString {
         val s = image.substring(1, image.length - 1)
         val bytes = unquote(s)
         return LuaString.valueUsing(bytes)
     }
 
-    @JvmStatic
-    fun charString(image: String): LuaString {
+        fun charString(image: String): LuaString {
         val s = image.substring(1, image.length - 1)
         val bytes = unquote(s)
         return LuaString.valueUsing(bytes)
     }
 
-    @JvmStatic
-    fun longString(image: String): LuaString {
+        fun longString(image: String): LuaString {
         val i = image.indexOf('[', image.indexOf('[') + 1) + 1
         val s = image.substring(i, image.length - i)
         val b = iso88591bytes(s)
@@ -44,11 +40,7 @@ object Str {
     }
 
     fun iso88591bytes(s: String): ByteArray {
-        try {
-            return s.toByteArray(charset("ISO8859-1"))
-        } catch (e: UnsupportedEncodingException) {
-            throw IllegalStateException("ISO8859-1 not supported")
-        }
+        return ByteArray(s.length) { index -> s[index].code.toByte() }
     }
 
     fun unquote(s: String): ByteArray {

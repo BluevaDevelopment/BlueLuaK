@@ -16,24 +16,20 @@
  ******************************************************************************/
 package net.blueva.luak.ast
 
-class FuncName(name: String?) : SyntaxElement() {
-    // example: a.b.c.d:e
-    // initial base name: "a"
-    val name: Name
+/** Base class for syntax elements of the parse tree that appear in source files.
+ * The LuaParser class will fill these values out during parsing for use in
+ * syntax highlighting, for example.
+ */
+open class SyntaxElement {
+    /** The line number on which the element begins.  */
+        var beginLine: Int = 0
 
-    // intermediate field accesses: "b", "c", "d"
-    var dots: MutableList<String?>? = null
+    /** The column at which the element begins.  */
+        var beginColumn: Short = 0
 
-    // optional final method name: "e"
-    @JvmField
-    var method: String? = null
+    /** The line number on which the element ends.  */
+        var endLine: Int = 0
 
-    init {
-        this.name = Name(name)
-    }
-
-    fun adddot(dot: String?) {
-        if (dots == null) dots = ArrayList<String?>()
-        dots!!.add(dot)
-    }
+    /** The column at which the element ends.  */
+        var endColumn: Short = 0
 }

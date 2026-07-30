@@ -153,28 +153,23 @@ class Exp : SyntaxElement() {
     }
 
     companion object {
-        @JvmStatic
-        fun constant(value: LuaValue?): Exp {
+                fun constant(value: LuaValue?): Exp {
             return Constant(value)
         }
 
-        @JvmStatic
-        fun numberconstant(token: String?): Exp {
+                fun numberconstant(token: String?): Exp {
             return Constant(LuaValue.valueOf(token).tonumber())
         }
 
-        @JvmStatic
-        fun varargs(): Exp {
+                fun varargs(): Exp {
             return VarargsExp()
         }
 
-        @JvmStatic
-        fun tableconstructor(tc: TableConstructor?): Exp? {
+                fun tableconstructor(tc: TableConstructor?): Exp? {
             return tc
         }
 
-        @JvmStatic
-        fun unaryexp(op: Int, rhs: Exp?): Exp? {
+                fun unaryexp(op: Int, rhs: Exp?): Exp? {
             if (rhs is BinopExp) {
                 val b = rhs
                 if (precedence(op) > precedence(b.op)) return binaryexp(unaryexp(op, b.lhs), b.op, b.rhs)
@@ -182,8 +177,7 @@ class Exp : SyntaxElement() {
             return UnopExp(op, rhs)
         }
 
-        @JvmStatic
-        fun binaryexp(lhs: Exp?, op: Int, rhs: Exp?): Exp? {
+                fun binaryexp(lhs: Exp?, op: Int, rhs: Exp?): Exp? {
             if (lhs is UnopExp) {
                 val u = lhs
                 if (precedence(op) > precedence(u.op)) return unaryexp(u.op, binaryexp(u.rhs, op, rhs))
@@ -205,16 +199,14 @@ class Exp : SyntaxElement() {
             return BinopExp(lhs, op, rhs)
         }
 
-        @JvmStatic
-        fun isrightassoc(op: Int): Boolean {
+                fun isrightassoc(op: Int): Boolean {
             when (op) {
                 Lua.OP_CONCAT, Lua.OP_POW -> return true
                 else -> return false
             }
         }
 
-        @JvmStatic
-        fun precedence(op: Int): Int {
+                fun precedence(op: Int): Int {
             when (op) {
                 Lua.OP_OR -> return 0
                 Lua.OP_AND -> return 1
@@ -228,44 +220,37 @@ class Exp : SyntaxElement() {
             }
         }
 
-        @JvmStatic
-        fun anonymousfunction(funcbody: FuncBody?): Exp {
+                fun anonymousfunction(funcbody: FuncBody?): Exp {
             return AnonFuncDef(funcbody)
         }
 
         /** foo  */
-        @JvmStatic
-        fun nameprefix(name: String?): NameExp {
+                fun nameprefix(name: String?): NameExp {
             return NameExp(name)
         }
 
         /** ( foo.bar )  */
-        @JvmStatic
-        fun parensprefix(exp: Exp?): ParensExp {
+                fun parensprefix(exp: Exp?): ParensExp {
             return ParensExp(exp)
         }
 
         /** foo[exp]  */
-        @JvmStatic
-        fun indexop(lhs: PrimaryExp?, exp: Exp?): IndexExp {
+                fun indexop(lhs: PrimaryExp?, exp: Exp?): IndexExp {
             return IndexExp(lhs, exp)
         }
 
         /** foo.bar  */
-        @JvmStatic
-        fun fieldop(lhs: PrimaryExp?, name: String?): FieldExp {
+                fun fieldop(lhs: PrimaryExp?, name: String?): FieldExp {
             return FieldExp(lhs, name)
         }
 
         /** foo(2,3)  */
-        @JvmStatic
-        fun functionop(lhs: PrimaryExp?, args: FuncArgs?): FuncCall {
+                fun functionop(lhs: PrimaryExp?, args: FuncArgs?): FuncCall {
             return FuncCall(lhs, args)
         }
 
         /** foo:bar(4,5)  */
-        @JvmStatic
-        fun methodop(lhs: PrimaryExp?, name: String, args: FuncArgs?): MethodCall {
+                fun methodop(lhs: PrimaryExp?, name: String, args: FuncArgs?): MethodCall {
             return MethodCall(lhs, name, args)
         }
     }

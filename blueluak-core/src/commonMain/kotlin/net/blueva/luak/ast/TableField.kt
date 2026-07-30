@@ -16,24 +16,22 @@
  ******************************************************************************/
 package net.blueva.luak.ast
 
-/** Base class for syntax elements of the parse tree that appear in source files.
- * The LuaParser class will fill these values out during parsing for use in
- * syntax highlighting, for example.
- */
-open class SyntaxElement {
-    /** The line number on which the element begins.  */
-    @JvmField
-    var beginLine: Int = 0
+class TableField(val index: Exp?, val name: String?, val rhs: Exp?) : SyntaxElement() {
+    fun accept(visitor: Visitor) {
+        visitor.visit(this)
+    }
 
-    /** The column at which the element begins.  */
-    @JvmField
-    var beginColumn: Short = 0
+    companion object {
+                fun keyedField(index: Exp?, rhs: Exp?): TableField {
+            return TableField(index, null, rhs)
+        }
 
-    /** The line number on which the element ends.  */
-    @JvmField
-    var endLine: Int = 0
+                fun namedField(name: String?, rhs: Exp?): TableField {
+            return TableField(null, name, rhs)
+        }
 
-    /** The column at which the element ends.  */
-    @JvmField
-    var endColumn: Short = 0
+                fun listField(rhs: Exp?): TableField {
+            return TableField(null, null, rhs)
+        }
+    }
 }
