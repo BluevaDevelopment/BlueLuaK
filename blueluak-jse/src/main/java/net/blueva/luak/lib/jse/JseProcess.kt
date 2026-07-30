@@ -42,7 +42,7 @@ class JseProcess private constructor(
      * @see Process
      */
     constructor(
-        cmd: Array<String?>?,
+        cmd: Array<out String?>?,
         stdin: InputStream?,
         stdout: OutputStream?,
         stderr: OutputStream?
