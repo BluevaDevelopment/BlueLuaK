@@ -69,7 +69,7 @@ object ScriptEngineTests : TestSuite() {
     }
 
     open class DefaultBindingsTest : EngineTestCase() {
-        override fun createBindings(): Bindings? {
+        override fun createBindings(): Bindings {
             return e!!.createBindings()
         }
     }
@@ -136,8 +136,8 @@ object ScriptEngineTests : TestSuite() {
             val y = e!!.get("y")
             assertEquals(5, y)
             e!!.put("f", object : OneArgFunction() {
-                override fun call(arg: LuaValue): LuaValue {
-                    return valueOf(arg.toString() + "123")
+                override fun call(arg: LuaValue?): LuaValue {
+                    return valueOf(arg!!.toString() + "123")
                 }
             })
             val r = e!!.eval("return f('abc')")
