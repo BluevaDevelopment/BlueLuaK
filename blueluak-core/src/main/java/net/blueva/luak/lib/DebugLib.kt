@@ -251,7 +251,7 @@ class DebugLib : TwoArgFunction() {
             var call = false
             var line = false
             var rtrn = false
-            for (i in 0..<str.length()) when (str.charAt(i)) {
+            for (i in 0..<str.length) when (str[i]) {
                 'c' -> call = true
                 'l' -> line = true
                 'r' -> rtrn = true
@@ -345,7 +345,7 @@ class DebugLib : TwoArgFunction() {
             val up: Int = args.checkint(2)
             if (func is LuaClosure) {
                 val c: LuaClosure = func as LuaClosure
-                if (c.upValues != null && up > 0 && up <= c.upValues.length) {
+                if (c.upValues != null && up > 0 && up <= c.upValues.size) {
                     return valueOf(c.upValues[up - 1].hashCode())
                 }
             }
@@ -360,8 +360,8 @@ class DebugLib : TwoArgFunction() {
             val n1: Int = args.checkint(2)
             val f2: LuaClosure = args.checkclosure(3)
             val n2: Int = args.checkint(4)
-            if (n1 < 1 || n1 > f1.upValues.length) argerror("index out of range")
-            if (n2 < 1 || n2 > f2.upValues.length) argerror("index out of range")
+            if (n1 < 1 || n1 > f1.upValues.size) argerror("index out of range")
+            if (n2 < 1 || n2 > f2.upValues.size) argerror("index out of range")
             f1.upValues[n1 - 1] = f2.upValues[n2 - 1]
             return NONE
         }
@@ -564,12 +564,12 @@ class DebugLib : TwoArgFunction() {
             var i = 0
             val n: Int = what.length()
             while (i < n) {
-                when (what.charAt(i)) {
+                when (what[i]) {
                     'S' -> ar.funcinfo(f)
                     'l' -> ar.currentline = if (ci != null && ci.f.isclosure()) ci.currentline() else -1
                     'u' -> if (f != null && f.isclosure()) {
                         val p: Prototype = f.checkclosure().p
-                        ar.nups = p.upvalues.length as Short
+                        ar.nups = p.upvalues.size as Short
                         ar.nparams = p.numparams as Short
                         ar.isvararg = p.is_vararg !== 0
                     } else {
@@ -723,8 +723,8 @@ class DebugLib : TwoArgFunction() {
         val ACTIVELINES: LuaString? = valueOf("activelines")
 
         fun findupvalue(c: LuaClosure, up: Int): LuaString? {
-            if (c.upValues != null && up > 0 && up <= c.upValues.length) {
-                if (c.p.upvalues != null && up <= c.p.upvalues.length) return c.p.upvalues[up - 1].name
+            if (c.upValues != null && up > 0 && up <= c.upValues.size) {
+                if (c.p.upvalues != null && up <= c.p.upvalues.size) return c.p.upvalues[up - 1].name
                 else return LuaString.valueOf("." + up)
             }
             return null
@@ -796,7 +796,7 @@ class DebugLib : TwoArgFunction() {
                         val vn: LuaString? = if (Lua.GET_OPCODE(i) === Lua.OP_GETTABLE)
                             p.getlocalname(t + 1, pc)
                         else
-                            (if (t < p.upvalues.length) p.upvalues[t].name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
+                            (if (t < p.upvalues.size) p.upvalues[t].name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
                         val jname: String = net.blueva.luak.lib.DebugLib.Companion.kname(p, pc, k)
                         return net.blueva.luak.lib.DebugLib.NameWhat(
                             jname,
@@ -807,7 +807,7 @@ class DebugLib : TwoArgFunction() {
                     Lua.OP_GETUPVAL -> {
                         val u: Int = Lua.GETARG_B(i) /* upvalue index */
                         name =
-                            if (u < p.upvalues.length) p.upvalues[u].name else net.blueva.luak.lib.DebugLib.Companion.QMARK
+                            if (u < p.upvalues.size) p.upvalues[u].name else net.blueva.luak.lib.DebugLib.Companion.QMARK
                         return if (name == null) null else net.blueva.luak.lib.DebugLib.NameWhat(
                             name.tojstring(),
                             "upvalue"

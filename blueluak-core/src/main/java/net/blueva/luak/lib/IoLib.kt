@@ -617,7 +617,7 @@ class IoLib : TwoArgFunction() {
         var i = 0
         while (i < len) {
             // [rwa][+]?b*
-            val ch: Char = mode.charAt(i)
+            val ch: Char = mode[i]
             if (i == 0 && "rwa".indexOf(ch) >= 0) {
                 i++
                 continue

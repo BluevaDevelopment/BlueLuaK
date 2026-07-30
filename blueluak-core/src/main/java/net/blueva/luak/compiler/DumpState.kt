@@ -162,7 +162,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             }
             i++
         }
-        n = f.p.length
+        n = f.p.size
         dumpInt(n)
         i = 0
         while (i < n) {
@@ -173,7 +173,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpUpvalues(f: Prototype) {
-        val n: Int = f.upvalues.length
+        val n: Int = f.upvalues.size
         dumpInt(n)
         for (i in 0..<n) {
             writer.writeByte(if (f.upvalues[i].instack) 1 else 0)
@@ -187,14 +187,14 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         var n: Int
         if (strip) dumpInt(0)
         else dumpString(f.source)
-        n = if (strip) 0 else f.lineinfo.length
+        n = if (strip) 0 else f.lineinfo.size
         dumpInt(n)
         i = 0
         while (i < n) {
             dumpInt(f.lineinfo[i])
             i++
         }
-        n = if (strip) 0 else f.locvars.length
+        n = if (strip) 0 else f.locvars.size
         dumpInt(n)
         i = 0
         while (i < n) {
@@ -204,7 +204,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             dumpInt(lvi.endpc)
             i++
         }
-        n = if (strip) 0 else f.upvalues.length
+        n = if (strip) 0 else f.upvalues.size
         dumpInt(n)
         i = 0
         while (i < n) {

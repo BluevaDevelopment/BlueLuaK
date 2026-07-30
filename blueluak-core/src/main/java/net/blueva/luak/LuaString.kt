@@ -828,7 +828,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueOf(bytes: ByteArray, off: Int = 0, len: Int = bytes.length): LuaString {
+        fun valueOf(bytes: ByteArray, off: Int = 0, len: Int = bytes.size): LuaString {
             if (len > net.blueva.luak.LuaString.Companion.RECENT_STRINGS_MAX_LENGTH) return net.blueva.luak.LuaString.Companion.valueFromCopy(
                 bytes,
                 off,
@@ -876,7 +876,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueUsing(bytes: ByteArray, off: Int = 0, len: Int = bytes.length): LuaString {
+        fun valueUsing(bytes: ByteArray, off: Int = 0, len: Int = bytes.size): LuaString {
             if (bytes.size > net.blueva.luak.LuaString.Companion.RECENT_STRINGS_MAX_LENGTH) return net.blueva.luak.LuaString(
                 bytes,
                 off,
@@ -912,7 +912,7 @@ class LuaString private constructor(
          * @return [LuaString] wrapping a copy of the byte buffer
          */
         @kotlin.jvm.JvmOverloads
-        fun valueOf(bytes: CharArray, off: Int = 0, len: Int = bytes.length): LuaString {
+        fun valueOf(bytes: CharArray, off: Int = 0, len: Int = bytes.size): LuaString {
             val b = ByteArray(len)
             for (i in 0..<len) b[i] = bytes[i + off].code.toByte()
             return net.blueva.luak.LuaString.Companion.valueUsing(b, 0, len)
