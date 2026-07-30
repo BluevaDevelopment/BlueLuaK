@@ -416,7 +416,7 @@ class Print : Lua() {
                 if (v == null) net.blueva.luak.Print.Companion.ps.print(net.blueva.luak.Print.Companion.STRING_FOR_NULL)
                 else when (v.type()) {
                     LuaValue.TSTRING -> {
-                        val s: LuaString = v.checkstring()
+                        val s: LuaString = v.checkstring()!!
                         net.blueva.luak.Print.Companion.ps.print(
                             if (s.length() < 48) s.tojstring() else s.substring(
                                 0,

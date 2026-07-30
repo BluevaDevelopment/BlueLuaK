@@ -122,7 +122,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     private val newStack: Array<LuaValue>
         get() {
             val max: Int = p.maxstacksize
-            val stack: Array<LuaValue> = arrayOfNulls<LuaValue>(max)
+            val stack: Array<LuaValue> = Array(max) { NIL }
             System.arraycopy(NILS, 0, stack, 0, max)
             return stack
         }
@@ -203,8 +203,8 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         var pc = 0
         var top = 0
         var o: LuaValue
-        var v: Varargs = NONE
-        val code: IntArray = p.code
+        var v: Varargs = NONE!!
+        val code: IntArray = p.code!!
         val k: Array<LuaValue?> = p.k
 
 
@@ -415,7 +415,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         c = (i shr 14) and 0x1ff
                         run {
                             if (c > b + 1) {
-                                val sb: Buffer = stack[c].buffer()
+                                val sb: Buffer = stack[c].buffer()!!
                                 while (--c >= b) sb.concatTo(stack[c])
                                 stack[a] = sb.value()
                             } else {
@@ -613,7 +613,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_FORPREP -> {
                         run {
-                            val init: LuaValue = stack[a].checknumber("'for' initial value must be a number")
+                            val init: LuaValue = stack[a].checknumber("'for' initial value must be a number")!!
                             val limit: LuaValue? = stack[a + 1].checknumber("'for' limit must be a number")
                             val step: LuaValue? = stack[a + 2].checknumber("'for' step must be a number")
                             stack[a] = init.sub((step)!!)
@@ -675,7 +675,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_CLOSURE -> {
                         run {
-                            val newp: Prototype = p.p!![i ushr 14]
+                            val newp: Prototype = p.p!![i ushr 14]!!
                             val ncl: LuaClosure = net.blueva.luak.LuaClosure(newp, globals)
                             val uv: Array<Upvaldesc?> = newp.upvalues
                             var j = 0
@@ -743,7 +743,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         if (r.errorfunc == null) return if (globals.debuglib != null) msg.toString() + "\n" + globals.debuglib!!.traceback(
             level
         ) else msg
-        val e: LuaValue = r.errorfunc
+        val e: LuaValue = r.errorfunc!!
         r.errorfunc = null
         try {
             return e.call(LuaValue.valueOf(msg)).tojstring()
