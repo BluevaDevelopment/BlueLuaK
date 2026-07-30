@@ -66,7 +66,7 @@ class NameScope {
         private val LUA_KEYWORDS: MutableSet<String?> = HashSet<String?>()
 
         init {
-            val k: Array<String?> = arrayOf<String>(
+            val k: Array<String?> = arrayOf(
                 "and", "break", "do", "else", "elseif", "end",
                 "false", "for", "function", "if", "in", "local",
                 "nil", "not", "or", "repeat", "return",

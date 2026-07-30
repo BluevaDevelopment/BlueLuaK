@@ -24,56 +24,56 @@ class Stat : SyntaxElement() {
     abstract fun accept(visitor: Visitor?)
 
     class Goto(val name: String?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class Label(val name: String?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class Assign(val vars: MutableList<VarExp?>?, val exps: MutableList<Exp?>?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class WhileDo(val exp: Exp?, val block: Block?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class RepeatUntil(val block: Block?, val exp: Exp?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class Break : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class Return(val values: MutableList<Exp?>?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
 
         fun nreturns(): Int {
             var n = if (values != null) values.size else 0
-            if (n > 0 && (values!!.get(n - 1) as Exp).isvarargexp()) n = -1
+            if (n > 0 && (values!![n - 1] as Exp).isvarargexp()) n = -1
             return n
         }
     }
 
     class FuncCallStat(val funccall: FuncCall?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -84,22 +84,22 @@ class Stat : SyntaxElement() {
             this.name = Name(name)
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class FuncDef(val name: FuncName?, val body: FuncBody?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class GenericFor(var names: MutableList<Name?>?, var exps: MutableList<Exp?>?, var block: Block?) : Stat() {
         var scope: NameScope? = null
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -111,14 +111,14 @@ class Stat : SyntaxElement() {
             this.name = Name(name)
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class LocalAssign(val names: MutableList<Name?>?, val values: MutableList<Exp?>?) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -126,8 +126,8 @@ class Stat : SyntaxElement() {
         val ifexp: Exp?, val ifblock: Block?, val elseifexps: MutableList<Exp?>?,
         val elseifblocks: MutableList<Block?>?, val elseblock: Block?
     ) : Stat() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 

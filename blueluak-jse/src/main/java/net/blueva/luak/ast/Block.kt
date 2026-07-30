@@ -25,7 +25,7 @@ class Block : Stat() {
         stats.add(s)
     }
 
-    override fun accept(visitor: Visitor) {
-        visitor.visit(this)
+    override fun accept(visitor: Visitor?) {
+        visitor?.visit(this)
     }
 }

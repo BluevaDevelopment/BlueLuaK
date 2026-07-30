@@ -18,8 +18,6 @@ package net.blueva.luak.ast
 
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaValue
-import java.lang.String
-import kotlin.text.String
 
 abstract
 class Exp : SyntaxElement() {
@@ -64,17 +62,17 @@ class Exp : SyntaxElement() {
         }
 
         override fun markHasAssignment() {
-            name.variable.hasassignments = true
+            name.variable!!.hasassignments = true
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class ParensExp(val exp: Exp?) : PrimaryExp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -85,14 +83,14 @@ class Exp : SyntaxElement() {
             this.name = Name(name)
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class IndexExp(val lhs: PrimaryExp?, val exp: Exp?) : VarExp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -101,8 +99,8 @@ class Exp : SyntaxElement() {
             return true
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
 
         override fun isvarargexp(): Boolean {
@@ -110,31 +108,25 @@ class Exp : SyntaxElement() {
         }
     }
 
-    class MethodCall(lhs: PrimaryExp?, name: String, args: FuncArgs?) : FuncCall(lhs, args) {
-        val name: String
-
-        init {
-            this.name = String(name) as kotlin.String
-        }
-
+    class MethodCall(lhs: PrimaryExp?, val name: String, args: FuncArgs?) : FuncCall(lhs, args) {
         override fun isfunccall(): Boolean {
             return true
         }
 
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class Constant(val value: LuaValue?) : Exp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class VarargsExp : Exp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
 
         override fun isvarargexp(): Boolean {
@@ -143,20 +135,20 @@ class Exp : SyntaxElement() {
     }
 
     class UnopExp(val op: Int, val rhs: Exp?) : Exp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class BinopExp(val lhs: Exp?, val op: Int, val rhs: Exp?) : Exp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
     class AnonFuncDef(val body: FuncBody?) : Exp() {
-        override fun accept(visitor: Visitor) {
-            visitor.visit(this)
+        override fun accept(visitor: Visitor?) {
+            visitor?.visit(this)
         }
     }
 
@@ -165,7 +157,7 @@ class Exp : SyntaxElement() {
             return Constant(value)
         }
 
-        fun numberconstant(token: kotlin.String?): Exp {
+        fun numberconstant(token: String?): Exp {
             return Constant(LuaValue.valueOf(token).tonumber())
         }
 
@@ -233,7 +225,7 @@ class Exp : SyntaxElement() {
         }
 
         /** foo  */
-        fun nameprefix(name: kotlin.String?): NameExp {
+        fun nameprefix(name: String?): NameExp {
             return NameExp(name)
         }
 
@@ -248,7 +240,7 @@ class Exp : SyntaxElement() {
         }
 
         /** foo.bar  */
-        fun fieldop(lhs: PrimaryExp?, name: kotlin.String?): FieldExp {
+        fun fieldop(lhs: PrimaryExp?, name: String?): FieldExp {
             return FieldExp(lhs, name)
         }
 
@@ -258,7 +250,7 @@ class Exp : SyntaxElement() {
         }
 
         /** foo:bar(4,5)  */
-        fun methodop(lhs: PrimaryExp?, name: kotlin.String, args: FuncArgs?): MethodCall {
+        fun methodop(lhs: PrimaryExp?, name: String, args: FuncArgs?): MethodCall {
             return MethodCall(lhs, name, args)
         }
     }

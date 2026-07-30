@@ -19,7 +19,7 @@ package net.blueva.luak.ast
 class TableConstructor : Exp() {
     var fields: MutableList<TableField?>? = null
 
-    override fun accept(visitor: Visitor) {
-        visitor.visit(this)
+    override fun accept(visitor: Visitor?) {
+        visitor?.visit(this)
     }
 }

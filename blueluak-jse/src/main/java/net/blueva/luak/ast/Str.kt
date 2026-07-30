@@ -57,8 +57,8 @@ object Str {
             if (c[i] == '\\' && i < n) {
                 when (c[++i]) {
                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
-                        val d = (c[i++].code - '0'.code)
-                        val j = 0
+                        var d = (c[i++].code - '0'.code)
+                        var j = 0
                         while (i < n && j < 2 && c[i] >= '0' && c[i] <= '9') {
                             d = d * 10 + (c[i].code - '0'.code)
                             i++
@@ -83,7 +83,7 @@ object Str {
                     }
 
                     'f' -> {
-                        baos.write('\f'.code.toByte().toInt())
+                        baos.write(0x0C)
                         i++
                         continue
                     }

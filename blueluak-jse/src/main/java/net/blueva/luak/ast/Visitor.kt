@@ -21,16 +21,16 @@ import net.blueva.luak.ast.Stat.*
 
 abstract class Visitor {
     fun visit(chunk: Chunk) {
-        chunk.block.accept(this)
+        chunk.block?.accept(this)
     }
 
     open fun visit(block: Block) {
         visit(block.scope)
         if (block.stats != null) {
             var i = 0
-            var n = block.stats.size
+            val n = block.stats.size
             while (i < n) {
-                (block.stats.get(i) as Stat).accept(this)
+                (block.stats[i] as Stat).accept(this)
                 i++
             }
         }
@@ -45,29 +45,29 @@ abstract class Visitor {
     }
 
     fun visit(stat: FuncCallStat) {
-        stat.funccall.accept(this)
+        stat.funccall?.accept(this)
     }
 
     open fun visit(stat: FuncDef) {
-        stat.body.accept(this)
+        stat.body?.accept(this)
     }
 
     open fun visit(stat: GenericFor) {
         visit(stat.scope)
         visitNames(stat.names)
         visitExps(stat.exps)
-        stat.block.accept(this)
+        stat.block?.accept(this)
     }
 
     fun visit(stat: IfThenElse) {
-        stat.ifexp.accept(this)
-        stat.ifblock.accept(this)
-        if (stat.elseifblocks != null) {
+        stat.ifexp?.accept(this)
+        stat.ifblock?.accept(this)
+        if (stat.elseifblocks != null && stat.elseifexps != null) {
             var i = 0
-            var n = stat.elseifblocks.size
+            val n = stat.elseifblocks.size
             while (i < n) {
-                (stat.elseifexps.get(i) as Exp).accept(this)
-                (stat.elseifblocks.get(i) as Block).accept(this)
+                (stat.elseifexps[i] as Exp).accept(this)
+                (stat.elseifblocks[i] as Block).accept(this)
                 i++
             }
         }
@@ -81,21 +81,21 @@ abstract class Visitor {
 
     open fun visit(stat: LocalFuncDef) {
         visit(stat.name)
-        stat.body.accept(this)
+        stat.body?.accept(this)
     }
 
     open fun visit(stat: NumericFor) {
         visit(stat.scope)
         visit(stat.name)
-        stat.initial.accept(this)
-        stat.limit.accept(this)
-        if (stat.step != null) stat.step.accept(this)
-        stat.block.accept(this)
+        stat.initial?.accept(this)
+        stat.limit?.accept(this)
+        stat.step?.accept(this)
+        stat.block?.accept(this)
     }
 
     fun visit(stat: RepeatUntil) {
-        stat.block.accept(this)
-        stat.exp.accept(this)
+        stat.block?.accept(this)
+        stat.exp?.accept(this)
     }
 
     fun visit(stat: Stat.Return) {
@@ -103,14 +103,14 @@ abstract class Visitor {
     }
 
     fun visit(stat: WhileDo) {
-        stat.exp.accept(this)
-        stat.block.accept(this)
+        stat.exp?.accept(this)
+        stat.block?.accept(this)
     }
 
     open fun visit(body: FuncBody) {
         visit(body.scope)
-        body.parlist.accept(this)
-        body.block.accept(this)
+        body.parlist?.accept(this)
+        body.block?.accept(this)
     }
 
     fun visit(args: FuncArgs) {
@@ -119,41 +119,41 @@ abstract class Visitor {
 
     fun visit(field: TableField) {
         if (field.name != null) visit(field.name)
-        if (field.index != null) field.index.accept(this)
-        field.rhs.accept(this)
+        field.index?.accept(this)
+        field.rhs?.accept(this)
     }
 
     fun visit(exp: AnonFuncDef) {
-        exp.body.accept(this)
+        exp.body?.accept(this)
     }
 
     fun visit(exp: BinopExp) {
-        exp.lhs.accept(this)
-        exp.rhs.accept(this)
+        exp.lhs?.accept(this)
+        exp.rhs?.accept(this)
     }
 
     fun visit(exp: Exp.Constant?) {
     }
 
     fun visit(exp: FieldExp) {
-        exp.lhs.accept(this)
+        exp.lhs?.accept(this)
         visit(exp.name)
     }
 
     fun visit(exp: FuncCall) {
-        exp.lhs.accept(this)
-        exp.args.accept(this)
+        exp.lhs?.accept(this)
+        exp.args?.accept(this)
     }
 
     fun visit(exp: IndexExp) {
-        exp.lhs.accept(this)
-        exp.exp.accept(this)
+        exp.lhs?.accept(this)
+        exp.exp?.accept(this)
     }
 
     fun visit(exp: Exp.MethodCall) {
-        exp.lhs.accept(this)
+        exp.lhs?.accept(this)
         visit(exp.name)
-        exp.args.accept(this)
+        exp.args?.accept(this)
     }
 
     open fun visit(exp: NameExp) {
@@ -161,11 +161,11 @@ abstract class Visitor {
     }
 
     fun visit(exp: ParensExp) {
-        exp.exp.accept(this)
+        exp.exp?.accept(this)
     }
 
     fun visit(exp: UnopExp) {
-        exp.rhs.accept(this)
+        exp.rhs?.accept(this)
     }
 
     fun visit(exp: VarargsExp?) {
@@ -176,22 +176,21 @@ abstract class Visitor {
     }
 
     fun visit(table: TableConstructor) {
-        if (table.fields != null) {
-            var i = 0
-            var n = table.fields.size
-            while (i < n) {
-                (table.fields.get(i) as TableField).accept(this)
-                i++
-            }
+        val fields = table.fields ?: return
+        var i = 0
+        val n = fields.size
+        while (i < n) {
+            (fields[i] as TableField).accept(this)
+            i++
         }
     }
 
     fun visitVars(vars: MutableList<VarExp?>?) {
         if (vars != null) {
             var i = 0
-            var n = vars.size
+            val n = vars.size
             while (i < n) {
-                (vars.get(i) as VarExp).accept(this)
+                (vars[i] as VarExp).accept(this)
                 i++
             }
         }
@@ -200,9 +199,9 @@ abstract class Visitor {
     fun visitExps(exps: MutableList<Exp?>?) {
         if (exps != null) {
             var i = 0
-            var n = exps.size
+            val n = exps.size
             while (i < n) {
-                (exps.get(i) as Exp).accept(this)
+                (exps[i] as Exp).accept(this)
                 i++
             }
         }
@@ -211,9 +210,9 @@ abstract class Visitor {
     fun visitNames(names: MutableList<Name?>?) {
         if (names != null) {
             var i = 0
-            var n = names.size
+            val n = names.size
             while (i < n) {
-                visit(names.get(i))
+                visit(names[i])
                 i++
             }
         }

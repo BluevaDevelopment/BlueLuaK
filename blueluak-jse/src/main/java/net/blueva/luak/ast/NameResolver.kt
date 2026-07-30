@@ -71,7 +71,7 @@ class NameResolver : Visitor() {
     override fun visit(stat: GenericFor) {
         pushScope()
         stat.scope = scope
-        defineLocalVars(stat.names)
+        stat.names?.let { defineLocalVars(it) }
         super.visit(stat)
         popScope()
     }
@@ -82,17 +82,20 @@ class NameResolver : Visitor() {
     }
 
     override fun visit(stat: FuncDef) {
-        stat.name.name.variable = resolveNameReference(stat.name.name)
-        stat.name.name.variable.hasassignments = true
+        stat.name?.let {
+            it.name.variable = resolveNameReference(it.name)
+            it.name.variable!!.hasassignments = true
+        }
         super.visit(stat)
     }
 
     override fun visit(stat: Assign) {
         super.visit(stat)
+        val vars = stat.vars ?: return
         var i = 0
-        val n = stat.vars.size
+        val n = vars.size
         while (i < n) {
-            val v = stat.vars.get(i) as VarExp
+            val v = vars[i] as VarExp
             v.markHasAssignment()
             i++
         }
@@ -100,17 +103,19 @@ class NameResolver : Visitor() {
 
     override fun visit(stat: LocalAssign) {
         visitExps(stat.values)
-        defineLocalVars(stat.names)
-        val n = stat.names.size
-        val m = if (stat.values != null) stat.values.size else 0
-        val isvarlist = m > 0 && m < n && (stat.values.get(m - 1) as Exp).isvarargexp()
+        stat.names?.let { defineLocalVars(it) }
+        val names = stat.names ?: return
+        val values = stat.values
+        val n = names.size
+        val m = values?.size ?: 0
+        val isvarlist = m > 0 && m < n && (values!![m - 1] as Exp).isvarargexp()
         var i = 0
         while (i < n && i < (if (isvarlist) m - 1 else m)) {
-            if (stat.values.get(i) is Exp.Constant) (stat.names.get(i) as Name).variable.initialValue =
-                (stat.values.get(i) as Exp.Constant).value
+            if (values!![i] is Exp.Constant) (names[i] as Name).variable!!.initialValue =
+                (values[i] as Exp.Constant).value
             i++
         }
-        if (!isvarlist) for (i in m..<n) (stat.names.get(i) as Name).variable.initialValue = LuaValue.NIL
+        if (!isvarlist) for (j in m..<n) (names[j] as Name).variable!!.initialValue = LuaValue.NIL
     }
 
     override fun visit(pars: ParList) {
@@ -123,7 +128,7 @@ class NameResolver : Visitor() {
         var i = 0
         val n = names.size
         while (i < n) {
-            defineLocalVar(names.get(i))
+            defineLocalVar(names[i] as Name)
             i++
         }
     }
@@ -133,8 +138,8 @@ class NameResolver : Visitor() {
     }
 
     protected fun resolveNameReference(name: Name): Variable {
-        val v = scope!!.find(name.name)
-        if (v.isLocal() && scope!!.functionNestingCount != v.definingScope.functionNestingCount) v.isupvalue = true
+        val v = scope!!.find(name.name)!!
+        if (v.isLocal && scope!!.functionNestingCount != v.definingScope!!.functionNestingCount) v.isupvalue = true
         return v
     }
 }
