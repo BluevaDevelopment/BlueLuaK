@@ -356,7 +356,7 @@ open class OsLib
      * @param varname
      * @return String value, or null if not defined
      */
-    protected open fun getenv(varname: String?): String {
+    protected open fun getenv(varname: String?): String? {
         return System.getProperty(varname)
     }
 
