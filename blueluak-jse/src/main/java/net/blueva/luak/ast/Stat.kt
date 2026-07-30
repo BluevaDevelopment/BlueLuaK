@@ -132,54 +132,67 @@ class Stat : SyntaxElement() {
     }
 
     companion object {
+        @JvmStatic
         fun block(block: Block?): Stat? {
             return block
         }
 
+        @JvmStatic
         fun whiledo(exp: Exp?, block: Block?): Stat {
             return WhileDo(exp, block)
         }
 
+        @JvmStatic
         fun repeatuntil(block: Block?, exp: Exp?): Stat {
             return RepeatUntil(block, exp)
         }
 
+        @JvmStatic
         fun breakstat(): Stat {
             return Break()
         }
 
+        @JvmStatic
         fun returnstat(exps: MutableList<Exp?>?): Stat {
             return Return(exps)
         }
 
+        @JvmStatic
         fun assignment(vars: MutableList<VarExp?>?, exps: MutableList<Exp?>?): Stat {
             return Assign(vars, exps)
         }
 
+        @JvmStatic
         fun functioncall(funccall: FuncCall?): Stat {
             return FuncCallStat(funccall)
         }
 
+        @JvmStatic
         fun localfunctiondef(name: String?, funcbody: FuncBody?): Stat {
             return LocalFuncDef(name, funcbody)
         }
 
+        @JvmStatic
         fun fornumeric(name: String?, initial: Exp?, limit: Exp?, step: Exp?, block: Block?): Stat {
             return NumericFor(name, initial, limit, step, block)
         }
 
+        @JvmStatic
         fun functiondef(funcname: FuncName?, funcbody: FuncBody?): Stat {
             return FuncDef(funcname, funcbody)
         }
 
+        @JvmStatic
         fun forgeneric(names: MutableList<Name?>?, exps: MutableList<Exp?>?, block: Block?): Stat {
             return GenericFor(names, exps, block)
         }
 
+        @JvmStatic
         fun localassignment(names: MutableList<Name?>?, values: MutableList<Exp?>?): Stat {
             return LocalAssign(names, values)
         }
 
+        @JvmStatic
         fun ifthenelse(
             ifexp: Exp?,
             ifblock: Block?,
@@ -190,10 +203,12 @@ class Stat : SyntaxElement() {
             return IfThenElse(ifexp, ifblock, elseifexps, elseifblocks, elseblock)
         }
 
+        @JvmStatic
         fun gotostat(name: String?): Stat {
             return Goto(name)
         }
 
+        @JvmStatic
         fun labelstat(name: String?): Stat {
             return Label(name)
         }

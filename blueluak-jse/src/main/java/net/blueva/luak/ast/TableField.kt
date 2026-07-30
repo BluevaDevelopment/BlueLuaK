@@ -22,14 +22,17 @@ class TableField(val index: Exp?, val name: String?, val rhs: Exp?) : SyntaxElem
     }
 
     companion object {
+        @JvmStatic
         fun keyedField(index: Exp?, rhs: Exp?): TableField {
             return TableField(index, null, rhs)
         }
 
+        @JvmStatic
         fun namedField(name: String?, rhs: Exp?): TableField {
             return TableField(null, name, rhs)
         }
 
+        @JvmStatic
         fun listField(rhs: Exp?): TableField {
             return TableField(null, null, rhs)
         }

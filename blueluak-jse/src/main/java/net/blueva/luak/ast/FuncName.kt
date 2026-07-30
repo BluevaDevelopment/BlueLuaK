@@ -25,6 +25,7 @@ class FuncName(name: String?) : SyntaxElement() {
     var dots: MutableList<String?>? = null
 
     // optional final method name: "e"
+    @JvmField
     var method: String? = null
 
     init {

@@ -41,16 +41,19 @@ class FuncArgs : SyntaxElement {
 
     companion object {
         /** exp1,exp2...  */
+        @JvmStatic
         fun explist(explist: MutableList<Exp?>?): FuncArgs {
             return FuncArgs(explist)
         }
 
         /** {...}  */
+        @JvmStatic
         fun tableconstructor(table: TableConstructor?): FuncArgs {
             return FuncArgs(table)
         }
 
         /** "mylib"  */
+        @JvmStatic
         fun string(string: LuaString?): FuncArgs {
             return FuncArgs(string)
         }

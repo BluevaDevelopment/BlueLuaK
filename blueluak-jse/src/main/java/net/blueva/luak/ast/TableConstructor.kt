@@ -17,6 +17,7 @@
 package net.blueva.luak.ast
 
 class TableConstructor : Exp() {
+    @JvmField
     var fields: MutableList<TableField?>? = null
 
     override fun accept(visitor: Visitor?) {

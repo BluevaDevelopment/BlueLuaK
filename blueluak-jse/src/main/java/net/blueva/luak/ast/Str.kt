@@ -21,18 +21,21 @@ import java.io.ByteArrayOutputStream
 import java.io.UnsupportedEncodingException
 
 object Str {
+    @JvmStatic
     fun quoteString(image: String): LuaString {
         val s = image.substring(1, image.length - 1)
         val bytes = unquote(s)
         return LuaString.valueUsing(bytes)
     }
 
+    @JvmStatic
     fun charString(image: String): LuaString {
         val s = image.substring(1, image.length - 1)
         val bytes = unquote(s)
         return LuaString.valueUsing(bytes)
     }
 
+    @JvmStatic
     fun longString(image: String): LuaString {
         val i = image.indexOf('[', image.indexOf('[') + 1) + 1
         val s = image.substring(i, image.length - i)

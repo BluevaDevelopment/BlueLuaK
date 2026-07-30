@@ -22,14 +22,18 @@ package net.blueva.luak.ast
  */
 open class SyntaxElement {
     /** The line number on which the element begins.  */
+    @JvmField
     var beginLine: Int = 0
 
     /** The column at which the element begins.  */
+    @JvmField
     var beginColumn: Short = 0
 
     /** The line number on which the element ends.  */
+    @JvmField
     var endLine: Int = 0
 
     /** The column at which the element ends.  */
+    @JvmField
     var endColumn: Short = 0
 }
