@@ -121,13 +121,13 @@ class LuaString private constructor(
     // unary operators
     override fun neg(): LuaValue? {
         val d = scannumber()
-        return if (Double.isNaN(d)) super.neg() else valueOf(-d)
+        return if ((d).isNaN()) super.neg() else valueOf(-d)
     }
 
     // basic binary arithmetic
     override fun add(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(ADD, rhs) else rhs.add(d)
+        return if ((d).isNaN()) arithmt(ADD, rhs) else rhs.add(d)
     }
 
     override fun add(rhs: Double): LuaValue? {
@@ -140,7 +140,7 @@ class LuaString private constructor(
 
     override fun sub(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(SUB, rhs) else rhs.subFrom(d)
+        return if ((d).isNaN()) arithmt(SUB, rhs) else rhs.subFrom(d)
     }
 
     override fun sub(rhs: Double): LuaValue? {
@@ -157,7 +157,7 @@ class LuaString private constructor(
 
     override fun mul(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(MUL, rhs) else rhs.mul(d)
+        return if ((d).isNaN()) arithmt(MUL, rhs) else rhs.mul(d)
     }
 
     override fun mul(rhs: Double): LuaValue? {
@@ -170,7 +170,7 @@ class LuaString private constructor(
 
     override fun pow(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(POW, rhs) else rhs.powWith(d)
+        return if ((d).isNaN()) arithmt(POW, rhs) else rhs.powWith(d)
     }
 
     override fun pow(rhs: Double): LuaValue {
@@ -191,7 +191,7 @@ class LuaString private constructor(
 
     override fun div(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(DIV, rhs) else rhs.divInto(d)
+        return if ((d).isNaN()) arithmt(DIV, rhs) else rhs.divInto(d)
     }
 
     override fun div(rhs: Double): LuaValue {
@@ -208,7 +208,7 @@ class LuaString private constructor(
 
     override fun mod(rhs: LuaValue): LuaValue {
         val d = scannumber()
-        return if (Double.isNaN(d)) arithmt(MOD, rhs) else rhs.modFrom(d)
+        return if ((d).isNaN()) arithmt(MOD, rhs) else rhs.modFrom(d)
     }
 
     override fun mod(rhs: Double): LuaValue {
@@ -337,7 +337,7 @@ class LuaString private constructor(
     /** Check for number in arithmetic, or throw aritherror  */
     private fun checkarith(): Double {
         val d = scannumber()
-        if (Double.isNaN(d)) aritherror()
+        if ((d).isNaN()) aritherror()
         return d
     }
 
@@ -355,7 +355,7 @@ class LuaString private constructor(
 
     override fun checkdouble(): Double {
         val d = scannumber()
-        if (Double.isNaN(d)) argerror("number")
+        if ((d).isNaN()) argerror("number")
         return d
     }
 
@@ -365,25 +365,25 @@ class LuaString private constructor(
 
     override fun checknumber(msg: String?): LuaNumber? {
         val d = scannumber()
-        if (Double.isNaN(d)) error(msg)
+        if ((d).isNaN()) error(msg)
         return valueOf(d)
     }
 
     override fun isnumber(): Boolean {
         val d = scannumber()
-        return !Double.isNaN(d)
+        return !(d).isNaN()
     }
 
     override fun isint(): Boolean {
         val d = scannumber()
-        if (Double.isNaN(d)) return false
+        if ((d).isNaN()) return false
         val i = d.toInt()
         return i.toDouble() == d
     }
 
     override fun islong(): Boolean {
         val d = scannumber()
-        if (Double.isNaN(d)) return false
+        if ((d).isNaN()) return false
         val l = d.toLong()
         return l.toDouble() == d
     }
@@ -398,7 +398,7 @@ class LuaString private constructor(
 
     override fun todouble(): Double {
         val d = scannumber()
-        return if (Double.isNaN(d)) 0.0 else d
+        return if ((d).isNaN()) 0.0 else d
     }
 
     override fun tofloat(): Float {
@@ -661,7 +661,7 @@ class LuaString private constructor(
      */
     override fun tonumber(): LuaValue? {
         val d = scannumber()
-        return if (Double.isNaN(d)) NIL else valueOf(d)
+        return if ((d).isNaN()) NIL else valueOf(d)
     }
 
     /**
@@ -672,7 +672,7 @@ class LuaString private constructor(
      */
     fun tonumber(base: Int): LuaValue? {
         val d = scannumber(base)
-        return if (Double.isNaN(d)) NIL else valueOf(d)
+        return if ((d).isNaN()) NIL else valueOf(d)
     }
 
     /**
@@ -692,7 +692,7 @@ class LuaString private constructor(
             j
         )
         val l = scanlong(10, i, j)
-        return if (Double.isNaN(l)) scandouble(i, j) else l
+        return if ((l).isNaN()) scandouble(i, j) else l
     }
 
     /**
@@ -750,7 +750,7 @@ class LuaString private constructor(
         val c = CharArray(end - start)
         for (i in start..<end) c[i - start] = Char(m_bytes[i].toUShort())
         try {
-            return Double.parseDouble(String(c))
+            return (String(c)).toDouble()
         } catch (e: Exception) {
             return Double.NaN
         }

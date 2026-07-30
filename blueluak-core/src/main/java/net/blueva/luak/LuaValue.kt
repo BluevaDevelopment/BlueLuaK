@@ -750,7 +750,7 @@ open class LuaValue : Varargs() {
      * @see .TUSERDATA
      */
     open fun optuserdata(c: Class, defval: Object?): Object? {
-        argerror(c.getName())
+        argerror(c.name)
         return null
     }
 

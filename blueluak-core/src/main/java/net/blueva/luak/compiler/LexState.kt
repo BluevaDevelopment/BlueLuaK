@@ -247,10 +247,10 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         else if (str.indexOf('x') >= 0 || str.indexOf('X') >= 0) seminfo.r = strx2number(str, seminfo)
         else {
             try {
-                seminfo.r = LuaValue.valueOf(Double.parseDouble(str.trim()))
+                seminfo.r = LuaValue.valueOf((str.trim()).toDouble())
             } catch (e: NumberFormatException) {
                 lexerror(
-                    "malformed number (" + e.getMessage() + ")",
+                    "malformed number (" + e.message + ")",
                     net.blueva.luak.compiler.LexState.Companion.TK_NUMBER
                 )
             }
@@ -561,7 +561,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
                         ts = newstring(buff, 0, nbuff)
                         if (net.blueva.luak.compiler.LexState.Companion.RESERVED.containsKey(ts)) return (net.blueva.luak.compiler.LexState.Companion.RESERVED.get(
                             ts
-                        ) as Integer).intValue()
+                        ) as Integer).toInt()
                         else {
                             seminfo.ts = ts
                             return net.blueva.luak.compiler.LexState.Companion.TK_NAME

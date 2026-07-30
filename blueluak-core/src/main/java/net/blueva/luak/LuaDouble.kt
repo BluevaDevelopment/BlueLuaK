@@ -60,7 +60,7 @@ class LuaDouble
     val v: Double
 ) : LuaNumber() {
     override fun hashCode(): Int {
-        val l: Long = Double.doubleToLongBits(v + 1)
+        val l: Long = (v + 1).toBits()
         return ((l shr 32).toInt()) + l.toInt()
     }
 
@@ -344,14 +344,14 @@ class LuaDouble
     override fun tojstring(): String? {
         /*
 		if ( v == 0.0 ) { // never occurs in J2me
-			long bits = Double.doubleToLongBits( v );
+			long bits = ( v ).toBits();
 			return ( bits >> 63 == 0 ) ? "0" : "-0";
 		}
 		*/
         val l = v.toLong()
         if (l.toDouble() == v) return Long.toString(l)
-        if (Double.isNaN(v)) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
-        if (Double.isInfinite(v)) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
+        if ((v).isNaN()) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
+        if ((v).isInfinite()) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
         return Float.toString(v.toFloat())
     }
 
@@ -412,7 +412,7 @@ class LuaDouble
     }
 
     override fun isvalidkey(): Boolean {
-        return !Double.isNaN(v)
+        return !(v).isNaN()
     }
 
     companion object {

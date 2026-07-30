@@ -431,7 +431,7 @@ class FuncState internal constructor() : Constants() {
         if (this.h == null) {
             this.h = Hashtable()
         } else if (this.h.containsKey(v)) {
-            return (h.get(v) as Integer).intValue()
+            return (h.get(v) as Integer).toInt()
         }
         val idx = this.nk
         this.h.put(v, Integer(idx))
@@ -834,7 +834,7 @@ class FuncState internal constructor() : Constants() {
                 r = null
             }
         }
-        if (Double.isNaN(r.todouble())) return false /* do not attempt to produce NaN */
+        if ((r.todouble()).isNaN()) return false /* do not attempt to produce NaN */
         e1.u.setNval(r)
         return true
     }

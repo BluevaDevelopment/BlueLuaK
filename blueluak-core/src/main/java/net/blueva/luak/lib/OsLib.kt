@@ -169,7 +169,7 @@ class OsLib
                 }
                 return NONE
             } catch (e: IOException) {
-                return varargsOf(NIL, valueOf(e.getMessage()))
+                return varargsOf(NIL, valueOf(e.message))
             }
         }
     }
@@ -222,7 +222,7 @@ class OsLib
             d.setTime(Date((time * 1000).toLong()))
             format = format.substring(1)
         }
-        val fmt: ByteArray = format.getBytes()
+        val fmt: ByteArray = format.toByteArray()
         val n = fmt.size
         val result: Buffer = Buffer(n)
         var c: Byte

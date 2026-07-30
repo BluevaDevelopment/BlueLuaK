@@ -205,7 +205,7 @@ open class MathLib : TwoArgFunction() {
     internal class ldexp : BinaryOp() {
         override fun call(x: Double, y: Double): Double {
             // This is the behavior on os-x, windows differs in rounding behavior.
-            return x * Double.longBitsToDouble(((y.toLong()) + 1023) shl 52)
+            return x * Double.fromBits(((y.toLong()) + 1023) shl 52)
         }
     }
 
@@ -219,7 +219,7 @@ open class MathLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Double = args.checkdouble(1)
             if (x == 0.0) return varargsOf(ZERO, ZERO)
-            val bits: Long = Double.doubleToLongBits(x)
+            val bits: Long = (x).toBits()
             val m =
                 ((bits and ((-1L shl 52).inv()).toLong()) + (1L shl 52)) * (if (bits >= 0) (.5 / (1L shl 52)) else (-.5 / (1L shl 52)))
             val e = ((((bits shr 52).toInt()) and 0x7ff) - 1022).toDouble()

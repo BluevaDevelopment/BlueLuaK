@@ -55,7 +55,7 @@ class LuaUserdata : LuaValue {
     }
 
     override fun isuserdata(c: Class): Boolean {
-        return c.isAssignableFrom(m_instance.getClass())
+        return c.isAssignableFrom(m_instance.javaClass)
     }
 
     override fun touserdata(): Object {
@@ -63,7 +63,7 @@ class LuaUserdata : LuaValue {
     }
 
     override fun touserdata(c: Class): Object? {
-        return if (c.isAssignableFrom(m_instance.getClass())) m_instance else null
+        return if (c.isAssignableFrom(m_instance.javaClass)) m_instance else null
     }
 
     override fun optuserdata(defval: Object?): Object {
@@ -71,7 +71,7 @@ class LuaUserdata : LuaValue {
     }
 
     override fun optuserdata(c: Class, defval: Object?): Object {
-        if (!c.isAssignableFrom(m_instance.getClass())) typerror(c.getName())
+        if (!c.isAssignableFrom(m_instance.javaClass)) typerror(c.name)
         return m_instance
     }
 
@@ -89,8 +89,8 @@ class LuaUserdata : LuaValue {
     }
 
     override fun checkuserdata(c: Class): Object {
-        if (c.isAssignableFrom(m_instance.getClass())) return m_instance
-        return typerror(c.getName())
+        if (c.isAssignableFrom(m_instance.javaClass)) return m_instance
+        return typerror(c.name)
     }
 
     fun get(key: LuaValue?): LuaValue {

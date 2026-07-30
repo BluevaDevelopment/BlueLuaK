@@ -171,7 +171,7 @@ class LuaThread : LuaValue {
                 this.args = LuaValue.NONE
                 this.result = function.invoke(a)
             } catch (t: Throwable) {
-                this.error = t.getMessage()
+                this.error = t.message
             } finally {
                 this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
                 this.notify()

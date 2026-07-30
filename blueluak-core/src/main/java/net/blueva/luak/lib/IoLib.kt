@@ -339,7 +339,7 @@ class IoLib : TwoArgFunction() {
                 }
             } catch (ioe: IOException) {
                 if (opcode === net.blueva.luak.lib.IoLib.Companion.LINES_ITER) {
-                    val s: String? = ioe.getMessage()
+                    val s: String? = ioe.message
                     error(if (s != null) s else ioe.toString())
                 }
                 return errorresult(ioe)
@@ -539,7 +539,7 @@ class IoLib : TwoArgFunction() {
         try {
             return rawopenfile(filetype, filename, mode)
         } catch (e: Exception) {
-            error("io error: " + e.getMessage())
+            error("io error: " + e.message)
             return null
         }
     }
@@ -729,7 +729,7 @@ class IoLib : TwoArgFunction() {
         }
 
         fun errorresult(ioe: Exception): Varargs {
-            val s: String? = ioe.getMessage()
+            val s: String? = ioe.message
             return net.blueva.luak.lib.IoLib.Companion.errorresult("io error: " + (if (s != null) s else ioe.toString()))
         }
 
@@ -829,7 +829,7 @@ class IoLib : TwoArgFunction() {
             // freadchars(f,"+-",baos);
             //freadchars(f,"0123456789",baos);
             val s = baos.toString()
-            return if (s.length() > 0) valueOf(Double.parseDouble(s)) else NIL
+            return if (s.length() > 0) valueOf((s).toDouble()) else NIL
         }
 
         @kotlin.Throws(IOException::class)

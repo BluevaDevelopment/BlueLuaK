@@ -176,7 +176,7 @@ class StringLib
                 DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, true))
                 return LuaString.valueUsing(baos.toByteArray())
             } catch (e: IOException) {
-                return error(e.getMessage())
+                return error(e.message)
             }
         }
     }

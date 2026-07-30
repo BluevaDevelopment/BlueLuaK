@@ -429,7 +429,7 @@ class Print : Lua() {
                     LuaValue.TUSERDATA -> {
                         val o: Object? = v.touserdata()
                         if (o != null) {
-                            var n: String = o.getClass().getName()
+                            var n: String = o.javaClass.name
                             n = n.substring(n.lastIndexOf('.') + 1)
                             net.blueva.luak.Print.Companion.ps.print(n.toString() + ": " + Integer.toHexString(o.hashCode()))
                         } else {

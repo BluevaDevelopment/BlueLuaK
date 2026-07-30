@@ -39,7 +39,7 @@ import net.blueva.luak.lib.DebugLib.CallFrame
  * 
  * To construct it directly, the [Prototype] is typically created via a compiler such as
  * [net.blueva.luak.compiler.LuaC]:
- * <pre> `String script = "print( 'hello, world' )"; InputStream is = new ByteArrayInputStream(script.getBytes()); Prototype p = LuaC.instance.compile(is, "script"); LuaValue globals = JsePlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
+ * <pre> `String script = "print( 'hello, world' )"; InputStream is = new ByteArrayInputStream(script.toByteArray()); Prototype p = LuaC.instance.compile(is, "script"); LuaValue globals = JsePlatform.standardGlobals(); LuaClosure f = new LuaClosure(p, globals); f.call(); `</pre>
  * 
  * 
  * To construct it indirectly, the [Globals.load] method may be used:
@@ -773,7 +773,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
         }
         le.fileline = file.toString() + ":" + line
-        le.traceback = errorHook(le.getMessage(), le.level)
+        le.traceback = errorHook(le.message, le.level)
     }
 
     private fun findupval(stack: Array<LuaValue>?, idx: Short, openups: Array<UpValue?>): UpValue? {

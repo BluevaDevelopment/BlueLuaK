@@ -34,7 +34,7 @@ package net.blueva.luak
  * 
  * To create a [Prototype] directly, a compiler such as
  * [net.blueva.luak.compiler.LuaC] may be used:
- * <pre> `InputStream is = new ByteArrayInputStream("print('hello,world')".getBytes()); Prototype p = LuaC.instance.compile(is, "script"); `</pre>
+ * <pre> `InputStream is = new ByteArrayInputStream("print('hello,world')".toByteArray()); Prototype p = LuaC.instance.compile(is, "script"); `</pre>
  * 
  * To simplify loading, the [Globals.compilePrototype] method may be used:
  * <pre> `Prototype p = globals.compileProtoytpe(is, "script"); `</pre>

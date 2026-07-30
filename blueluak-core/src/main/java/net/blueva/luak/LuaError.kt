@@ -57,7 +57,7 @@ class LuaError : RuntimeException {
          */
         get() {
             if (traceback != null) return traceback
-            val m: String? = super.getMessage()
+            val m: String? = super.message
             if (m == null) return null
             if (fileline != null) return fileline.toString() + " " + m
             return m

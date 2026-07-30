@@ -97,7 +97,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpDouble(d: Double) {
-        val l: Long = Double.doubleToLongBits(d)
+        val l: Long = (d).toBits()
         if (IS_LITTLE_ENDIAN) {
             dumpInt(l.toInt())
             dumpInt((l shr 32).toInt())

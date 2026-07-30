@@ -120,8 +120,9 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
      * 
      * Tries to open the file as a resource, which can work for JSE and JME.
      */
-    fun findResource(filename: String): InputStream {
-        return getClass().getResourceAsStream(if (filename.startsWith("/")) filename else "/" + filename)
+    override fun findResource(filename: String?): InputStream? {
+        filename ?: return null
+        return javaClass.getResourceAsStream(if (filename.startsWith("/")) filename else "/" + filename)
     }
 
 
@@ -241,7 +242,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
                 val m: LuaValue? = le.getMessageObject()
                 return varargsOf(FALSE, if (m != null) m else NIL)
             } catch (e: Exception) {
-                val m: String? = e.getMessage()
+                val m: String? = e.message
                 return varargsOf(FALSE, valueOf(if (m != null) m else e.toString()))
             } finally {
                 if (globals != null && globals.debuglib != null) globals.debuglib.onReturn()
@@ -389,7 +390,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
                     val m: LuaValue? = le.getMessageObject()
                     return varargsOf(FALSE, if (m != null) m else NIL)
                 } catch (e: Exception) {
-                    val m: String? = e.getMessage()
+                    val m: String? = e.message
                     return varargsOf(FALSE, valueOf(if (m != null) m else e.toString()))
                 } finally {
                     if (globals != null && globals.debuglib != null) globals.debuglib.onReturn()
@@ -454,7 +455,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             if (`is` == null) return varargsOf(NIL, valueOf("not found: " + chunkname))
             return globals.load(`is`, chunkname, mode, env)
         } catch (e: Exception) {
-            return varargsOf(NIL, valueOf(e.getMessage()))
+            return varargsOf(NIL, valueOf(e.message))
         }
     }
 
