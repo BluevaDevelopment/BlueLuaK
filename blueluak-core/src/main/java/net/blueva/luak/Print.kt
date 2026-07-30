@@ -94,7 +94,7 @@ class Print : Lua() {
                         '\\' -> ps.print("\\\\")
                         0x0007 -> ps.print("\\a")
                         '\b' -> ps.print("\\b")
-                        '\f' -> ps.print("\\f")
+                        '\u000C' -> ps.print("\\f")
                         '\t' -> ps.print("\\t")
                         '\r' -> ps.print("\\r")
                         '\n' -> ps.print("\\n")

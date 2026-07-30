@@ -372,7 +372,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     when (current) {
                         'a' -> c = '\u0007'.code
                         'b' -> c = '\b'.code
-                        'f' -> c = '\f'.code
+                        'f' -> c = '\u000C'.code
                         'n' -> c = '\n'.code
                         'r' -> c = '\r'.code
                         't' -> c = '\t'.code
@@ -434,7 +434,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     continue
                 }
 
-                ' ', '\f', '\t', 0x0B -> {
+                ' ', '\u000C', '\t', 0x0B -> {
                     nextChar()
                     continue
                 }

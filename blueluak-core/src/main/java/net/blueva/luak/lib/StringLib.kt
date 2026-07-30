@@ -1210,8 +1210,8 @@ class StringLib
                 net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\t'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[0x0B /* '\v' */] =
                 net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[0x0B].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()
-            net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\f'.code] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\f'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()
+            net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\u000C'.code] =
+                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\u000C'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()
         }
     }
 }
