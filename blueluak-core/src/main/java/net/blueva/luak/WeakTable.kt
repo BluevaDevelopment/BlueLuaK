@@ -307,7 +307,8 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             return (o as LuaValue?)!!
         }
 
-        fun raweq(rhs: LuaValue): Boolean {
+        override fun raweq(rhs: LuaValue?): Boolean {
+            val rhs = rhs!!
             val o: Any? = ref!!.get()
             return o != null && rhs.raweq(o as LuaValue)
         }

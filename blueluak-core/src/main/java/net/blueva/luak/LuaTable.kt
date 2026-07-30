@@ -215,6 +215,7 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun rawget(key: Int): LuaValue {
+        val key = key!!
         if (key > 0 && key <= array.size) {
             val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable!!.arrayget(array, key - 1)
             return if (v != null) v else NIL
@@ -222,7 +223,8 @@ open class LuaTable : LuaValue, Metatable {
         return hashget((LuaInteger.valueOf(key))!!)
     }
 
-    fun rawget(key: LuaValue): LuaValue {
+    override fun rawget(key: LuaValue?): LuaValue {
+        val key = key!!
         if (key.isinttype()) {
             val ikey: Int = key.toint()
             if (ikey > 0 && ikey <= array.size) {
@@ -250,7 +252,7 @@ open class LuaTable : LuaValue, Metatable {
         return NIL
     }
 
-    fun set(key: Int, value: LuaValue) {
+    override fun set(key: Int, value: LuaValue?) {
         if (m_metatable == null || !rawget(key).isnil() || !LuaValue.settable(this, LuaInteger.valueOf(key), value)) rawset(
             key,
             value
@@ -258,17 +260,20 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     /** caller must ensure key is not nil  */
-    fun set(key: LuaValue, value: LuaValue) {
+    override fun set(key: LuaValue?, value: LuaValue?) {
         if (key == null || !key.isvalidkey() && !metatag(NEWINDEX).isfunction()) throw LuaError("value ('" + key + "') can not be used as a table index")
         if (m_metatable == null || !rawget(key).isnil() || !LuaValue.settable(this, key, value)) rawset(key, value)
     }
 
-    fun rawset(key: Int, value: LuaValue) {
+    override fun rawset(key: Int, value: LuaValue?) {
+        val value = value!!
         if (!arrayset(key, value)) hashset((LuaInteger.valueOf(key))!!, value)
     }
 
     /** caller must ensure key is not nil  */
-    fun rawset(key: LuaValue, value: LuaValue) {
+    override fun rawset(key: LuaValue?, value: LuaValue?) {
+        val key = key!!
+        val value = value!!
         if (!key.isinttype() || !arrayset(key.toint(), value)) hashset(key, value)
     }
 
@@ -347,7 +352,7 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun len(): LuaValue {
         val h: LuaValue = metatag(LEN)
-        if (h.toboolean()) return h.call(this)
+        if (h.toboolean()) return h.call(this)!!
         return (LuaInteger.valueOf(rawlen()))!!
     }
 
@@ -371,7 +376,8 @@ open class LuaTable : LuaValue, Metatable {
      * Get the next element after a particular key in the table
      * @return key,value or nil
      */
-    fun next(key: LuaValue): Varargs {
+    override fun next(key: LuaValue?): Varargs {
+        val key = key!!
         var i = 0
         do {
             // find current key index
@@ -437,7 +443,8 @@ open class LuaTable : LuaValue, Metatable {
      * contiguous array part of a table
      * @return key,value or none
      */
-    fun inext(key: LuaValue): Varargs {
+    override fun inext(key: LuaValue?): Varargs {
+        val key = key!!
         val k: Int = key.checkint() + 1
         val v: LuaValue = rawget(k)
         return (if (v.isnil()) NONE else varargsOf(LuaInteger.valueOf(k), v))!!
@@ -747,7 +754,7 @@ open class LuaTable : LuaValue, Metatable {
         val b: LuaValue? = get(j)
         if (a == null || b == null) return false
         if (cmpfunc != null) {
-            return cmpfunc.call(a, b).toboolean()
+            return cmpfunc.call(a, b)!!.toboolean()
         } else {
             return a.lt_b(b)
         }
@@ -785,11 +792,13 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     // equality w/ metatable processing
-    fun eq(`val`: LuaValue): LuaValue {
+    override fun eq(`val`: LuaValue?): LuaValue {
+        val `val` = `val`!!
         return (if (eq_b(`val`)) TRUE else FALSE)!!
     }
 
-    fun eq_b(`val`: LuaValue): Boolean {
+    override fun eq_b(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         if (this === `val`) return true
         if (m_metatable == null || !`val`.istable()) return false
         val valmt: LuaValue? = `val`.getmetatable()

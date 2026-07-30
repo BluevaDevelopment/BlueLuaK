@@ -78,8 +78,8 @@ class LuaNumber : LuaValue() {
         return strvalue()!!.concatTo((lhs.strvalue())!!)
     }
 
-    fun concatTo(lhs: LuaString?): LuaValue {
-        return strvalue()!!.concatTo((lhs)!!)
+    override fun concatTo(lhs: LuaString): LuaValue {
+        return strvalue()!!.concatTo(lhs)
     }
 
     companion object {

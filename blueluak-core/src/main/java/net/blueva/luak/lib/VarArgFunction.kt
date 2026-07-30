@@ -49,11 +49,11 @@ import net.blueva.luak.Varargs
  */
 abstract class VarArgFunction : LibFunction() {
     override fun call(): LuaValue? {
-        return (invoke(NONE).arg1())!!
+        return (invoke(NONE!!).arg1())!!
     }
 
     override fun call(arg: LuaValue?): LuaValue? {
-        return (invoke(arg).arg1())!!
+        return (invoke(arg!!).arg1())!!
     }
 
     override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
@@ -71,11 +71,9 @@ abstract class VarArgFunction : LibFunction() {
      * - function has a possibility of returning a TailcallVarargs
      * @param args the arguments to the function call.
      */
-    open fun invoke(args: Varargs?): Varargs {
-        return onInvoke(args).eval()
-    }
+    abstract override fun invoke(args: Varargs): Varargs
 
-    fun onInvoke(args: Varargs?): Varargs {
+    override fun onInvoke(args: Varargs): Varargs {
         return invoke(args)
     }
 }

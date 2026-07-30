@@ -122,29 +122,34 @@ class LuaDouble
     }
 
     // object equality, used for key comparison
-    fun equals(o: Any): Boolean {
+    override fun equals(o: Any?): Boolean {
         return if (o is LuaDouble) o.v == v else false
     }
 
     // equality w/ metatable processing
-    fun eq(`val`: LuaValue): LuaValue {
+    override fun eq(`val`: LuaValue?): LuaValue {
+        val `val` = `val`!!
         return (if (`val`.raweq(v)) TRUE else FALSE)!!
     }
 
-    fun eq_b(`val`: LuaValue): Boolean {
+    override fun eq_b(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         return `val`.raweq(v)
     }
 
     // equality w/o metatable processing
-    fun raweq(`val`: LuaValue): Boolean {
+    override fun raweq(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         return `val`.raweq(v)
     }
 
     override fun raweq(`val`: Double): Boolean {
+        val `val` = `val`!!
         return v == `val`
     }
 
     override fun raweq(`val`: Int): Boolean {
+        val `val` = `val`!!
         return v == `val`.toDouble()
     }
 

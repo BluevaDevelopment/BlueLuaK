@@ -63,7 +63,7 @@ abstract class ZeroArgFunction
         return call()
     }
 
-    fun invoke(varargs: Varargs?): Varargs {
+    override fun invoke(varargs: Varargs): Varargs {
         return call()!!
     }
 }

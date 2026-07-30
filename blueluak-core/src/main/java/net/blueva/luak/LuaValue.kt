@@ -1272,7 +1272,7 @@ open class LuaValue : Varargs() {
      * @param value the value to use, can be [.NIL], must not be null
      * @throws LuaError if `this` is not a table, or key is [.NIL]
      */
-    fun rawset(key: LuaValue?, value: LuaValue?) {
+    open fun rawset(key: LuaValue?, value: LuaValue?) {
         unimplemented("rawset")
     }
 
@@ -1281,7 +1281,7 @@ open class LuaValue : Varargs() {
      * @param value the value to use, can be [.NIL], must not be null
      * @throws LuaError if `this` is not a table
      */
-    fun rawset(key: Int, value: LuaValue?) {
+    open fun rawset(key: Int, value: LuaValue?) {
         rawset(net.blueva.luak.LuaValue.Companion.valueOf(key), value)
     }
 
@@ -1377,7 +1377,7 @@ open class LuaValue : Varargs() {
      * @see Varargs.arg
      * @see .isnil
      */
-    fun next(index: LuaValue?): Varargs? {
+    open fun next(index: LuaValue?): Varargs? {
         return typerror("table")
     }
 
@@ -1400,7 +1400,7 @@ open class LuaValue : Varargs() {
      * @see Varargs.arg
      * @see .isnil
      */
-    fun inext(index: LuaValue?): Varargs? {
+    open fun inext(index: LuaValue?): Varargs? {
         return typerror("table")
     }
 
@@ -1412,7 +1412,7 @@ open class LuaValue : Varargs() {
      * @return [LuaValue] returned by the initialization call.
      */
     fun load(library: LuaValue): LuaValue {
-        return library.call(net.blueva.luak.LuaValue.Companion.EMPTYSTRING, this)
+        return library.call(net.blueva.luak.LuaValue.Companion.EMPTYSTRING, this)!!
     }
 
     // varargs references
@@ -1498,7 +1498,7 @@ open class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    open fun call(): LuaValue {
+    open fun call(): LuaValue? {
         return callmt().call(this)
     }
 
@@ -1529,7 +1529,7 @@ open class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    open fun call(arg: LuaValue?): LuaValue {
+    open fun call(arg: LuaValue?): LuaValue? {
         return callmt().call(this, arg)
     }
 
@@ -1570,7 +1570,7 @@ open class LuaValue : Varargs() {
      * @see .method
      * @see .method
      */
-    open fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+    open fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
         return callmt().call(this, arg1, arg2)
     }
 
@@ -1603,7 +1603,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      * @see .invokemethod
      */
-    open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
+    open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
         return (callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1())!!
     }
 
@@ -1635,7 +1635,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: String?): LuaValue {
-        return this.get(name)!!.call(this)
+        return this.get(name)!!.call(this)!!
     }
 
     /** Call named method on `this` with 0 arguments, including metatag processing,
@@ -1666,7 +1666,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: LuaValue): LuaValue {
-        return this.get(name).call(this)
+        return this.get(name).call(this)!!
     }
 
     /** Call named method on `this` with 1 argument, including metatag processing,
@@ -1698,7 +1698,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: String?, arg: LuaValue?): LuaValue {
-        return this.get(name)!!.call(this, arg)
+        return this.get(name)!!.call(this, arg)!!
     }
 
     /** Call named method on `this` with 1 argument, including metatag processing,
@@ -1730,7 +1730,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: LuaValue, arg: LuaValue?): LuaValue {
-        return this.get(name).call(this, arg)
+        return this.get(name).call(this, arg)!!
     }
 
     /** Call named method on `this` with 2 arguments, including metatag processing,
@@ -1762,7 +1762,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: String?, arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-        return this.get(name)!!.call(this, arg1, arg2)
+        return this.get(name)!!.call(this, arg1, arg2)!!
     }
 
     /** Call named method on `this` with 2 arguments, including metatag processing,
@@ -1794,7 +1794,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     fun method(name: LuaValue, arg1: LuaValue?, arg2: LuaValue?): LuaValue {
-        return this.get(name).call(this, arg1, arg2)
+        return this.get(name).call(this, arg1, arg2)!!
     }
 
     /** Call `this` with 0 arguments, including metatag processing,
@@ -2207,7 +2207,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if  `this` is not a table or string, and has no [.UNM] metatag
      */
     open fun neg(): LuaValue {
-        return checkmetatag(net.blueva.luak.LuaValue.Companion.UNM, "attempt to perform arithmetic on ").call(this)
+        return checkmetatag(net.blueva.luak.LuaValue.Companion.UNM, "attempt to perform arithmetic on ").call(this)!!
     }
 
     /** Length operator: return lua length of object `(#this)` including metatag processing as java int
@@ -2216,7 +2216,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if  `this` is not a table or string, and has no [.LEN] metatag
      */
     open fun len(): LuaValue {
-        return checkmetatag(net.blueva.luak.LuaValue.Companion.LEN, "attempt to get length of ").call(this)
+        return checkmetatag(net.blueva.luak.LuaValue.Companion.LEN, "attempt to get length of ").call(this)!!
     }
 
     /** Length operator: return lua length of object `(#this)` including metatag processing as java int
@@ -2254,7 +2254,7 @@ open class LuaValue : Varargs() {
      * @see .eqmtcall
      * @see .EQ
      */
-    fun eq(`val`: LuaValue?): LuaValue? {
+    open fun eq(`val`: LuaValue?): LuaValue? {
         return if (eq_b(`val`)) net.blueva.luak.LuaValue.Companion.TRUE else net.blueva.luak.LuaValue.Companion.FALSE
     }
 
@@ -2271,7 +2271,7 @@ open class LuaValue : Varargs() {
      * @see .eqmtcall
      * @see .EQ
      */
-    fun eq_b(`val`: LuaValue?): Boolean {
+    open fun eq_b(`val`: LuaValue?): Boolean {
         return this === `val`
     }
 
@@ -2827,7 +2827,7 @@ open class LuaValue : Varargs() {
             h = op2.metatag(tag)
             if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on " + typename() + " and " + op2.typename())
         }
-        return h.call(this, op2)
+        return h.call(this, op2)!!
     }
 
     /** Perform metatag processing for arithmetic operations when the left-hand-side is a number.
@@ -2860,7 +2860,7 @@ open class LuaValue : Varargs() {
     protected fun arithmtwith(tag: LuaValue?, op1: Double): LuaValue {
         val h = metatag(tag)
         if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on number and " + typename())
-        return h.call(net.blueva.luak.LuaValue.Companion.valueOf(op1), this)
+        return h.call(net.blueva.luak.LuaValue.Companion.valueOf(op1), this)!!
     }
 
     /** Less than: Perform numeric or string comparison with another value
@@ -3368,7 +3368,7 @@ open class LuaValue : Varargs() {
                 h = it
             }).isnil() || !(op1.metatag(net.blueva.luak.LuaValue.Companion.LT)
                 .also { h = it }).isnil())
-        ) return h!!.call(op1, this).not()
+        ) return h!!.call(op1, this)!!.not()
         return net.blueva.luak.LuaValue.Companion.error("attempt to compare " + tag + " on " + typename() + " and " + op1.typename())
     }
 
@@ -3517,7 +3517,7 @@ open class LuaValue : Varargs() {
         if (h.isnil() && (rhs.metatag(net.blueva.luak.LuaValue.Companion.CONCAT)
                 .also { h = it }).isnil()
         ) net.blueva.luak.LuaValue.Companion.error("attempt to concatenate " + typename() + " and " + rhs.typename())
-        return h.call(this, rhs)
+        return h.call(this, rhs)!!
     }
 
     /** Perform boolean `and` with another operand, based on lua rules for boolean evaluation.
@@ -3885,7 +3885,7 @@ open class LuaValue : Varargs() {
             return if (h.isnil() || h !== rhsmt.rawget(net.blueva.luak.LuaValue.Companion.EQ)) false else h.call(
                 lhs,
                 rhs
-            ).toboolean()
+            )!!.toboolean()
         }
 
         /** Convert java boolean to a [LuaValue].
@@ -4069,7 +4069,7 @@ open class LuaValue : Varargs() {
                 } else if ((t.metatag(net.blueva.luak.LuaValue.Companion.INDEX).also { tm = it }).isnil()) t.indexerror(
                     key.tojstring()
                 )
-                if (tm!!.isfunction()) return tm.call(t, key)
+                if (tm!!.isfunction()) return tm.call(t, key)!!
                 t = tm
             } while (++loop < net.blueva.luak.LuaValue.Companion.MAXTAGLOOP)
             net.blueva.luak.LuaValue.Companion.error("loop in gettable")

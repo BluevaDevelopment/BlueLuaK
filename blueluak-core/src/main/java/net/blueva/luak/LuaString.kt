@@ -317,11 +317,13 @@ class LuaString private constructor(
     }
 
     // string comparison
-    fun strcmp(lhs: LuaValue): Int {
+    override fun strcmp(lhs: LuaValue?): Int {
+        val lhs = lhs!!
         return -lhs.strcmp(this)
     }
 
-    fun strcmp(rhs: LuaString): Int {
+    override fun strcmp(rhs: LuaString?): Int {
+        val rhs = rhs!!
         var i = 0
         var j = 0
         while (i < m_length && j < rhs.m_length) {
@@ -482,20 +484,24 @@ class LuaString private constructor(
     }
 
     // equality w/ metatable processing
-    fun eq(`val`: LuaValue): LuaValue {
+    override fun eq(`val`: LuaValue?): LuaValue {
+        val `val` = `val`!!
         return (if (`val`.raweq(this)) TRUE else FALSE)!!
     }
 
-    fun eq_b(`val`: LuaValue): Boolean {
+    override fun eq_b(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         return `val`.raweq(this)
     }
 
     // equality w/o metatable processing
-    fun raweq(`val`: LuaValue): Boolean {
+    override fun raweq(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         return `val`.raweq(this)
     }
 
-    fun raweq(s: LuaString): Boolean {
+    override fun raweq(s: LuaString?): Boolean {
+        val s = s!!
         if (this === s) return true
         if (s.m_length != m_length) return false
         if (s.m_bytes == m_bytes && s.m_offset == m_offset) return true
@@ -986,7 +992,7 @@ class LuaString private constructor(
             n = 0
             while (i < j) {
                 chars[n++] = (if ((bytes[i++].also {
-                        b = it
+                        b = it.toInt()
                     }) >= 0 || i >= j) b else if (b < -32 || i + 1 >= j) (((b and 0x3f) shl 6) or (bytes[i++].toInt() and 0x3f)) else (((b and 0xf) shl 12) or ((bytes[i++].toInt() and 0x3f) shl 6) or (bytes[i++].toInt() and 0x3f))).toChar()
             }
             return String(chars)

@@ -93,8 +93,8 @@ class LuaUserdata : LuaValue {
         return (typerror(c.name))!!
     }
 
-    fun get(key: LuaValue?): LuaValue {
-        return if (m_metatable != null) LuaValue.gettable(this, (key)!!) else NIL
+    override fun get(key: LuaValue): LuaValue {
+        return if (m_metatable != null) LuaValue.gettable(this, key) else NIL
     }
 
     override fun set(key: LuaValue?, value: LuaValue?) {
@@ -109,11 +109,13 @@ class LuaUserdata : LuaValue {
     }
 
     // equality w/ metatable processing
-    fun eq(`val`: LuaValue): LuaValue {
+    override fun eq(`val`: LuaValue?): LuaValue {
+        val `val` = `val`!!
         return (if (eq_b(`val`)) TRUE else FALSE)!!
     }
 
-    fun eq_b(`val`: LuaValue): Boolean {
+    override fun eq_b(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         if (`val`.raweq(this)) return true
         if (m_metatable == null || !`val`.isuserdata()) return false
         val valmt: LuaValue? = `val`.getmetatable()
@@ -121,11 +123,13 @@ class LuaUserdata : LuaValue {
     }
 
     // equality w/o metatable processing
-    fun raweq(`val`: LuaValue): Boolean {
+    override fun raweq(`val`: LuaValue?): Boolean {
+        val `val` = `val`!!
         return `val`.raweq(this)
     }
 
-    fun raweq(`val`: LuaUserdata): Boolean {
+    override fun raweq(`val`: LuaUserdata?): Boolean {
+        val `val` = `val`!!
         return this === `val` || (m_metatable === `val`.m_metatable && m_instance.equals(`val`.m_instance))
     }
 
@@ -135,7 +139,7 @@ class LuaUserdata : LuaValue {
             this,
             m_metatable!!,
             `val`,
-            `val`.getmetatable()
+            `val`.getmetatable()!!
         ) else false
     }
 }
