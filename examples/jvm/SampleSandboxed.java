@@ -13,9 +13,9 @@ import net.blueva.luak.lib.PackageLib;
 import net.blueva.luak.lib.TableLib;
 import net.blueva.luak.lib.TwoArgFunction;
 import net.blueva.luak.lib.ZeroArgFunction;
-import net.blueva.luak.lib.jse.JseBaseLib;
-import net.blueva.luak.lib.jse.JseMathLib;
-import net.blueva.luak.lib.jse.JseStringLib;
+import net.blueva.luak.lib.jvm.JvmBaseLib;
+import net.blueva.luak.lib.jvm.JvmMathLib;
+import net.blueva.luak.lib.jvm.JvmStringLib;
 
 /** Simple program that illustrates basic sand-boxing of client scripts
  * in a server environment.
@@ -41,13 +41,13 @@ public class SampleSandboxed {
 	public static void main(String[] args) {
 		// Create server globals with just enough library support to compile user scripts.
 		server_globals = new Globals();
-		server_globals.load(new JseBaseLib());
+		server_globals.load(new JvmBaseLib());
 		server_globals.load(new PackageLib());
-		server_globals.load(new JseStringLib());
+		server_globals.load(new JvmStringLib());
 
 		// To load scripts, we occasionally need a math library in addition to compiler support.
 		// To limit scripts using the debug library, they must be closures, so we only install LuaC.
-		server_globals.load(new JseMathLib());
+		server_globals.load(new JvmMathLib());
 		LoadState.install(server_globals);
 		LuaC.install(server_globals);
 
@@ -92,12 +92,12 @@ public class SampleSandboxed {
 		// Each script will have it's own set of globals, which should
 		// prevent leakage between scripts running on the same server.
 		Globals user_globals = new Globals();
-		user_globals.load(new JseBaseLib());
+		user_globals.load(new JvmBaseLib());
 		user_globals.load(new PackageLib());
 		user_globals.load(new Bit32Lib());
 		user_globals.load(new TableLib());
-		user_globals.load(new JseStringLib());
-		user_globals.load(new JseMathLib());
+		user_globals.load(new JvmStringLib());
+		user_globals.load(new JvmMathLib());
 
 		// This library is dangerous as it gives unfettered access to the
 		// entire Java VM, so it's not suitable within this lightweight sandbox.
@@ -109,8 +109,8 @@ public class SampleSandboxed {
 
 		// These are probably unwise and unnecessary for scripts on servers,
 		// although some date and time functions may be useful.
-		// user_globals.load(new JseIoLib());
-		// user_globals.load(new JseOsLib());
+		// user_globals.load(new JvmIoLib());
+		// user_globals.load(new JvmOsLib());
 
 		// Loading and compiling scripts from within scripts may also be
 		// prohibited, though in theory it should be fairly safe.

@@ -1,7 +1,7 @@
 import net.blueva.luak.Globals;
 import net.blueva.luak.LuaThread;
 import net.blueva.luak.LuaValue;
-import net.blueva.luak.lib.jse.JsePlatform;
+import net.blueva.luak.lib.jvm.JvmPlatform;
 
 /** Example that continually launches coroutines, and illustrates how to make 
 * sure the orphaned coroutines are cleaned up properly.
@@ -39,8 +39,8 @@ public class CollectingOrphanedCoroutines {
 		LuaThread.thread_orphan_check_interval = 500;
 
 		// Should work with standard or debug globals.
-		Globals globals = JsePlatform.standardGlobals();
-		// Globals globals = JsePlatform.debugGlobals();
+		Globals globals = JvmPlatform.standardGlobals();
+		// Globals globals = JvmPlatform.debugGlobals();
 		
 		// Should work with plain compiler or lua-to-Java compiler.
 		// net.blueva.luak.luajc.LuaJC.install(globals);;

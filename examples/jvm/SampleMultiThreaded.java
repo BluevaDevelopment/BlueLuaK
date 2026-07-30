@@ -1,7 +1,7 @@
 import java.io.IOException;
 
 import net.blueva.luak.Globals;
-import net.blueva.luak.lib.jse.JsePlatform;
+import net.blueva.luak.lib.jvm.JvmPlatform;
 
 /** Simple toy program illustrating how to run Luaj in multiple threads. 
  * 
@@ -14,7 +14,7 @@ import net.blueva.luak.lib.jse.JsePlatform;
  *  
  * This can be used when all the scripts running can be trusted.  
  * For examples of how to sandbox scripts in protect against rogue scripts,
- * see examples/jse/SampLeSandboxed.java.
+ * see examples/jvm/SampLeSandboxed.java.
  */
 public class SampleMultiThreaded {
 
@@ -27,7 +27,7 @@ public class SampleMultiThreaded {
 		public void run() {
 			try {
 				// Each thread must have its own Globals.
-				Globals g = JsePlatform.standardGlobals();
+				Globals g = JvmPlatform.standardGlobals();
 
 				// Once a Globals is created, it can and should be reused 
 				// within the same thread.

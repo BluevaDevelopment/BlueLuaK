@@ -40,17 +40,17 @@ This is a first iteration: the README and repository metadata are being moderniz
 | Component | Path | Purpose |
 |---|---|---|
 | Core VM | [`blueluak-core/src/main/java/net/blueva/luak/`](blueluak-core/src/main/java/net/blueva/luak/) | Platform-neutral Lua VM, compiler, and standard libraries |
-| JSE Runtime | [`blueluak-jse/src/main/java/net/blueva/luak/`](blueluak-jse/src/main/java/net/blueva/luak/) | Java SE platform bindings, parser, and `luajava` integration |
+| JVM Runtime | [`blueluak-jvm/src/main/java/net/blueva/luak/`](blueluak-jvm/src/main/java/net/blueva/luak/) | Java SE platform bindings, parser, and `luajava` integration |
 | Grammar | [`grammar/`](grammar/) | JavaCC grammar for the Lua parser |
 | Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
-| Tests | [`blueluak-jse/src/test/java/net/blueva/luak/`](blueluak-jse/src/test/java/net/blueva/luak/) | JUnit suites and Lua test suites |
+| Tests | [`blueluak-jvm/src/test/java/net/blueva/luak/`](blueluak-jvm/src/test/java/net/blueva/luak/) | JUnit suites and Lua test suites |
 
 Gradle modules:
 
 | Module | Path | Output |
 |---|---|---|
 | `blueluak-core` | [`blueluak-core/`](blueluak-core/) | Core VM jar |
-| `blueluak-jse` | [`blueluak-jse/`](blueluak-jse/) | JSE runtime jar |
+| `blueluak-jvm` | [`blueluak-jvm/`](blueluak-jvm/) | JVM runtime jar |
 
 All Java packages have been moved from `org.luaj.vm2` to `net.blueva.luak`.
 
@@ -66,7 +66,7 @@ Build just one module:
 
 ```bash
 ./gradlew :blueluak-core:build
-./gradlew :blueluak-jse:build
+./gradlew :blueluak-jvm:build
 ```
 
 Run tests:
@@ -94,5 +94,5 @@ BlueLuaK is in its very first iteration.
 | README & metadata | Modernized |
 | Build system | Gradle (Kotlin DSL) |
 | Kotlin API | Scaffold planned |
-| JSE runtime | Functional, based on LuaJ 3.0.2 |
+| JVM runtime | Functional, based on LuaJ 3.0.2 |
 | Lua version | 5.2 (targeting migration toward current Lua 5.5) |

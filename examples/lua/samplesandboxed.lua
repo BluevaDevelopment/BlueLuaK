@@ -1,7 +1,7 @@
 -- Illustration of simple sandboxing techniques that can be used in luaj.
 --
 -- This sandboxing is done in lua.  These same techniques are all
--- possible directly from Java, as shown in /examples/jse/SampleSandboxed.java.
+-- possible directly from Java, as shown in /examples/jvm/SampleSandboxed.java.
 -- 
 -- The main goals of this sandbox are:
 -- *  lightweight sandbox controlled by single lua script

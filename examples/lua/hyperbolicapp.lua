@@ -1,6 +1,6 @@
 -- Sample luaj code to try loading and executing the 'hyperbolic' sample library
 -- 
--- The sample library source is in examples/jse/hyperbolic.java.  
+-- The sample library source is in examples/jvm/hyperbolic.java.
 -- For this sample to work, that source must be compiled, and the class must 
 -- be on the class path.
 -- 

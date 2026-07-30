@@ -14,7 +14,7 @@ import javax.script.SimpleBindings;
 import net.blueva.luak.LuaValue;
 import net.blueva.luak.lib.OneArgFunction;
 
-/** Sample code that uses the JSE-223 pluggable scripting language interface
+/** Sample code that uses the JSR-223 pluggable scripting language interface
  * to instantiate and use luaj. 
  * 
  * <p>In this case, Globals are only indirectly constructed as a side effect

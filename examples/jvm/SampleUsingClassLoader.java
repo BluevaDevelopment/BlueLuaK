@@ -3,7 +3,7 @@ import java.io.Reader;
 
 import net.blueva.luak.Globals;
 import net.blueva.luak.LuaValue;
-import net.blueva.luak.lib.jse.JsePlatform;
+import net.blueva.luak.lib.jvm.JvmPlatform;
 import net.blueva.luak.server.Launcher;
 import net.blueva.luak.server.LuajClassLoader;
 
@@ -67,7 +67,7 @@ public class SampleUsingClassLoader {
 	public static class MyLauncher implements Launcher {
 		Globals g;
 		public MyLauncher() {
-			g = JsePlatform.debugGlobals();
+			g = JvmPlatform.debugGlobals();
 			// ... plus any other customization of the user environment
 		}
 		

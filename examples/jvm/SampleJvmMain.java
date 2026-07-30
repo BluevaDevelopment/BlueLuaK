@@ -1,7 +1,7 @@
 
 import net.blueva.luak.Globals;
 import net.blueva.luak.LuaValue;
-import net.blueva.luak.lib.jse.JsePlatform;
+import net.blueva.luak.lib.jvm.JvmPlatform;
 
 /** Simple program showing the minimal Java program to launch a script.
  * 
@@ -12,13 +12,13 @@ import net.blueva.luak.lib.jse.JsePlatform;
  * @see Globals
  * @see LuaValue
  */
-public class SampleJseMain {
+public class SampleJvmMain {
 	
 	public static void main(String[] args) throws Exception {
 		String script = "examples/lua/hello.lua";
 		
 		// create an environment to run in
-		Globals globals = JsePlatform.standardGlobals();
+		Globals globals = JvmPlatform.standardGlobals();
 		
 		// Use the convenience function on Globals to load a chunk.
 		LuaValue chunk = globals.loadfile(script);
