@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.compiler.DumpState
 import net.blueva.luak.lib.jvm.JvmPlatform
 import java.io.*
@@ -23,7 +24,7 @@ import java.io.*
 /**
  * Compiler for lua files to lua bytecode.
  */
-class luac private constructor(args: Array<String>) {
+class LuacCli private constructor(args: Array<String>) {
     private var list = false
     private var output = "luac.out"
     private var parseonly = false
@@ -121,7 +122,7 @@ class luac private constructor(args: Array<String>) {
             // create the chunk
             script = BufferedInputStream(script)
             val chunk = if (encoding != null) globals.compilePrototype(
-                InputStreamReader(script, encoding),
+                InputStreamReader(script, encoding).asLuaReader(),
                 chunkname
             ) else globals.compilePrototype(script, chunkname)
 
@@ -163,7 +164,7 @@ class luac private constructor(args: Array<String>) {
         @Throws(IOException::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            luac(args)
+            LuacCli(args)
         }
     }
 }

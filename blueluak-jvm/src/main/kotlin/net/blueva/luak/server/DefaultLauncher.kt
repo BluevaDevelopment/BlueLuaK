@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak.server
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.Globals
 import net.blueva.luak.LuaValue
 import net.blueva.luak.lib.jvm.CoerceJavaToLua
@@ -59,7 +60,7 @@ class DefaultLauncher : Launcher {
 
     /** Launches the script with chunk name 'main'  */
     override fun launch(script: Reader?, arg: Array<Any?>?): Array<Any?>? {
-        return launchChunk(g.load(script!!, "main")!!, arg)
+        return launchChunk(g.load(script!!.asLuaReader(), "main")!!, arg)
     }
 
     private fun launchChunk(chunk: LuaValue, arg: Array<Any?>?): Array<Any?>? {

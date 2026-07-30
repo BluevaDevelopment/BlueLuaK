@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.lib.jvm.JvmPlatform
 import net.blueva.luak.luajc.LuaJC
 import java.io.*
@@ -24,7 +25,7 @@ import java.util.*
 /**
  * lua command for use in JVM environments.
  */
-object lua {
+object LuaCli {
     private val version = Lua._VERSION + " Copyright (c) 2012 Luaj.org.org"
 
     private val usage = "usage: java -cp luaj-jvm.jar lua [options] [script [args]].\n" +
@@ -73,10 +74,10 @@ object lua {
                         break
                     } else {
                         when (args[i].get(1)) {
-                            'e' -> if (++i >= args.size) lua.usageExit()
+                            'e' -> if (++i >= args.size) LuaCli.usageExit()
                             'b' -> luajc = true
                             'l' -> {
-                                if (++i >= args.size) lua.usageExit()
+                                if (++i >= args.size) LuaCli.usageExit()
                                 libs = libs ?: Vector<String>()
                                 libs.addElement(args[i])
                             }
@@ -84,18 +85,18 @@ object lua {
                             'i' -> interactive = true
                             'v' -> versioninfo = true
                             'n' -> nodebug = true
-                            'p' -> lua.print = true
+                            'p' -> LuaCli.print = true
                             'c' -> {
-                                if (++i >= args.size) lua.usageExit()
-                                lua.encoding = args[i]
+                                if (++i >= args.size) LuaCli.usageExit()
+                                LuaCli.encoding = args[i]
                             }
 
                             '-' -> {
-                                if (args[i].length > 2) lua.usageExit()
+                                if (args[i].length > 2) LuaCli.usageExit()
                                 processing = false
                             }
 
-                            else -> lua.usageExit()
+                            else -> LuaCli.usageExit()
                         }
                     }
                     i++
@@ -113,7 +114,7 @@ object lua {
                 var i = 0
                 val n = if (libs != null) libs.size else 0
                 while (i < n) {
-                    lua.loadLibrary(libs!!.elementAt(i) as String?)
+                    LuaCli.loadLibrary(libs!!.elementAt(i) as String?)
                     i++
                 }
             }
@@ -124,17 +125,17 @@ object lua {
             var i = 0
             while (i < args.size) {
                 if (!processing || !args[i].startsWith("-")) {
-                    lua.processScript(FileInputStream(args[i]), args[i], args, i)
+                    LuaCli.processScript(FileInputStream(args[i]), args[i], args, i)
                     break
                 } else if ("-" == args[i]) {
-                    lua.processScript(System.`in`, "=stdin", args, i)
+                    LuaCli.processScript(System.`in`, "=stdin", args, i)
                     break
                 } else {
                     when (args[i].get(1)) {
                         'l', 'c' -> ++i
                         'e' -> {
                             ++i
-                            lua.processScript(ByteArrayInputStream(args[i].toByteArray()), "string", args, i)
+                            LuaCli.processScript(ByteArrayInputStream(args[i].toByteArray()), "string", args, i)
                         }
 
                         '-' -> processing = false
@@ -175,7 +176,7 @@ object lua {
             try {
                 script = BufferedInputStream(script)
                 c = (if (encoding != null) globals!!.load(
-                    InputStreamReader(script, encoding),
+                    InputStreamReader(script, encoding).asLuaReader(),
                     chunkname
                 ) else globals!!.load(script, chunkname, "bt", globals))!!
             } finally {
