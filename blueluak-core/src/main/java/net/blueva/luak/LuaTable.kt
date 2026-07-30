@@ -219,7 +219,7 @@ open class LuaTable : LuaValue, Metatable {
             val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable.arrayget(array, key - 1)
             return if (v != null) v else NIL
         }
-        return hashget(LuaInteger.valueOf(key))
+        return hashget((LuaInteger.valueOf(key))!!)
     }
 
     fun rawget(key: LuaValue): LuaValue {
@@ -264,7 +264,7 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     fun rawset(key: Int, value: LuaValue) {
-        if (!arrayset(key, value)) hashset(LuaInteger.valueOf(key), value)
+        if (!arrayset(key, value)) hashset((LuaInteger.valueOf(key))!!, value)
     }
 
     /** caller must ensure key is not nil  */
@@ -327,10 +327,10 @@ open class LuaTable : LuaValue, Metatable {
         var i = i
         val sb: Buffer = Buffer()
         if (i <= j) {
-            sb.append(get(i).checkstring())
+            sb.append((get(i).checkstring())!!)
             while (++i <= j) {
-                sb.append(sep)
-                sb.append(get(i).checkstring())
+                sb.append((sep)!!)
+                sb.append((get(i).checkstring())!!)
             }
         }
         return sb.tostring()
@@ -680,7 +680,7 @@ open class LuaTable : LuaValue, Metatable {
                         continue
                     }
                 } else {
-                    newEntry = net.blueva.luak.LuaTable.Companion.defaultEntry(valueOf(i), v)
+                    newEntry = net.blueva.luak.LuaTable.Companion.defaultEntry(valueOf(i), (v)!!)
                 }
                 newHash[slot] = if (newHash[slot] != null) newHash[slot]!!.add(newEntry) else newEntry
             }
@@ -793,7 +793,7 @@ open class LuaTable : LuaValue, Metatable {
         if (this === `val`) return true
         if (m_metatable == null || !`val`.istable()) return false
         val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, m_metatable.toLuaValue(), `val`, valmt)
+        return valmt != null && LuaValue.eqmtcall(this, (m_metatable.toLuaValue())!!, `val`, valmt)
     }
 
     /** Unpack all the elements of this table  */
@@ -957,7 +957,7 @@ open class LuaTable : LuaValue, Metatable {
 
         override fun remove(target: StrongSlot?): Slot {
             if (this === target) {
-                return net.blueva.luak.LuaTable.DeadSlot(key(), next)
+                return net.blueva.luak.LuaTable.DeadSlot((key())!!, next)
             } else {
                 this.next = next!!.remove(target)
             }
@@ -1055,7 +1055,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun remove(target: StrongSlot?): Slot {
-            return net.blueva.luak.LuaTable.DeadSlot(key(), null)
+            return net.blueva.luak.LuaTable.DeadSlot((key())!!, null)
         }
 
         override fun relink(rest: Slot?): Slot {

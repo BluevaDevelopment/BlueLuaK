@@ -50,8 +50,8 @@ class TailcallVarargs : Varargs {
     }
 
     constructor(`object`: LuaValue, methodname: LuaValue?, args: Varargs?) {
-        this.func = `object`.get(methodname)
-        this.args = LuaValue.varargsOf(`object`, args)
+        this.func = `object`.get((methodname)!!)
+        this.args = LuaValue.varargsOf(`object`, (args)!!)
     }
 
     override val isTailcall: Boolean

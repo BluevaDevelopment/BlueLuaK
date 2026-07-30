@@ -1154,7 +1154,7 @@ open class LuaValue : Varargs() {
      * @see .rawget
      */
     open fun get(key: Int): LuaValue? {
-        return get(LuaInteger.valueOf(key))
+        return get((LuaInteger.valueOf(key))!!)
     }
 
     /** Get a value in a table including metatag processing using [.INDEX].
@@ -1820,7 +1820,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(): Varargs? {
-        return invoke(net.blueva.luak.LuaValue.Companion.NONE)
+        return invoke((net.blueva.luak.LuaValue.Companion.NONE)!!)
     }
 
     /** Call `this` with variable arguments, including metatag processing,
@@ -1878,7 +1878,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(arg: LuaValue?, varargs: Varargs): Varargs? {
-        return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg, varargs))
+        return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(arg, varargs))!!)
     }
 
     /** Call `this` with variable arguments, including metatag processing,
@@ -1936,7 +1936,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(args: Array<LuaValue?>): Varargs? {
-        return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(args))
+        return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(args))!!)
     }
 
     /** Call `this` with variable arguments, including metatag processing,
@@ -1967,7 +1967,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(args: Array<LuaValue?>, varargs: Varargs): Varargs? {
-        return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(args, varargs))
+        return invoke((net.blueva.luak.LuaValue.Companion.varargsOf(args, varargs))!!)
     }
 
     /** Call named method on `this` with 0 arguments, including metatag processing,
@@ -2067,7 +2067,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     fun invokemethod(name: String?, args: Varargs): Varargs? {
-        return get(name)!!.invoke(net.blueva.luak.LuaValue.Companion.varargsOf(this, args))
+        return get(name)!!.invoke((net.blueva.luak.LuaValue.Companion.varargsOf(this, args))!!)
     }
 
     /** Call named method on `this` with variable arguments, including metatag processing,
@@ -2101,7 +2101,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     fun invokemethod(name: LuaValue, args: Varargs): Varargs? {
-        return get(name).invoke(net.blueva.luak.LuaValue.Companion.varargsOf(this, args))
+        return get(name).invoke((net.blueva.luak.LuaValue.Companion.varargsOf(this, args))!!)
     }
 
     /** Call named method on `this` with 1 argument, including metatag processing,
@@ -3923,7 +3923,7 @@ open class LuaValue : Varargs() {
          * @return [LuaString] instance, possibly pooled, whose value is s
          */
         fun valueOf(s: String?): LuaString {
-            return LuaString.valueOf(s)
+            return LuaString.valueOf((s)!!)
         }
 
         /** Convert bytes in an array to a [LuaValue].
@@ -3932,7 +3932,7 @@ open class LuaValue : Varargs() {
          * @return [LuaString] instance, possibly pooled, whose bytes are those in the supplied array
          */
         fun valueOf(bytes: ByteArray?): LuaString {
-            return LuaString.valueOf(bytes)
+            return LuaString.valueOf((bytes)!!)
         }
 
         /** Convert bytes in an array to a [LuaValue].
@@ -3943,7 +3943,7 @@ open class LuaValue : Varargs() {
          * @return [LuaString] instance, possibly pooled, whose bytes are those in the supplied array
          */
         fun valueOf(bytes: ByteArray?, off: Int, len: Int): LuaString {
-            return LuaString.valueOf(bytes, off, len)
+            return LuaString.valueOf((bytes)!!, off, len)
         }
 
         /** Construct an empty [LuaTable].
@@ -3959,7 +3959,7 @@ open class LuaValue : Varargs() {
          * @return new [LuaTable] instance with sequential elements coming from the varargs.
          */
         fun tableOf(varargs: Varargs?, firstarg: Int): LuaTable {
-            return LuaTable(varargs, firstarg)
+            return LuaTable((varargs)!!, firstarg)
         }
 
         /** Construct an empty [LuaTable] preallocated to hold array and hashed elements
@@ -4032,7 +4032,7 @@ open class LuaValue : Varargs() {
          * @return [LuaUserdata] value wrapping the java instance.
          */
         fun userdataOf(o: Object?): LuaUserdata {
-            return LuaUserdata(o)
+            return LuaUserdata((o)!!)
         }
 
         /** Construct a LuaUserdata for an object with a user supplied metatable.
@@ -4042,7 +4042,7 @@ open class LuaValue : Varargs() {
          * @return [LuaUserdata] value wrapping the java instance.
          */
         fun userdataOf(o: Object?, metatable: LuaValue?): LuaUserdata {
-            return LuaUserdata(o, metatable)
+            return LuaUserdata((o)!!, metatable)
         }
 
         /** Constant limiting metatag loop processing  */
@@ -4140,8 +4140,8 @@ open class LuaValue : Varargs() {
             when (v.size) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE
                 1 -> return v[0]
-                2 -> return PairVarargs(v[0], v[1])
-                else -> return ArrayVarargs(v, net.blueva.luak.LuaValue.Companion.NONE)
+                2 -> return PairVarargs(v[0], (v[1])!!)
+                else -> return ArrayVarargs(v, (net.blueva.luak.LuaValue.Companion.NONE)!!)
             }
         }
 
@@ -4157,7 +4157,7 @@ open class LuaValue : Varargs() {
             when (v.size) {
                 0 -> return r
                 1 -> return if (r.narg() > 0) PairVarargs(v[0], r) as Varargs else v[0] as Varargs?
-                2 -> return if (r.narg() > 0) ArrayVarargs(v, r) as Varargs else PairVarargs(v[0], v[1]) as Varargs
+                2 -> return if (r.narg() > 0) ArrayVarargs(v, r) as Varargs else PairVarargs(v[0], (v[1])!!) as Varargs
                 else -> return ArrayVarargs(v, r)
             }
         }
@@ -4175,8 +4175,8 @@ open class LuaValue : Varargs() {
             when (length) {
                 0 -> return net.blueva.luak.LuaValue.Companion.NONE
                 1 -> return v[offset]
-                2 -> return PairVarargs(v[offset + 0], v[offset + 1])
-                else -> return ArrayPartVarargs(v, offset, length, net.blueva.luak.LuaValue.Companion.NONE)
+                2 -> return PairVarargs(v[offset + 0], (v[offset + 1])!!)
+                else -> return ArrayPartVarargs(v, offset, length, (net.blueva.luak.LuaValue.Companion.NONE)!!)
             }
         }
 
@@ -4202,7 +4202,7 @@ open class LuaValue : Varargs() {
                     offset,
                     length,
                     more
-                ) as Varargs else PairVarargs(v[offset], v[offset + 1]) as Varargs
+                ) as Varargs else PairVarargs(v[offset], (v[offset + 1])!!) as Varargs
 
                 else -> return ArrayPartVarargs(v, offset, length, more)
             }
@@ -4240,7 +4240,7 @@ open class LuaValue : Varargs() {
          */
         fun varargsOf(v1: LuaValue?, v2: LuaValue?, v3: Varargs): Varargs {
             when (v3.narg()) {
-                0 -> return PairVarargs(v1, v2)
+                0 -> return PairVarargs(v1, (v2)!!)
                 else -> return ArrayPartVarargs(arrayOf<LuaValue?>(v1, v2), 0, 2, v3)
             }
         }

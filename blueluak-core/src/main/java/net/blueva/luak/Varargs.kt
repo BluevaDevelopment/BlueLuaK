@@ -324,7 +324,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun optuserdata(i: Int, c: Class<*>?, defval: Object?): Object {
-        return arg(i).optuserdata(c, defval)
+        return arg(i).optuserdata((c)!!, defval)
     }
 
     /** Return argument i as a LuaValue if it exists, or `defval`.
@@ -852,11 +852,11 @@ abstract class Varargs {
         when (n) {
             0 -> return LuaValue.NONE
             1 -> return arg1()
-            2 -> return net.blueva.luak.Varargs.PairVarargs(arg1(), arg(2))
+            2 -> return net.blueva.luak.Varargs.PairVarargs(arg1(), (arg(2))!!)
             else -> {
                 val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
                 copyto(v, 0, n)
-                return net.blueva.luak.Varargs.ArrayVarargs(v, LuaValue.NONE)
+                return net.blueva.luak.Varargs.ArrayVarargs(v, (LuaValue.NONE)!!)
             }
         }
     }

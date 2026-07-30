@@ -129,7 +129,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
     override fun call(): LuaValue {
         val stack: Array<LuaValue> = this.newStack
-        return execute(stack, NONE)!!.arg1()
+        return execute(stack, (NONE)!!)!!.arg1()
     }
 
     fun call(arg: LuaValue): LuaValue {
@@ -138,7 +138,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             0 -> return execute(stack, arg)!!.arg1()
             else -> {
                 stack[0] = arg
-                return execute(stack, NONE)!!.arg1()
+                return execute(stack, (NONE)!!)!!.arg1()
             }
         }
     }
@@ -151,11 +151,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 return execute(stack, arg2)!!.arg1()
             }
 
-            0 -> return execute(stack, if (p.is_vararg !== 0) varargsOf(arg1, arg2) else NONE)!!.arg1()
+            0 -> return execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2) else NONE)!!)!!.arg1()
             else -> {
                 stack[0] = arg1
                 stack[1] = arg2
-                return execute(stack, NONE)!!.arg1()
+                return execute(stack, (NONE)!!)!!.arg1()
             }
         }
     }
@@ -171,15 +171,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
             1 -> {
                 stack[0] = arg1
-                return execute(stack, if (p.is_vararg !== 0) varargsOf(arg2, arg3) else NONE)!!.arg1()
+                return execute(stack, (if (p.is_vararg !== 0) varargsOf(arg2, arg3) else NONE)!!)!!.arg1()
             }
 
-            0 -> return execute(stack, if (p.is_vararg !== 0) varargsOf(arg1, arg2, arg3) else NONE)!!.arg1()
+            0 -> return execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2, arg3) else NONE)!!)!!.arg1()
             else -> {
                 stack[0] = arg1
                 stack[1] = arg2
                 stack[2] = arg3
-                return execute(stack, NONE)!!.arg1()
+                return execute(stack, (NONE)!!)!!.arg1()
             }
         }
     }
@@ -191,7 +191,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     override fun onInvoke(varargs: Varargs): Varargs? {
         val stack: Array<LuaValue> = this.newStack
         for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
-        return execute(stack, if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)
+        return execute(stack, (if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)!!)
     }
 
     protected fun execute(stack: Array<LuaValue>, varargs: Varargs): Varargs? {
@@ -280,7 +280,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_GETTABUP -> {
                         stack[a] = upValues[i ushr 23]!!.getValue()!!
-                            .get(if ((((i shr 14) and 0x1ff).also { c = it }) > 0xff) k[c and 0x0ff] else stack[c])
+                            .get((if ((((i shr 14) and 0x1ff).also { c = it }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -327,7 +327,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_SELF -> {
                         stack[a + 1] = (stack[i ushr 23].also { o = it })
                         stack[a] =
-                            o.get(if ((((i shr 14) and 0x1ff).also { c = it }) > 0xff) k[c and 0x0ff] else stack[c])
+                            o.get((if ((((i shr 14) and 0x1ff).also { c = it }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -489,7 +489,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_CALL -> when (i and (Lua.MASK_B or Lua.MASK_C)) {
                         (1 shl Lua.POS_B) or (0 shl Lua.POS_C) -> {
-                            v = stack[a].invoke(NONE)
+                            v = stack[a].invoke((NONE)!!)
                             top = a + v.narg()
                             ++pc
                             continue
@@ -601,7 +601,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             val limit: LuaValue? = stack[a + 1]
                             val step: LuaValue = stack[a + 2]
                             val idx: LuaValue = stack[a].add(step)
-                            if (if (step.gt_b(0)) idx.lteq_b(limit) else idx.gteq_b(limit)) {
+                            if (if (step.gt_b(0)) idx.lteq_b((limit)!!) else idx.gteq_b((limit)!!)) {
                                 stack[a] = idx
                                 stack[a + 3] = idx
                                 pc += (i ushr 14) - 0x1ffff
@@ -616,7 +616,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             val init: LuaValue = stack[a].checknumber("'for' initial value must be a number")
                             val limit: LuaValue? = stack[a + 1].checknumber("'for' limit must be a number")
                             val step: LuaValue? = stack[a + 2].checknumber("'for' step must be a number")
-                            stack[a] = init.sub(step)
+                            stack[a] = init.sub((step)!!)
                             stack[a + 1] = limit
                             stack[a + 2] = step
                             pc += (i ushr 14) - 0x1ffff
@@ -626,7 +626,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_TFORCALL -> {
-                        v = stack[a].invoke(varargsOf(stack[a + 1], stack[a + 2]))
+                        v = stack[a].invoke((varargsOf(stack[a + 1], stack[a + 2]))!!)
                         c = (i shr 14) and 0x1ff
                         while (--c >= 0) stack[a + 3 + c] = v.arg(c + 1)
                         v = NONE

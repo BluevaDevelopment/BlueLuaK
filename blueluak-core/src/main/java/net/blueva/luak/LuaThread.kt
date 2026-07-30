@@ -169,7 +169,7 @@ class LuaThread : LuaValue {
             try {
                 val a: Varargs? = this.args
                 this.args = LuaValue.NONE
-                this.result = function!!.invoke(a)
+                this.result = function!!.invoke((a)!!)
             } catch (t: Throwable) {
                 this.error = t.message
             } finally {
@@ -197,7 +197,7 @@ class LuaThread : LuaValue {
                 return (if (this.error != null) LuaValue.varargsOf(
                     LuaValue.FALSE,
                     LuaValue.valueOf(this.error)
-                ) else LuaValue.varargsOf(LuaValue.TRUE, this.result))
+                ) else LuaValue.varargsOf(LuaValue.TRUE, (this.result)!!))
             } catch (ie: InterruptedException) {
                 throw OrphanedThread()
             } finally {

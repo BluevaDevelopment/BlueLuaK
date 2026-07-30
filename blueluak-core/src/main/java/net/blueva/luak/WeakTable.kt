@@ -202,7 +202,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongkey(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen(key)
+            return net.blueva.luak.WeakTable.Companion.strengthen((key)!!)
         }
 
         override fun copy(rest: Slot?): WeakSlot {
@@ -220,7 +220,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         protected constructor(copyFrom: WeakValueSlot, next: Slot?) : super(copyFrom.key, copyFrom.value, next)
 
         override fun keyindex(mask: Int): Int {
-            return LuaTable.hashSlot(strongkey(), mask)
+            return LuaTable.hashSlot((strongkey())!!, mask)
         }
 
         override fun set(value: LuaValue): Slot? {
@@ -229,7 +229,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongvalue(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen(value)
+            return net.blueva.luak.WeakTable.Companion.strengthen((value)!!)
         }
 
         override fun copy(next: Slot?): WeakSlot {
@@ -266,11 +266,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun strongkey(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen(key)
+            return net.blueva.luak.WeakTable.Companion.strengthen((key)!!)
         }
 
         override fun strongvalue(): LuaValue? {
-            return net.blueva.luak.WeakTable.Companion.strengthen(value)
+            return net.blueva.luak.WeakTable.Companion.strengthen((value)!!)
         }
 
         override fun copy(next: Slot?): WeakSlot {

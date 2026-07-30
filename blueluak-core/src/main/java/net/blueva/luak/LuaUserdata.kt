@@ -94,7 +94,7 @@ class LuaUserdata : LuaValue {
     }
 
     fun get(key: LuaValue?): LuaValue {
-        return if (m_metatable != null) gettable(this, key) else NIL
+        return if (m_metatable != null) gettable(this, (key)!!) else NIL
     }
 
     override fun set(key: LuaValue?, value: LuaValue?) {

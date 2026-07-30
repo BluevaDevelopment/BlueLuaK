@@ -306,7 +306,7 @@ class LuaString private constructor(
     }
 
     override fun concatTo(lhs: LuaNumber): LuaValue {
-        return concatTo(lhs.strvalue())
+        return concatTo((lhs.strvalue())!!)
     }
 
     override fun concatTo(lhs: LuaString): LuaValue {
