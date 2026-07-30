@@ -3,96 +3,142 @@
 </p>
 
 <p align="center">
-  <strong>A Kotlin-first fork of LuaJ, modernized for embedding Lua in JVM applications.</strong>
+  <strong>A Kotlin Multiplatform implementation of an embeddable Lua 5.2 runtime.</strong>
 </p>
 
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-3.0.2-blue">
+  <img alt="Kotlin Multiplatform" src="https://img.shields.io/badge/Kotlin_Multiplatform-JVM_%7C_JS_%7C_Wasm_%7C_Native-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Gradle" src="https://img.shields.io/badge/Gradle-9.6.1-02303A?logo=gradle&logoColor=white">
-  <img alt="Java" src="https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white">
+  <img alt="JVM" src="https://img.shields.io/badge/JVM-17+-ED8B00?logo=openjdk&logoColor=white">
   <img alt="Lua" src="https://img.shields.io/badge/Lua-5.2-000080?logo=lua&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
 </p>
 
 ## Overview
 
-BlueLuaK is a fresh fork of [LuaJ](https://github.com/luaj/luaj) rebuilt around Kotlin and modern JVM tooling. The upstream LuaJ site is no longer active, so this fork is maintained from its GitHub sources.
+BlueLuaK is a Kotlin-first fork of [LuaJ 3.0.2](https://github.com/luaj/luaj), rebuilt as a **Kotlin Multiplatform** library. Its shared module currently targets:
 
-The main goal is twofold:
+- **JVM 17+**
+- **JavaScript IR**, tested on Node.js
+- **WebAssembly**, tested on Node.js
+- **Kotlin/Native** for Linux x64, Windows x64, macOS x64, and macOS ARM64
 
-1. **Kotlin migration** — replace the Java-centric build and API surface with idiomatic Kotlin and Gradle.
-2. **Bring Lua up to date** — the current code targets Lua 5.2 (LuaJ 3.0.2), while the latest official release is [Lua 5.5.0](https://www.lua.org/download.html). Long term, BlueLuaK should move closer to modern Lua.
+The Lua runtime, value model, bytecode compiler, AST, standard libraries, and ANTLR Kotlin parser live in `commonMain`. JVM-specific integration is isolated from the shared runtime.
 
-Right now it preserves the lightweight, embeddable Lua 5.2 runtime and removes legacy J2ME and Eclipse-specific baggage so it can live comfortably in contemporary projects.
+BlueLuaK currently implements Lua 5.2 and provides:
 
-The project provides:
+- An embeddable Lua VM written entirely in Kotlin.
+- Lua source parsing through ANTLR Kotlin, without JavaCC or generated Java.
+- Lua bytecode compilation and execution across the configured KMP targets.
+- Tables, metatables, functions, coroutines, and Lua 5.2 standard libraries.
+- Shared tests for the runtime, compiler, and parser across KMP targets.
+- JVM integrations for filesystem access, processes, Java reflection, script engines, and `luajava`.
 
-- A clean Kotlin API over the LuaJ VM and value model.
-- Lua 5.2 language support with bytecode compilation.
-- Coroutines, metatables, and the standard library set.
-- A path toward idiomatic Kotlin bindings and Gradle-based builds.
+BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform classes, and APIs use BlueLuaK naming under `net.blueva.luak`.
 
-This is a first iteration: the README and repository metadata are being modernized before deeper structural changes land.
+## Multiplatform Architecture
 
-## Project Structure
-
-| Component | Path | Purpose |
-|---|---|---|
-| Core VM | [`blueluak-core/src/main/java/net/blueva/luak/`](blueluak-core/src/main/java/net/blueva/luak/) | Platform-neutral Lua VM, compiler, and standard libraries |
-| JVM Runtime | [`blueluak-jvm/src/main/java/net/blueva/luak/`](blueluak-jvm/src/main/java/net/blueva/luak/) | Java SE platform bindings, parser, and `luajava` integration |
-| Grammar | [`grammar/`](grammar/) | ANTLR Kotlin lexer and parser grammars for Lua 5.2 |
-| Examples | [`examples/`](examples/) | Sample scripts and Java integrations |
-| Tests | [`blueluak-jvm/src/test/java/net/blueva/luak/`](blueluak-jvm/src/test/java/net/blueva/luak/) | JUnit suites and Lua test suites |
+| Source set or module | Purpose |
+|---|---|
+| [`blueluak-core/src/commonMain/kotlin/`](blueluak-core/src/commonMain/kotlin/) | Shared Lua runtime, compiler, AST, parser, and libraries |
+| [`blueluak-core/src/jvmMain/kotlin/`](blueluak-core/src/jvmMain/kotlin/) | JVM implementations of platform abstractions |
+| [`blueluak-core/src/nonJvmMain/kotlin/`](blueluak-core/src/nonJvmMain/kotlin/) | Portable implementations shared by JavaScript and Wasm |
+| [`blueluak-core/src/nativeMain/kotlin/`](blueluak-core/src/nativeMain/kotlin/) | Kotlin/Native implementations of platform abstractions |
+| [`blueluak-core/src/commonTest/kotlin/`](blueluak-core/src/commonTest/kotlin/) | Tests shared by all core targets |
+| [`blueluak-jvm/src/main/kotlin/`](blueluak-jvm/src/main/kotlin/) | JVM-only integrations and command-line tooling |
+| [`grammar/`](grammar/) | ANTLR Kotlin lexer and parser grammars for Lua 5.2 |
+| [`examples/`](examples/) | Kotlin and Lua usage examples |
 
 Gradle modules:
 
-| Module | Path | Output |
+| Module | Targets | Purpose |
 |---|---|---|
-| `blueluak-core` | [`blueluak-core/`](blueluak-core/) | Core VM jar |
-| `blueluak-jvm` | [`blueluak-jvm/`](blueluak-jvm/) | JVM runtime jar |
+| `blueluak-core` | JVM, JavaScript IR, Wasm, Kotlin/Native | Multiplatform Lua runtime, compiler, and parser |
+| `blueluak-jvm` | JVM | JVM platform adapters, `luajava`, scripting, CLI, and JIT support |
 
-All Java packages have been moved from `org.luaj.vm2` to `net.blueva.luak`.
+Platform-dependent functionality is exposed through `expect`/`actual` implementations. Code intended to run on every target belongs in `commonMain`; Java and JVM APIs remain confined to JVM source sets and `blueluak-jvm`.
 
 ## Building
 
+Build every target and module from a clean checkout:
+
 ```bash
-./gradlew build
+./gradlew clean build
 ```
 
-This compiles both Gradle modules and runs the existing JUnit test suite. Some legacy tests still fail under Java 17 (C-based Lua compatibility tests, deprecated APIs); the build succeeds but reports those failures so they can be addressed in follow-up iterations.
-
-Build just one module:
+Build only the multiplatform core:
 
 ```bash
 ./gradlew :blueluak-core:build
-./gradlew :blueluak-jvm:build
 ```
 
-Run tests:
+Compile an individual target:
 
 ```bash
-./gradlew test
+./gradlew :blueluak-core:compileKotlinJvm
+./gradlew :blueluak-core:compileKotlinJs
+./gradlew :blueluak-core:compileKotlinWasmJs
+./gradlew :blueluak-core:compileKotlinMacosArm64
 ```
+
+## Testing
+
+Run every test suite available on the current host:
+
+```bash
+./gradlew :blueluak-core:allTests
+```
+
+Run an individual target suite:
+
+```bash
+./gradlew :blueluak-core:jvmTest
+./gradlew :blueluak-core:jsNodeTest
+./gradlew :blueluak-core:wasmJsNodeTest
+./gradlew :blueluak-core:macosArm64Test
+```
+
+Native tests can only run on their matching host. Cross-platform Native compilation remains available from supported hosts. The full build also runs the inherited JVM regression suite. Some legacy LuaJ tests remain configured with `ignoreFailures` while their Kotlin migration issues are resolved; failures are reported without hiding compilation or KMP test failures.
 
 ## Requirements
 
 | Component | Requirement |
 |---|---|
-| Java | 17 or later |
+| JDK | 17 or later, for Gradle and JVM targets |
 | Kotlin | 2.4.10 |
-| Build | Gradle (Kotlin DSL) |
+| Gradle | 9.6.1 through the included wrapper |
+| Node.js | Used for JavaScript and Wasm tests; managed by the Kotlin Gradle plugin |
+| Native toolchain | Required only to link or run Kotlin/Native binaries on the host |
 
-The project builds with Gradle.
+Use the included wrapper rather than a system Gradle installation.
 
 ## Development Status
 
-BlueLuaK is in its very first iteration.
+BlueLuaK has completed its initial Kotlin and KMP restructuring. It is functional, but remains under active development.
 
 | Area | Status |
 |---|---|
-| README & metadata | Modernized |
-| Build system | Gradle (Kotlin DSL) |
-| Kotlin API | Scaffold planned |
-| JVM runtime | Functional, based on LuaJ 3.0.2 |
-| Lua version | 5.2 (targeting migration toward current Lua 5.5) |
+| Kotlin migration | Complete; no Java source files |
+| Multiplatform core | Compiles for JVM, JavaScript IR, Wasm, Linux x64, Windows x64, macOS x64, and macOS ARM64 |
+| Lua parser | ANTLR Kotlin in `commonMain` |
+| Lua runtime and compiler | Shared in `commonMain`; tested on JVM, JavaScript, and Wasm |
+| JVM integrations | Available through `blueluak-jvm` |
+| Lua language version | Lua 5.2 |
+| Legacy regression suite | Compiles; remaining migrated-test failures are being addressed |
+| Native platform services | Portable core available; filesystem resources and full coroutine semantics still need target-specific implementations |
+| Future Lua work | Migration path from Lua 5.2 toward modern Lua releases |
+
+## Roadmap
+
+Current priorities are:
+
+1. Resolve the remaining inherited JVM regression failures.
+2. Complete target-specific Native I/O, resources, and coroutine behavior.
+3. Modernize the Lua implementation beyond 5.2.
+4. Continue refining multiplatform APIs without restoring LuaJ compatibility constraints.
+
+## License
+
+BlueLuaK is distributed under the [MIT License](LICENSE).
