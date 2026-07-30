@@ -178,20 +178,20 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
     internal class BindingsMetatable(bindings: Bindings) : LuaTable() {
         init {
             this.rawset(INDEX, object : TwoArgFunction() {
-                override fun call(table: LuaValue?, key: LuaValue): LuaValue? {
-                    if (key.isstring()) return toLua(bindings.get(key.tojstring()))
-                    else return this.rawget(key)
+                override fun call(table: LuaValue?, key: LuaValue?): LuaValue? {
+                    if (key!!.isstring()) return toLua(bindings.get(key.tojstring()))
+                    else return this@BindingsMetatable.rawget(key)
                 }
             })
             this.rawset(NEWINDEX, object : ThreeArgFunction() {
-                override fun call(table: LuaValue?, key: LuaValue, value: LuaValue): LuaValue? {
-                    if (key.isstring()) {
+                override fun call(table: LuaValue?, key: LuaValue?, value: LuaValue?): LuaValue? {
+                    if (key!!.isstring()) {
                         val k: String? = key.tojstring()
-                        val v: Any? = Companion.toJava(value)
+                        val v: Any? = LuaScriptEngine.Companion.toJava(value!!)
                         if (v == null) bindings.remove(k)
                         else bindings.put(k, v)
                     } else {
-                        this.rawset(key, value)
+                        this@BindingsMetatable.rawset(key, value)
                     }
                     return NONE
                 }

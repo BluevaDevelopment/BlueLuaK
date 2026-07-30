@@ -49,17 +49,17 @@ class DefaultLauncher : Launcher {
 
     /** Launches the script with chunk name 'main'  */
     override fun launch(script: String?, arg: Array<Any?>?): Array<Any?>? {
-        return launchChunk(g.load(script, "main"), arg)
+        return launchChunk(g.load(script!!, "main")!!, arg)
     }
 
     /** Launches the script with chunk name 'main' and loading using modes 'bt'  */
     override fun launch(script: InputStream?, arg: Array<Any?>?): Array<Any?>? {
-        return launchChunk(g.load(script, "main", "bt", g), arg)
+        return launchChunk(g.load(script!!, "main", "bt", g)!!, arg)
     }
 
     /** Launches the script with chunk name 'main'  */
     override fun launch(script: Reader?, arg: Array<Any?>?): Array<Any?>? {
-        return launchChunk(g.load(script, "main"), arg)
+        return launchChunk(g.load(script!!, "main")!!, arg)
     }
 
     private fun launchChunk(chunk: LuaValue, arg: Array<Any?>?): Array<Any?>? {
