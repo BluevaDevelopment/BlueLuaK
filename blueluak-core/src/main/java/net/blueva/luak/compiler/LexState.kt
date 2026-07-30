@@ -29,14 +29,14 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.Hashtable
 
-class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
+internal class LexState internal constructor(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     /* semantics information */
-    private class SemInfo {
+    internal class SemInfo {
         var r: LuaValue? = null
         var ts: LuaString? = null
     }
 
-    private class Token {
+    internal class Token {
         var token: Int = 0
         val seminfo: SemInfo = net.blueva.luak.compiler.LexState.SemInfo()
         fun set(other: Token) {
@@ -49,14 +49,14 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     var current: Int = 0 /* current character (charint) */
     var linenumber: Int = 0 /* input line counter */
     var lastline: Int = 0 /* line of last token `consumed' */
-    val t: Token = net.blueva.luak.compiler.LexState.Token() /* current token */
-    val lookahead: Token = net.blueva.luak.compiler.LexState.Token() /* look ahead token */
-    var fs: FuncState? = null /* `FuncState' is private to the parser */
-    var L: LuaC.CompileState?
+    internal val t: Token = net.blueva.luak.compiler.LexState.Token() /* current token */
+    internal val lookahead: Token = net.blueva.luak.compiler.LexState.Token() /* look ahead token */
+    internal var fs: FuncState? = null /* `FuncState' is private to the parser */
+    internal var L: LuaC.CompileState?
     var z: InputStream? /* input stream */
     var buff: CharArray /* buffer for tokens */
     var nbuff: Int = 0 /* length of buffer */
-    var dyd: Dyndata = net.blueva.luak.compiler.LexState.Dyndata() /* dynamic structures used by the parser */
+    internal var dyd: Dyndata = net.blueva.luak.compiler.LexState.Dyndata() /* dynamic structures used by the parser */
     var source: LuaString? = null /* current source name */
     var envn: LuaString? = null /* environment variable name */
     var decpoint: Byte = 0 /* locale decimal point */
@@ -163,7 +163,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         if (++linenumber >= net.blueva.luak.compiler.LexState.Companion.MAX_INT) syntaxerror("chunk has too many lines")
     }
 
-    fun setinput(L: LuaC.CompileState?, firstByte: Int, z: InputStream?, source: LuaString?) {
+    internal fun setinput(L: LuaC.CompileState?, firstByte: Int, z: InputStream?, source: LuaString?) {
         this.decpoint = '.'.code.toByte()
         this.L = L
         this.lookahead.token = net.blueva.luak.compiler.LexState.Companion.TK_EOS /* no look-ahead token */
@@ -200,7 +200,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         while ((--n) >= 0) if (p[n] == from) p[n] = to
     }
 
-    fun strx2number(str: String, seminfo: SemInfo?): LuaValue {
+    internal fun strx2number(str: String, seminfo: SemInfo?): LuaValue {
         val c: CharArray = str.toCharArray()
         var s = 0
         while (s < c.size && isspace(c[s].code)) ++s
@@ -242,7 +242,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return LuaValue.valueOf(sgn * m * MathLib.dpow_d(2.0, e))
     }
 
-    fun str2d(str: String, seminfo: SemInfo): Boolean {
+    internal fun str2d(str: String, seminfo: SemInfo): Boolean {
         if (str.indexOf('n') >= 0 || str.indexOf('N') >= 0) seminfo.r = LuaValue.ZERO
         else if (str.indexOf('x') >= 0 || str.indexOf('X') >= 0) seminfo.r = strx2number(str, seminfo)
         else {
@@ -258,7 +258,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return true
     }
 
-    fun read_numeral(seminfo: SemInfo) {
+    internal fun read_numeral(seminfo: SemInfo) {
         var expo = "Ee"
         val first = current
         _assert(isdigit(current))
@@ -285,7 +285,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return if (current == s) count else (-count) - 1
     }
 
-    fun read_long_string(seminfo: SemInfo?, sep: Int) {
+    internal fun read_long_string(seminfo: SemInfo?, sep: Int) {
         var cont = 0
         save_and_next() /* skip 2nd `[' */
         if (currIsNewline())  /* string starts with a newline? */
@@ -352,7 +352,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return (hexvalue(c1) shl 4) + hexvalue(c2)
     }
 
-    fun read_string(del: Int, seminfo: SemInfo) {
+    internal fun read_string(del: Int, seminfo: SemInfo) {
         save_and_next()
         while (current != del) {
             when (current) {
@@ -425,7 +425,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         seminfo.ts = L.newTString(LuaString.valueOf(buff, 1, nbuff - 2))
     }
 
-    fun llex(seminfo: SemInfo): Int {
+    internal fun llex(seminfo: SemInfo): Int {
         nbuff = 0
         while (true) {
             when (current) {
@@ -754,11 +754,11 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return ts
     }
 
-    fun codestring(e: expdesc, s: LuaString?) {
+    internal fun codestring(e: expdesc, s: LuaString?) {
         e.init(net.blueva.luak.compiler.LexState.Companion.VK, fs.stringK(s))
     }
 
-    fun checkname(e: expdesc) {
+    internal fun checkname(e: expdesc) {
         codestring(e, str_checkname())
     }
 
@@ -799,7 +799,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         while (fs.nactvar > tolevel) fs.getlocvar(--fs.nactvar).endpc = fs.pc
     }
 
-    fun singlevar(`var`: expdesc) {
+    internal fun singlevar(`var`: expdesc) {
         val varname: LuaString? = this.str_checkname()
         val fs: FuncState = this.fs
         if (FuncState.singlevaraux(
@@ -817,7 +817,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         }
     }
 
-    fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
+    internal fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
         val fs: FuncState = this.fs
         var extra = nvars - nexps
         if (hasmultret(e.k)) {
@@ -849,7 +849,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         L.nCcalls--
     }
 
-    fun closegoto(g: Int, label: Labeldesc) {
+    internal fun closegoto(g: Int, label: Labeldesc) {
         val fs: FuncState = this.fs
         val gl = this.dyd.gt
         val gt = gl[g]
@@ -894,7 +894,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
     /* Caller must grow() the vector before calling this. */
-    fun newlabelentry(l: Array<Labeldesc?>, index: Int, name: LuaString?, line: Int, pc: Int): Int {
+    internal fun newlabelentry(l: Array<Labeldesc?>, index: Int, name: LuaString?, line: Int, pc: Int): Int {
         l[index] = net.blueva.luak.compiler.LexState.Labeldesc(name, pc, line, fs.nactvar)
         return index
     }
@@ -903,7 +903,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	 ** check whether new label 'lb' matches any pending gotos in current
 	 ** block; solves forward jumps
 	 */
-    fun findgotos(lb: Labeldesc) {
+    internal fun findgotos(lb: Labeldesc) {
         val gl = dyd.gt
         var i: Int = fs.bl.firstgoto
         while (i < dyd.n_gt) {
@@ -926,7 +926,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	** generates an error for an undefined 'goto'; choose appropriate
 	** message when label name is a reserved word (which can only be 'break')
 	*/
-    fun undefgoto(gt: Labeldesc) {
+    internal fun undefgoto(gt: Labeldesc) {
         val msg: String? = L.pushfstring(
             if (net.blueva.luak.compiler.LexState.Companion.isReservedKeyword(gt.name.tojstring()))
                 "<" + gt.name + "> at line " + gt.line + " not inside a loop"
@@ -947,13 +947,13 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return clp
     }
 
-    fun codeclosure(v: expdesc) {
+    internal fun codeclosure(v: expdesc) {
         val fs: FuncState = this.fs.prev
         v.init(net.blueva.luak.compiler.LexState.Companion.VRELOCABLE, fs.codeABx(OP_CLOSURE, 0, fs.np - 1))
         fs.exp2nextreg(v) /* fix it at stack top (for GC) */
     }
 
-    fun open_func(fs: FuncState, bl: BlockCnt?) {
+    internal fun open_func(fs: FuncState, bl: BlockCnt?) {
         fs.prev = this.fs /* linked list of funcstates */
         fs.ls = this
         this.fs = fs
@@ -991,7 +991,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
     /*============================================================*/ /* GRAMMAR RULES */ /*============================================================*/
-    fun fieldsel(v: expdesc?) {
+    internal fun fieldsel(v: expdesc?) {
         /* fieldsel -> ['.' | ':'] NAME */
         val fs: FuncState = this.fs
         val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
@@ -1001,7 +1001,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         fs.indexed(v, key)
     }
 
-    fun yindex(v: expdesc) {
+    internal fun yindex(v: expdesc) {
         /* index -> '[' expr ']' */
         this.next() /* skip the '[' */
         this.expr(v)
@@ -1024,7 +1024,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun recfield(cc: ConsControl) {
+    internal fun recfield(cc: ConsControl) {
         /* recfield -> (NAME | `['exp1`]') = exp1 */
         val fs: FuncState? = this.fs
         val reg: Int = this.fs.freereg
@@ -1044,7 +1044,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         fs.freereg = reg.toShort() /* free registers */
     }
 
-    fun listfield(cc: ConsControl) {
+    internal fun listfield(cc: ConsControl) {
         this.expr(cc.v)
         fs.checklimit(cc.na, net.blueva.luak.compiler.LexState.Companion.MAX_INT, "items in a constructor")
         cc.na++
@@ -1052,7 +1052,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun constructor(t: expdesc) {
+    internal fun constructor(t: expdesc) {
         /* constructor -> ?? */
         val fs: FuncState = this.fs
         val line = this.linenumber
@@ -1129,7 +1129,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun body(e: expdesc, needself: Boolean, line: Int) {
+    internal fun body(e: expdesc, needself: Boolean, line: Int) {
         /* body -> `(' parlist `)' chunk END */
         val new_fs: FuncState = FuncState()
         val bl: BlockCnt = BlockCnt()
@@ -1154,7 +1154,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         this.close_func()
     }
 
-    fun explist(v: expdesc): Int {
+    internal fun explist(v: expdesc): Int {
         /* explist1 -> expr { `,' expr } */
         var n = 1 /* at least one expression */
         this.expr(v)
@@ -1167,7 +1167,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun funcargs(f: expdesc, line: Int) {
+    internal fun funcargs(f: expdesc, line: Int) {
         val fs: FuncState = this.fs
         val args: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val base: Int
@@ -1220,7 +1220,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	** Expression parsing
 	** =======================================================================
 	*/
-    fun primaryexp(v: expdesc) {
+    internal fun primaryexp(v: expdesc) {
         /* primaryexp -> NAME | '(' expr ')' */
         when (t.token) {
             '(' -> {
@@ -1245,7 +1245,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun suffixedexp(v: expdesc) {
+    internal fun suffixedexp(v: expdesc) {
         /* suffixedexp ->
        	primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
         val line = linenumber
@@ -1286,7 +1286,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun simpleexp(v: expdesc) {
+    internal fun simpleexp(v: expdesc) {
         /*
 		 * simpleexp -> NUMBER | STRING | NIL | true | false | ... | constructor |
 		 * FUNCTION body | primaryexp
@@ -1396,7 +1396,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
 	** where `binop' is any binary operator with a priority higher than `limit'
 	*/
-    fun subexpr(v: expdesc, limit: Int): Int {
+    internal fun subexpr(v: expdesc, limit: Int): Int {
         var op: Int
         val uop: Int
         this.enterlevel()
@@ -1423,7 +1423,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         return op /* return first untreated operator */
     }
 
-    fun expr(v: expdesc) {
+    internal fun expr(v: expdesc) {
         this.subexpr(v, 0)
     }
 
@@ -1470,7 +1470,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	** local value in a safe place and use this safe copy in the previous
 	** assignment.
 	*/
-    fun check_conflict(lh: LHS_assign?, v: expdesc) {
+    internal fun check_conflict(lh: LHS_assign?, v: expdesc) {
         var lh = lh
         val fs: FuncState = this.fs
         val extra = fs.freereg as Short /* eventual position to save local variable */
@@ -1501,7 +1501,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun assignment(lh: LHS_assign, nvars: Int) {
+    internal fun assignment(lh: LHS_assign, nvars: Int) {
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         this.check_condition(
             net.blueva.luak.compiler.LexState.Companion.VLOCAL <= lh.v.k && lh.v.k <= net.blueva.luak.compiler.LexState.Companion.VINDEXED,
@@ -1822,7 +1822,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     }
 
 
-    fun funcname(v: expdesc): Boolean {
+    internal fun funcname(v: expdesc): Boolean {
         /* funcname -> NAME {field} [`:' NAME] */
         var ismethod = false
         this.singlevar(v)
@@ -1991,7 +1991,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
 	** compiles the main function, which is a regular vararg function with an
 	** upvalue named LUA_ENV
 	*/
-    fun mainfunc(funcstate: FuncState) {
+    internal fun mainfunc(funcstate: FuncState) {
         val bl: BlockCnt = BlockCnt()
         open_func(funcstate, bl)
         fs.f.is_vararg = 1 /* main function is always vararg */
@@ -2195,7 +2195,7 @@ class LexState(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
         }
 
 
-        var priority: Array<Priority?> =
+        internal var priority: Array<Priority?> =
             arrayOf<Priority?>( /* ORDER OPR */net.blueva.luak.compiler.LexState.Priority(6, 6),
                 net.blueva.luak.compiler.LexState.Priority(6, 6),
                 net.blueva.luak.compiler.LexState.Priority(7, 7),

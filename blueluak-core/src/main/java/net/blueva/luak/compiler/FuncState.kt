@@ -28,7 +28,7 @@ import net.blueva.luak.compiler.LexState.ConsControl
 import net.blueva.luak.compiler.LexState.expdesc
 import java.util.Hashtable
 
-class FuncState internal constructor() : Constants() {
+internal class FuncState internal constructor() : Constants() {
     internal class BlockCnt {
         var previous: BlockCnt? = null /* chain */
         var firstlabel: Short = 0 /* index of first label in this block */
