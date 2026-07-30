@@ -276,7 +276,7 @@ class StringLib
 
     internal inner class FormatDesc(args: Varargs?, strfrmt: LuaString, start: Int) {
         private var leftAdjust = false
-        private var zeroPad: Boolean
+        private var zeroPad: Boolean = false
         private var explicitPlus = false
         private var space = false
         private var alternateForm = false
@@ -304,7 +304,7 @@ class StringLib
                     else -> moreFlags = false
                 }
             }
-            if (p - start > net.blueva.luak.lib.StringLib.FormatDesc.Companion.MAX_FLAGS) error("invalid format (repeated flags)")
+            if (p - start > 5) error("invalid format (repeated flags)")
 
             width = -1
             if (Character.isDigit(c.toChar())) {
@@ -355,7 +355,7 @@ class StringLib
                     else -> radix = 10
                 }
                 digits = java.lang.Long.toString(number, radix)
-                if (conversion == 'X'.code) digits = digits.toUpperCase()
+                if (conversion == 'X'.code) digits = digits.uppercase()
             }
 
             var minwidth: Int = digits.length
@@ -412,9 +412,6 @@ class StringLib
             while (n-- > 0) buf.append(b)
         }
 
-        companion object {
-            private const val MAX_FLAGS = 5
-        }
     }
 
     protected fun format(src: String?, x: Double): String {
@@ -581,7 +578,7 @@ class StringLib
      */
     internal class lower : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            return valueOf(arg!!.checkjstring()!!.toLowerCase())
+            return valueOf(arg!!.checkjstring()!!.lowercase())
         }
     }
 
@@ -680,7 +677,7 @@ class StringLib
      */
     internal class upper : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            return valueOf(arg!!.checkjstring()!!.toUpperCase())
+            return valueOf(arg!!.checkjstring()!!.uppercase())
         }
     }
 
@@ -915,8 +912,8 @@ class StringLib
                                         error("missing '[' after '%f' in pattern")
                                     }
                                     val ep = classend(poffset)
-                                    val previous: Int = if (soffset == 0) '\u0000' else s.luaByte(soffset - 1)
-                                    val next: Int = if (soffset == s.length()) '\u0000' else s.luaByte(soffset)
+                                    val previous: Int = if (soffset == 0) '\u0000'.code else s.luaByte(soffset - 1)
+                                    val next: Int = if (soffset == s.length()) '\u0000'.code else s.luaByte(soffset)
                                     if (matchbracketclass(previous, poffset, ep - 1) ||
                                         !matchbracketclass(next, poffset, ep - 1)
                                     ) return -1
@@ -940,11 +937,11 @@ class StringLib
                     }
                     val ep = classend(poffset)
                     val m = soffset < s.length() && singlematch(s.luaByte(soffset), poffset, ep)
-                    val pc: Int = if (ep < p.length()) p.luaByte(ep) else '\u0000'
+                    val pc: Int = if (ep < p.length()) p.luaByte(ep) else '\u0000'.code
 
                     when (pc) {
                         '?'.code -> {
-                            val res: Int
+                            var res: Int = -1
                             if (m && ((match(soffset + 1, ep + 1).also { res = it }) != -1)) return res
                             poffset = ep + 1
                             continue
@@ -1085,8 +1082,8 @@ class StringLib
 
                     else -> if (c <= 0x1F || c == 0x7F) {
                         buf.append('\\'.code.toByte())
-                        if (i + 1 == n || s.luaByte(i + 1) < '0' || s.luaByte(i + 1) > '9') {
-                            buf.append(Integer.toString(c))
+                        if (i + 1 == n || s.luaByte(i + 1) < '0'.code || s.luaByte(i + 1) > '9'.code) {
+                            buf.append(c.toString())
                         } else {
                             buf.append('0'.code.toByte())
                             buf.append(('0'.code + c / 10).toChar().code.toByte())
