@@ -70,22 +70,20 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
 
     fun getMethod(key: LuaValue?): LuaValue? {
         if (methods == null) {
-            val namedlists: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
+            val namedlists = HashMap<String, MutableList<JavaMethod>>()
             val m = (m_instance as Class<*>).getMethods()
             for (i in m.indices) {
                 val mi = m[i]
                 if (Modifier.isPublic(mi.getModifiers())) {
                     val name = mi.getName()
-                    var list = namedlists.get(name) as MutableList<Any?>?
-                    if (list == null) namedlists.put(name, ArrayList<Any?>().also { list = it })
-                    list!!.add(JavaMethod.Companion.forMethod(mi))
+                    namedlists.getOrPut(name) { ArrayList() }.add(JavaMethod.forMethod(mi))
                 }
             }
             val map: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
             val c = (m_instance as Class<*>).getConstructors()
-            val list: MutableList<Any?> = ArrayList<Any?>()
+            val list = ArrayList<JavaConstructor>()
             for (i in c.indices) if (Modifier.isPublic(c[i].getModifiers())) list.add(
-                JavaConstructor.Companion.forConstructor(
+                JavaConstructor.forConstructor(
                     c[i]
                 )
             )
@@ -94,18 +92,14 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
                 1 -> map.put(NEW, list.get(0))
                 else -> map.put(
                     NEW,
-                    JavaConstructor.Companion.forConstructors(list.toTypedArray() as Array<JavaConstructor?>)
+                    JavaConstructor.forConstructors(list.toTypedArray())
                 )
             }
 
-            val it: MutableIterator<MutableMap.MutableEntry<Any?, Any?>> = namedlists.entries.iterator()
-            while (it.hasNext()) {
-                val e = it.next()
-                val name = e.key as String?
-                val methods = e.value as MutableList<Any?>
+            for ((name, overloads) in namedlists) {
                 map.put(
                     valueOf(name),
-                    if (methods.size == 1) methods.get(0) else JavaMethod.Companion.forMethods(methods.toTypedArray() as Array<JavaMethod?>)
+                    if (overloads.size == 1) overloads[0] else JavaMethod.forMethods(overloads.toTypedArray())
                 )
             }
             methods = map

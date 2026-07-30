@@ -79,7 +79,7 @@ class LuajavaLib : VarArgFunction() {
                     // LuaValue modname = args.arg1();
                     val env: LuaValue = args.arg(2)!!
                     val t = LuaTable()
-                    bind(t, this.javaClass, NAMES, BINDCLASS)
+                    bind(t, { LuajavaLib() }, NAMES, BINDCLASS)
                     env.set("luajava", t)
                     if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("luajava", t)
                     return t
@@ -94,7 +94,7 @@ class LuajavaLib : VarArgFunction() {
                     // get constructor
                     val c: LuaValue = args.checkvalue(1)!!
                     val clazz =
-                        (if (opcode == NEWINSTANCE) classForName(c.tojstring()) else c.checkuserdata(Class::class.java) as Class<*>?)
+                        (if (opcode == NEWINSTANCE) classForName(c.tojstring()) else c.checkuserdata(Class::class) as Class<*>?)
                     val consargs = args.subargs(2)
                     return JavaClass.Companion.forClass(clazz).constructor!!.invoke(consargs!!)!!
                 }

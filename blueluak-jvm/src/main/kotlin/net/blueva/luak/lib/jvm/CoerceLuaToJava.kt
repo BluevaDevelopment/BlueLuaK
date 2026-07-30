@@ -114,22 +114,22 @@ object CoerceLuaToJava {
         val stringCoercion: Coercion = StringCoercion(StringCoercion.Companion.TARGET_TYPE_STRING)
         val bytesCoercion: Coercion = StringCoercion(StringCoercion.Companion.TARGET_TYPE_BYTES)
 
-        COERCIONS.put(Boolean.TYPE, boolCoercion)
-        COERCIONS.put(kotlin.Boolean::class.java, boolCoercion)
-        COERCIONS.put(Byte.TYPE, byteCoercion)
-        COERCIONS.put(kotlin.Byte::class.java, byteCoercion)
-        COERCIONS.put(Character.TYPE, charCoercion)
-        COERCIONS.put(Char::class.java, charCoercion)
-        COERCIONS.put(Short.TYPE, shortCoercion)
-        COERCIONS.put(kotlin.Short::class.java, shortCoercion)
-        COERCIONS.put(Integer.TYPE, intCoercion)
-        COERCIONS.put(Int::class.java, intCoercion)
-        COERCIONS.put(Long.TYPE, longCoercion)
-        COERCIONS.put(kotlin.Long::class.java, longCoercion)
-        COERCIONS.put(Float.TYPE, floatCoercion)
-        COERCIONS.put(kotlin.Float::class.java, floatCoercion)
-        COERCIONS.put(Double.TYPE, doubleCoercion)
-        COERCIONS.put(kotlin.Double::class.java, doubleCoercion)
+        COERCIONS.put(kotlin.Boolean::class.javaPrimitiveType!!, boolCoercion)
+        COERCIONS.put(kotlin.Boolean::class.javaObjectType, boolCoercion)
+        COERCIONS.put(kotlin.Byte::class.javaPrimitiveType!!, byteCoercion)
+        COERCIONS.put(kotlin.Byte::class.javaObjectType, byteCoercion)
+        COERCIONS.put(Char::class.javaPrimitiveType!!, charCoercion)
+        COERCIONS.put(Char::class.javaObjectType, charCoercion)
+        COERCIONS.put(kotlin.Short::class.javaPrimitiveType!!, shortCoercion)
+        COERCIONS.put(kotlin.Short::class.javaObjectType, shortCoercion)
+        COERCIONS.put(Int::class.javaPrimitiveType!!, intCoercion)
+        COERCIONS.put(Int::class.javaObjectType, intCoercion)
+        COERCIONS.put(kotlin.Long::class.javaPrimitiveType!!, longCoercion)
+        COERCIONS.put(kotlin.Long::class.javaObjectType, longCoercion)
+        COERCIONS.put(kotlin.Float::class.javaPrimitiveType!!, floatCoercion)
+        COERCIONS.put(kotlin.Float::class.javaObjectType, floatCoercion)
+        COERCIONS.put(kotlin.Double::class.javaPrimitiveType!!, doubleCoercion)
+        COERCIONS.put(kotlin.Double::class.javaObjectType, doubleCoercion)
         COERCIONS.put(String::class.java, stringCoercion)
         COERCIONS.put(ByteArray::class.java, bytesCoercion)
     }
@@ -377,7 +377,7 @@ object CoerceLuaToJava {
                 LuaValue.TNUMBER -> return if (value.isint()) value.toint() as Any else value.todouble() as Any
                 LuaValue.TBOOLEAN -> return if (value.toboolean()) Boolean.TRUE else Boolean.FALSE
                 LuaValue.TSTRING -> return value.tojstring()
-                LuaValue.TUSERDATA -> return value.optuserdata(targetType, null)
+                LuaValue.TUSERDATA -> return value.optuserdata(targetType.kotlin, null)
                 LuaValue.TNIL -> return null
                 else -> return value
             }

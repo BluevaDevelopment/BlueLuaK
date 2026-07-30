@@ -126,6 +126,7 @@ object JvmPlatform {
      * then the program is run with arguments.
      * @return [Varargs] containing any values returned by mainChunk.
      */
+    @JvmStatic
     fun luaMain(mainChunk: LuaValue, args: Array<out String?>): Varargs? {
         val g = standardGlobals()
         val n = args.size
