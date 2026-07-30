@@ -427,7 +427,7 @@ class Print : Lua() {
 
                     LuaValue.TFUNCTION -> net.blueva.luak.Print.Companion.ps.print(v.tojstring())
                     LuaValue.TUSERDATA -> {
-                        val o: Object? = v.touserdata()
+                        val o: Any? = v.touserdata()
                         if (o != null) {
                             var n: String = o.javaClass.name
                             n = n.substring(n.lastIndexOf('.') + 1)

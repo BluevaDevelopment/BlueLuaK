@@ -18,14 +18,14 @@ package net.blueva.luak
 
 
 class LuaUserdata : LuaValue {
-    var m_instance: Object
+    var m_instance: Any
     var m_metatable: LuaValue? = null
 
-    constructor(obj: Object) {
+    constructor(obj: Any) {
         m_instance = obj
     }
 
-    constructor(obj: Object, metatable: LuaValue?) {
+    constructor(obj: Any, metatable: LuaValue?) {
         m_instance = obj
         m_metatable = metatable
     }
@@ -46,7 +46,7 @@ class LuaUserdata : LuaValue {
         return m_instance.hashCode()
     }
 
-    fun userdata(): Object {
+    fun userdata(): Any {
         return m_instance
     }
 
@@ -58,19 +58,19 @@ class LuaUserdata : LuaValue {
         return c!!.isAssignableFrom(m_instance.javaClass)
     }
 
-    override fun touserdata(): Object {
+    override fun touserdata(): Any {
         return m_instance
     }
 
-    override fun touserdata(c: Class<*>?): Object? {
+    override fun touserdata(c: Class<*>?): Any? {
         return if (c!!.isAssignableFrom(m_instance.javaClass)) m_instance else null
     }
 
-    override fun optuserdata(defval: Object?): Object {
+    override fun optuserdata(defval: Any?): Any {
         return m_instance
     }
 
-    override fun optuserdata(c: Class<*>, defval: Object?): Object {
+    override fun optuserdata(c: Class<*>, defval: Any?): Any {
         if (!c!!.isAssignableFrom(m_instance.javaClass)) typerror(c.name)
         return m_instance
     }
@@ -84,11 +84,11 @@ class LuaUserdata : LuaValue {
         return this
     }
 
-    override fun checkuserdata(): Object {
+    override fun checkuserdata(): Any {
         return m_instance
     }
 
-    override fun checkuserdata(c: Class<*>?): Object {
+    override fun checkuserdata(c: Class<*>?): Any {
         if (c!!.isAssignableFrom(m_instance.javaClass)) return m_instance
         return (typerror(c.name))!!
     }
@@ -101,7 +101,7 @@ class LuaUserdata : LuaValue {
         if (m_metatable == null || !LuaValue.settable(this, key, value)) error("cannot set " + key + " for userdata")
     }
 
-    override fun equals(`val`: Object?): Boolean {
+    override fun equals(`val`: Any?): Boolean {
         if (this === `val`) return true
         if (`val` !is LuaUserdata) return false
         val u = `val`

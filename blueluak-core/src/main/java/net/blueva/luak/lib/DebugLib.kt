@@ -317,7 +317,7 @@ class DebugLib : TwoArgFunction() {
     //	debug.setuservalue (udata, value)
     internal class setuservalue : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val o: Object? = args.checkuserdata(1)
+            val o: Any? = args.checkuserdata(1)
             val v: LuaValue = args.checkvalue(2)!!
             val u: LuaUserdata = args.arg1() as LuaUserdata
             u.m_instance = v.checkuserdata()

@@ -474,7 +474,7 @@ class LuaString private constructor(
     }
 
     // object comparison, used in key comparison
-    override fun equals(o: Object?): Boolean {
+    override fun equals(o: Any?): Boolean {
         if (o is LuaString) {
             return raweq(o as LuaString?)
         }

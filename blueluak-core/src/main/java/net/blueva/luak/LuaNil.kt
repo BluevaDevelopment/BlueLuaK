@@ -68,7 +68,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return net.blueva.luak.LuaNil.Companion.s_metatable
     }
 
-    override fun equals(o: Object?): Boolean {
+    override fun equals(o: Any?): Boolean {
         return o is LuaNil
     }
 
@@ -129,11 +129,11 @@ open class LuaNil internal constructor() : LuaValue() {
         return defval
     }
 
-    override fun optuserdata(defval: Object?): Object? {
+    override fun optuserdata(defval: Any?): Any? {
         return defval
     }
 
-    override fun optuserdata(c: Class<*>, defval: Object?): Object? {
+    override fun optuserdata(c: Class<*>, defval: Any?): Any? {
         return defval
     }
 

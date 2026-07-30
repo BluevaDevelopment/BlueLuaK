@@ -142,7 +142,7 @@ class LuaInteger
     }
 
     // object equality, used for key comparison
-    fun equals(o: Object): Boolean {
+    fun equals(o: Any): Boolean {
         return if (o is LuaInteger) o.v == v else false
     }
 

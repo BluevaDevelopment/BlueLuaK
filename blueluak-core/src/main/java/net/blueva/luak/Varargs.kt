@@ -307,23 +307,23 @@ abstract class Varargs {
         return (arg(i)!!.optthread(defval))!!
     }
 
-    /** Return argument i as a java Object if a userdata, `defval` if nil, or throw a LuaError  if any other type.
+    /** Return argument i as a java Any if a userdata, `defval` if nil, or throw a LuaError  if any other type.
      * @param i the index of the argument to test, 1 is the first argument
-     * @return java Object value if argument i is a userdata, or defval if not supplied or nil
+     * @return java Any value if argument i is a userdata, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata
      */
-    fun optuserdata(i: Int, defval: Object?): Object {
+    fun optuserdata(i: Int, defval: Any?): Any {
         return (arg(i)!!.optuserdata(defval))!!
     }
 
-    /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass,
+    /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass,
      * `defval` if nil, or throw a LuaError  if any other type.
      * @param i the index of the argument to test, 1 is the first argument
      * @param c the class to which the userdata instance must be assignable
-     * @return java Object value if argument i is a userdata whose instance Class c or a subclass, or defval if not supplied or nil
+     * @return java Any value if argument i is a userdata whose instance Class c or a subclass, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun optuserdata(i: Int, c: Class<*>?, defval: Object?): Object {
+    fun optuserdata(i: Int, c: Class<*>?, defval: Any?): Any {
         return (arg(i)!!.optuserdata((c)!!, defval))!!
     }
 
@@ -444,23 +444,23 @@ abstract class Varargs {
         return (arg(i)!!.checkthread())!!
     }
 
-    /** Return argument i as a java Object if a userdata, or throw an error if any other type.
+    /** Return argument i as a java Any if a userdata, or throw an error if any other type.
      * @param i the index of the argument to test, 1 is the first argument
-     * @return java Object value if argument i is a userdata
+     * @return java Any value if argument i is a userdata
      * @exception LuaError if the argument is not a userdata
      */
-    fun checkuserdata(i: Int): Object {
+    fun checkuserdata(i: Int): Any {
         return (arg(i)!!.checkuserdata())!!
     }
 
-    /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass,
+    /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass,
      * or throw an error if any other type.
      * @param i the index of the argument to test, 1 is the first argument
      * @param c the class to which the userdata instance must be assignable
-     * @return java Object value if argument i is a userdata whose instance Class c or a subclass
+     * @return java Any value if argument i is a userdata whose instance Class c or a subclass
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun checkuserdata(i: Int, c: Class<*>?): Object {
+    fun checkuserdata(i: Int, c: Class<*>?): Any {
         return (arg(i)!!.checkuserdata(c))!!
     }
 
@@ -580,20 +580,20 @@ abstract class Varargs {
         return arg(i)!!.toshort()
     }
 
-    /** Return argument i as a java Object if a userdata, or null.
+    /** Return argument i as a java Any if a userdata, or null.
      * @param i the index of the argument to convert, 1 is the first argument
-     * @return java Object value if argument i is a userdata, otherwise null
+     * @return java Any value if argument i is a userdata, otherwise null
      */
-    fun touserdata(i: Int): Object {
+    fun touserdata(i: Int): Any {
         return (arg(i)!!.touserdata())!!
     }
 
-    /** Return argument i as a java Object if it is a userdata whose instance Class c or a subclass, or null.
+    /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass, or null.
      * @param i the index of the argument to convert, 1 is the first argument
      * @param c the class to which the userdata instance must be assignable
-     * @return java Object value if argument i is a userdata whose instance Class c or a subclass, otherwise null
+     * @return java Any value if argument i is a userdata whose instance Class c or a subclass, otherwise null
      */
-    fun touserdata(i: Int, c: Class<*>?): Object {
+    fun touserdata(i: Int, c: Class<*>?): Any {
         return (arg(i)!!.touserdata(c))!!
     }
 

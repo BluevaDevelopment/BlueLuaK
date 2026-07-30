@@ -74,7 +74,7 @@ class LuaThread : LuaValue {
 
     /** Thread-local used by DebugLib to store debugging state.
      * This is an opaque value that should not be modified by applications.  */
-    var callstack: Object? = null
+    var callstack: Any? = null
 
     val globals: Globals?
 
