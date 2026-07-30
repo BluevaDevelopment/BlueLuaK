@@ -21,9 +21,9 @@ import net.blueva.luak.LuaString
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
-import java.io.ByteArrayOutputStream
-import java.io.EOFException
-import java.io.IOException
+import net.blueva.luak.io.ByteArrayOutputStream
+import net.blueva.luak.io.EOFException
+import net.blueva.luak.io.IOException
 
 /**
  * Abstract base class extending [LibFunction] which implements the
@@ -129,7 +129,7 @@ class IoLib : TwoArgFunction() {
 
         // displays as "file" type
         override fun tojstring(): String {
-            return "file: " + Integer.toHexString(hashCode())
+            return "file: " + hashCode().toString(16)
         }
 
         fun finalize() {
@@ -217,14 +217,14 @@ class IoLib : TwoArgFunction() {
 
         // io lib functions
         val t: LuaTable = LuaTable()
-        bind(t, net.blueva.luak.lib.IoLib.IoLibV::class.java, net.blueva.luak.lib.IoLib.Companion.IO_NAMES)
+        bind(t, { IoLibV() }, net.blueva.luak.lib.IoLib.Companion.IO_NAMES)
 
 
         // create file methods table
         filemethods = LuaTable()
         bind(
             (filemethods)!!,
-            net.blueva.luak.lib.IoLib.IoLibV::class.java,
+            { IoLibV() },
             net.blueva.luak.lib.IoLib.Companion.FILE_NAMES,
             net.blueva.luak.lib.IoLib.Companion.FILE_CLOSE
         )
@@ -233,7 +233,7 @@ class IoLib : TwoArgFunction() {
         val mt: LuaTable = LuaTable()
         bind(
             mt,
-            net.blueva.luak.lib.IoLib.IoLibV::class.java,
+            { IoLibV() },
             arrayOf<String?>("__index"),
             net.blueva.luak.lib.IoLib.Companion.IO_INDEX
         )

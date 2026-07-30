@@ -16,13 +16,16 @@
  ******************************************************************************/
 package net.blueva.luak.lib
 
+import net.blueva.luak.io.IOException
 import net.blueva.luak.Globals
 import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaString
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
+import net.blueva.luak.platformLoadLibrary
+import net.blueva.luak.platformProperty
 import net.blueva.luak.Varargs
-import java.io.InputStream
+import net.blueva.luak.io.InputStream
 
 /**
  * Subclass of [LibFunction] which implements the lua standard package and module
@@ -174,7 +177,7 @@ class PackageLib : TwoArgFunction() {
 
             /* else must load it; iterate over available loaders */
             val tbl: LuaTable = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!).checktable()!!
-            val sb: StringBuffer = StringBuffer()
+            val sb: StringBuilder = StringBuilder()
             var loader: Varargs? = null
             var i = 1
             while (true) {
@@ -259,7 +262,7 @@ class PackageLib : TwoArgFunction() {
             // check the path elements
             var e = -1
             val n: Int = path.length
-            var sb: StringBuffer? = null
+            var sb: StringBuilder? = null
             name = name.replace(sep[0], rep[0])
             while (e < n) {
                 // find next template
@@ -283,14 +286,14 @@ class PackageLib : TwoArgFunction() {
                 if (`is` != null) {
                     try {
                         `is`.close()
-                    } catch (ioe: java.io.IOException) {
+                    } catch (ioe: IOException) {
                     }
                     return valueOf(filename)
                 }
 
 
                 // report error
-                if (sb == null) sb = StringBuffer()
+                if (sb == null) sb = StringBuilder()
                 sb.append("\n\t" + filename)
             }
             return (varargsOf(NIL, valueOf(sb.toString())))!!
@@ -299,19 +302,13 @@ class PackageLib : TwoArgFunction() {
 
     inner class java_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val name: String = args.checkjstring(1)
-            val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)
-            var c: Class<*>? = null
-            var v: LuaValue? = null
-            try {
-                c = Class.forName(classname)
-                v = c.newInstance() as LuaValue?
-                if (v!!.isfunction()) (v as LuaFunction).initupvalue1(globals)
-                return (varargsOf(v, (globals)!!))!!
-            } catch (cnfe: ClassNotFoundException) {
-                return valueOf("\n\tno class '" + classname + "'")
-            } catch (e: Exception) {
-                return valueOf("\n\tjava load failed on '" + classname + "', " + e)
+            val className = toClassname(args.checkjstring(1))!!
+            return try {
+                val value = platformLoadLibrary(className, globals!!)
+                    ?: return valueOf("\n\tno class '$className'")
+                varargsOf(value, globals!!)!!
+            } catch (error: Throwable) {
+                valueOf("\n\tclass load failed on '$className', $error")
             }
         }
     }
@@ -320,12 +317,7 @@ class PackageLib : TwoArgFunction() {
         /** The default value to use for package.path.  This can be set with the system property
          * `"luaj.package.path"`, and is `"?.lua"` by default.  */
         val DEFAULT_LUA_PATH: String? = run {
-            var path: String? = null
-            try {
-                path = System.getProperty("luaj.package.path")
-            } catch (e: Exception) {
-                System.out.println(e.toString())
-            }
+            var path: String? = platformProperty("luaj.package.path")
             if (path == null) {
                 path = "?.lua"
             }
@@ -341,7 +333,7 @@ class PackageLib : TwoArgFunction() {
 
         private val _SENTINEL: LuaString? = valueOf("\u0001")
 
-        private val FILE_SEP: String? = System.getProperty("file.separator")
+        private val FILE_SEP: String = platformProperty("file.separator") ?: "/"
 
         /** Convert lua filename to valid class name  */
         fun toClassname(filename: String): String? {
@@ -351,7 +343,7 @@ class PackageLib : TwoArgFunction() {
             for (k in 0..<j) {
                 var c: Char = filename[k]
                 if ((!net.blueva.luak.lib.PackageLib.Companion.isClassnamePart(c)) || (c == '/') || (c == '\\')) {
-                    val sb: StringBuffer = StringBuffer(j)
+                    val sb: StringBuilder = StringBuilder(j)
                     for (i in 0..<j) {
                         c = filename[i]
                         sb.append(

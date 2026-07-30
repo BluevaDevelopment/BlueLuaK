@@ -16,6 +16,8 @@
  ******************************************************************************/
 package net.blueva.luak.lib
 
+import net.blueva.luak.platformUsedMemory
+import net.blueva.luak.platformCollectGarbage
 import net.blueva.luak.Globals
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaError
@@ -24,8 +26,9 @@ import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaThread
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
-import java.io.IOException
-import java.io.InputStream
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
+import net.blueva.luak.io.platformResource
 
 /**
  * Subclass of [LibFunction] which implements the lua basic library functions.
@@ -122,7 +125,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
      */
     open override fun findResource(filename: String?): InputStream? {
         filename ?: return null
-        return javaClass.getResourceAsStream(if (filename.startsWith("/")) filename else "/" + filename)
+        return platformResource(if (filename.startsWith("/")) filename else "/" + filename)
     }
 
 
@@ -144,14 +147,13 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun invoke(args: Varargs): Varargs {
             val s: String? = args.optjstring(1, "collect")
             if ("collect".equals(s)) {
-                System.gc()
+                platformCollectGarbage()
                 return (ZERO)!!
             } else if ("count".equals(s)) {
-                val rt: Runtime = Runtime.getRuntime()
-                val used: Long = rt.totalMemory() - rt.freeMemory()
+                val used: Long = platformUsedMemory()
                 return (varargsOf(valueOf(used / 1024.0), valueOf((used % 1024).toInt())))!!
             } else if ("step".equals(s)) {
-                System.gc()
+                platformCollectGarbage()
                 return (LuaValue.TRUE)!!
             } else {
                 argerror(1, "invalid option '" + s + "'")

@@ -16,6 +16,8 @@
  ******************************************************************************/
 package net.blueva.luak.lib
 
+import net.blueva.luak.platformProperty
+import net.blueva.luak.arrayCopy
 import net.blueva.luak.Globals
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaBoolean
@@ -472,17 +474,16 @@ class DebugLib : TwoArgFunction() {
         var frame: Array<CallFrame?>? = net.blueva.luak.lib.DebugLib.CallStack.Companion.EMPTY
         var calls: Int = 0
 
-        @kotlin.jvm.Synchronized
-        fun currentline(): Int {
+                fun currentline(): Int {
             return if (calls > 0) frame!![calls - 1]!!.currentline() else -1
         }
 
-        @kotlin.jvm.Synchronized
-        private fun pushcall(): CallFrame? {
+                private fun pushcall(): CallFrame? {
             if (calls >= frame!!.size) {
-                val n: Int = Math.max(4, frame!!.size * 3 / 2)
+                val n: Int = maxOf(4, frame!!.size * 3 / 2)
                 val f = arrayOfNulls<CallFrame>(n)
-                System.arraycopy(frame, 0, f, 0, frame!!.size)
+                val oldFrame = frame!!
+                arrayCopy(oldFrame, 0, f, 0, oldFrame.size)
                 for (i in frame!!.size..<n) f[i] = net.blueva.luak.lib.DebugLib.CallFrame()
                 frame = f
                 for (i in 1..<n) f[i]!!.previous = f[i - 1]
@@ -490,23 +491,19 @@ class DebugLib : TwoArgFunction() {
             return frame!![calls++]
         }
 
-        @kotlin.jvm.Synchronized
-        fun onCall(function: LuaFunction?) {
+                fun onCall(function: LuaFunction?) {
             pushcall()!!.set(function)
         }
 
-        @kotlin.jvm.Synchronized
-        fun onCall(function: LuaClosure?, varargs: Varargs?, stack: Array<LuaValue?>?) {
+                fun onCall(function: LuaClosure?, varargs: Varargs?, stack: Array<LuaValue?>?) {
             pushcall()!!.set(function, varargs, stack)
         }
 
-        @kotlin.jvm.Synchronized
-        fun onReturn() {
+                fun onReturn() {
             if (calls > 0) frame!![--calls]!!.reset()
         }
 
-        @kotlin.jvm.Synchronized
-        fun onInstruction(pc: Int, v: Varargs?, top: Int) {
+                fun onInstruction(pc: Int, v: Varargs?, top: Int) {
             if (calls > 0) frame!![calls - 1]!!.instr(pc, v, top)
         }
 
@@ -515,10 +512,9 @@ class DebugLib : TwoArgFunction() {
          * @param level
          * @return String containing the traceback.
          */
-        @kotlin.jvm.Synchronized
-        fun traceback(level: Int): String {
+                fun traceback(level: Int): String {
             var level = level
-            val sb: StringBuffer = StringBuffer()
+            val sb: StringBuilder = StringBuilder()
             sb.append("stack traceback:")
             var c: CallFrame?
             while ((getCallFrame(level++).also { c = it }) != null) {
@@ -545,21 +541,18 @@ class DebugLib : TwoArgFunction() {
             return sb.toString()
         }
 
-        @kotlin.jvm.Synchronized
-        fun getCallFrame(level: Int): CallFrame? {
+                fun getCallFrame(level: Int): CallFrame? {
             if (level < 1 || level > calls) return null
             return frame!![calls - level]
         }
 
-        @kotlin.jvm.Synchronized
-        fun findCallFrame(func: LuaValue?): CallFrame? {
+                fun findCallFrame(func: LuaValue?): CallFrame? {
             for (i in 1..calls) if (frame!![calls - i]!!.f === func) return frame!![i]
             return null
         }
 
 
-        @kotlin.jvm.Synchronized
-        fun auxgetinfo(what: String, f: LuaFunction?, ci: CallFrame?): DebugInfo {
+                fun auxgetinfo(what: String, f: LuaFunction?, ci: CallFrame?): DebugInfo {
             val ar: DebugInfo = net.blueva.luak.lib.DebugLib.DebugInfo()
             var i = 0
             val n: Int = what.length
@@ -569,8 +562,8 @@ class DebugLib : TwoArgFunction() {
                     'l' -> ar.currentline = if (ci != null && ci.f!!.isclosure()) ci.currentline() else -1
                     'u' -> if (f != null && f.isclosure()) {
                         val p: Prototype = f.checkclosure()!!.p
-                        ar.nups = p.upvalues!!.size as Short
-                        ar.nparams = p.numparams as Short
+                        ar.nups = p.upvalues!!.size.toShort()
+                        ar.nparams = p.numparams.toShort()
                         ar.isvararg = p.is_vararg !== 0
                     } else {
                         ar.nups = 0
@@ -691,11 +684,11 @@ class DebugLib : TwoArgFunction() {
 
         init {
             try {
-                net.blueva.luak.lib.DebugLib.Companion.CALLS = (null != System.getProperty("CALLS"))
+                net.blueva.luak.lib.DebugLib.Companion.CALLS = (null != platformProperty("CALLS"))
             } catch (e: Exception) {
             }
             try {
-                net.blueva.luak.lib.DebugLib.Companion.TRACE = (null != System.getProperty("TRACE"))
+                net.blueva.luak.lib.DebugLib.Companion.TRACE = (null != platformProperty("TRACE"))
             } catch (e: Exception) {
             }
         }

@@ -16,14 +16,18 @@
  ******************************************************************************/
 package net.blueva.luak.lib
 
+import net.blueva.luak.DateParts
+import net.blueva.luak.currentTimeMillis
+import net.blueva.luak.dateParts
+import net.blueva.luak.epochSeconds
+import net.blueva.luak.platformExit
+import net.blueva.luak.platformProperty
 import net.blueva.luak.Buffer
 import net.blueva.luak.Globals
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
-import java.io.IOException
-import java.util.Calendar
-import java.util.Date
+import net.blueva.luak.io.IOException
 
 /**
  * Subclass of [LibFunction] which implements the standard lua `os` library.
@@ -113,19 +117,18 @@ open class OsLib
                     net.blueva.luak.lib.OsLib.Companion.DATE -> {
                         val s: String = args.optjstring(1, "%c")
                         val t = if (args.isnumber(2)) args.todouble(2) else time(null)
-                        if (s.equals("*t")) {
-                            val d: Calendar = Calendar.getInstance()
-                            d.setTime(Date((t * 1000).toLong()))
+                        if (s == "*t") {
+                            val d = dateParts(t.toLong())
                             val tbl: LuaTable = LuaValue.tableOf()
-                            tbl.set("year", LuaValue.valueOf(d.get(Calendar.YEAR)))
-                            tbl.set("month", LuaValue.valueOf(d.get(Calendar.MONTH) + 1))
-                            tbl.set("day", LuaValue.valueOf(d.get(Calendar.DAY_OF_MONTH)))
-                            tbl.set("hour", LuaValue.valueOf(d.get(Calendar.HOUR_OF_DAY)))
-                            tbl.set("min", LuaValue.valueOf(d.get(Calendar.MINUTE)))
-                            tbl.set("sec", LuaValue.valueOf(d.get(Calendar.SECOND)))
-                            tbl.set("wday", LuaValue.valueOf(d.get(Calendar.DAY_OF_WEEK)))
-                            tbl.set("yday", LuaValue.valueOf(d.get(0x6))) // Day of year
-                            tbl.set("isdst", LuaValue.valueOf(isDaylightSavingsTime(d)))
+                            tbl.set("year", LuaValue.valueOf(d.year))
+                            tbl.set("month", LuaValue.valueOf(d.month))
+                            tbl.set("day", LuaValue.valueOf(d.day))
+                            tbl.set("hour", LuaValue.valueOf(d.hour))
+                            tbl.set("min", LuaValue.valueOf(d.minute))
+                            tbl.set("sec", LuaValue.valueOf(d.second))
+                            tbl.set("wday", LuaValue.valueOf(d.weekday))
+                            tbl.set("yday", LuaValue.valueOf(d.yearDay))
+                            tbl.set("isdst", LuaValue.FALSE)
                             return tbl
                         }
                         return valueOf(date(s, if (t == -1.0) time(null) else t))
@@ -180,7 +183,7 @@ open class OsLib
      * OsLib class was loaded.
      */
     protected fun clock(): Double {
-        return (System.currentTimeMillis() - net.blueva.luak.lib.OsLib.Companion.t0) / 1000.0
+        return (currentTimeMillis() - net.blueva.luak.lib.OsLib.Companion.t0) / 1000.0
     }
 
     /**
@@ -213,110 +216,50 @@ open class OsLib
      * formatted according to the given string format.
      */
     fun date(format: String, time: Double): String {
-        var format = format
-        var time = time
-        val d: Calendar = Calendar.getInstance()
-        d.setTime(Date((time * 1000).toLong()))
-        if (format.startsWith("!")) {
-            time -= timeZoneOffset(d).toDouble()
-            d.setTime(Date((time * 1000).toLong()))
-            format = format.substring(1)
-        }
-        val fmt: ByteArray = format.toByteArray()
-        val n = fmt.size
-        val result: Buffer = Buffer(n)
-        var c: Byte
-        var i = 0
-        while (i < n) {
-            when (fmt[i++].also { c = it }) {
-                '\n'.code.toByte() -> result.append("\n")
-                '%'.code.toByte() -> {
-                    if (i >= n) break
-                    when (fmt[i++].also { c = it }) {
-                        '%'.code.toByte() -> result.append('%'.code.toByte())
-                        'a'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayNameAbbrev[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
-                        'A'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayName[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
-                        'b'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])!!)
-                        'B'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])!!)
-                        'c'.code.toByte() -> result.append(date("%a %b %d %H:%M:%S %Y", time))
-                        'd'.code.toByte() -> result.append((100 + d.get(Calendar.DAY_OF_MONTH)).toString().substring(1))
-                        'H'.code.toByte() -> result.append((100 + d.get(Calendar.HOUR_OF_DAY)).toString().substring(1))
-                        'I'.code.toByte() -> result.append((100 + (d.get(Calendar.HOUR_OF_DAY) % 12)).toString().substring(1))
-                        'j'.code.toByte() -> {
-                            // day of year.
-                            val y0: Calendar = beginningOfYear(d)
-                            val dayOfYear =
-                                ((d.getTime().getTime() - y0.getTime().getTime()) / (24 * 3600L * 1000L)) as Int
-                            result.append((1001 + dayOfYear).toString().substring(1))
-                        }
-
-                        'm'.code.toByte() -> result.append((101 + d.get(Calendar.MONTH)).toString().substring(1))
-                        'M'.code.toByte() -> result.append((100 + d.get(Calendar.MINUTE)).toString().substring(1))
-                        'p'.code.toByte() -> result.append(if (d.get(Calendar.HOUR_OF_DAY) < 12) "AM" else "PM")
-                        'S'.code.toByte() -> result.append((100 + d.get(Calendar.SECOND)).toString().substring(1))
-                        'U'.code.toByte() -> result.append((weekNumber(d, 0)).toString())
-                        'w'.code.toByte() -> result.append(((d.get(Calendar.DAY_OF_WEEK) + 6) % 7).toString())
-                        'W'.code.toByte() -> result.append((weekNumber(d, 1)).toString())
-                        'x'.code.toByte() -> result.append(date("%m/%d/%y", time))
-                        'X'.code.toByte() -> result.append(date("%H:%M:%S", time))
-                        'y'.code.toByte() -> result.append((d.get(Calendar.YEAR)).toString().substring(2))
-                        'Y'.code.toByte() -> result.append((d.get(Calendar.YEAR)).toString())
-                        'z'.code.toByte() -> {
-                            val tzo = timeZoneOffset(d) / 60
-                            val a: Int = Math.abs(tzo)
-                            val h: String? = (100 + a / 60).toString().substring(1)
-                            val m: String? = (100 + a % 60).toString().substring(1)
-                            result.append((if (tzo >= 0) "+" else "-") + h + m)
-                        }
-
-                        else -> LuaValue.argerror(1, "invalid conversion specifier '%" + c + "'")
-                    }
-                }
-
-                else -> result.append(c)
+        var pattern = format
+        if (pattern.startsWith("!")) pattern = pattern.substring(1)
+        val d = dateParts(time.toLong())
+        val result = StringBuilder(pattern.length)
+        var index = 0
+        while (index < pattern.length) {
+            val char = pattern[index++]
+            if (char != '%' || index >= pattern.length) {
+                result.append(char)
+                continue
+            }
+            when (val specifier = pattern[index++]) {
+                '%' -> result.append('%')
+                'a' -> result.append(WeekdayNameAbbrev[d.weekday - 1])
+                'A' -> result.append(WeekdayName[d.weekday - 1])
+                'b' -> result.append(MonthNameAbbrev[d.month - 1])
+                'B' -> result.append(MonthName[d.month - 1])
+                'c' -> result.append(date("%a %b %d %H:%M:%S %Y", time))
+                'd' -> result.append(d.day.toString().padStart(2, '0'))
+                'H' -> result.append(d.hour.toString().padStart(2, '0'))
+                'I' -> result.append(((d.hour + 11) % 12 + 1).toString().padStart(2, '0'))
+                'j' -> result.append(d.yearDay.toString().padStart(3, '0'))
+                'm' -> result.append(d.month.toString().padStart(2, '0'))
+                'M' -> result.append(d.minute.toString().padStart(2, '0'))
+                'p' -> result.append(if (d.hour < 12) "AM" else "PM")
+                'S' -> result.append(d.second.toString().padStart(2, '0'))
+                'U' -> result.append(weekNumber(d, false).toString().padStart(2, '0'))
+                'w' -> result.append((d.weekday - 1).toString())
+                'W' -> result.append(weekNumber(d, true).toString().padStart(2, '0'))
+                'x' -> result.append(date("%m/%d/%y", time))
+                'X' -> result.append(date("%H:%M:%S", time))
+                'y' -> result.append((d.year % 100).toString().padStart(2, '0'))
+                'Y' -> result.append(d.year)
+                'z' -> result.append("+0000")
+                else -> LuaValue.argerror(1, "invalid conversion specifier '%$specifier'")
             }
         }
-        return result.tojstring()
+        return result.toString()
     }
 
-    private fun beginningOfYear(d: Calendar): Calendar {
-        val y0: Calendar = Calendar.getInstance()
-        y0.setTime(d.getTime())
-        y0.set(Calendar.MONTH, 0)
-        y0.set(Calendar.DAY_OF_MONTH, 1)
-        y0.set(Calendar.HOUR_OF_DAY, 0)
-        y0.set(Calendar.MINUTE, 0)
-        y0.set(Calendar.SECOND, 0)
-        y0.set(Calendar.MILLISECOND, 0)
-        return y0
-    }
-
-    private fun weekNumber(d: Calendar, startDay: Int): Int {
-        val y0: Calendar = beginningOfYear(d)
-        y0.set(Calendar.DAY_OF_MONTH, 1 + (startDay + 8 - y0.get(Calendar.DAY_OF_WEEK)) % 7)
-        if (y0.after(d)) {
-            y0.set(Calendar.YEAR, y0.get(Calendar.YEAR) - 1)
-            y0.set(Calendar.DAY_OF_MONTH, 1 + (startDay + 8 - y0.get(Calendar.DAY_OF_WEEK)) % 7)
-        }
-        val dt: Long = d.getTime().getTime() - y0.getTime().getTime()
-        return 1 + (dt / (7L * 24L * 3600L * 1000L)).toInt()
-    }
-
-    private fun timeZoneOffset(d: Calendar): Int {
-        val localStandarTimeMillis: Int = (d.get(Calendar.HOUR_OF_DAY) * 3600 + d.get(Calendar.MINUTE) * 60 +
-                d.get(Calendar.SECOND)) * 1000
-        return d.getTimeZone().getOffset(
-            1,
-            d.get(Calendar.YEAR),
-            d.get(Calendar.MONTH),
-            d.get(Calendar.DAY_OF_MONTH),
-            d.get(Calendar.DAY_OF_WEEK),
-            localStandarTimeMillis
-        ) / 1000
-    }
-
-    private fun isDaylightSavingsTime(d: Calendar): Boolean {
-        return timeZoneOffset(d) != d.getTimeZone().getRawOffset() / 1000
+    private fun weekNumber(date: DateParts, mondayFirst: Boolean): Int {
+        val januaryFirst = dateParts(epochSeconds(date.year, 1, 1, 0, 0, 0))
+        val firstWeekday = if (mondayFirst) (januaryFirst.weekday + 5) % 7 else januaryFirst.weekday - 1
+        return (date.yearDay - 1 + firstWeekday) / 7
     }
 
     /**
@@ -336,7 +279,7 @@ open class OsLib
      * @param code
      */
     protected fun exit(code: Int) {
-        System.exit(code)
+        platformExit(code)
     }
 
     /**
@@ -357,7 +300,7 @@ open class OsLib
      * @return String value, or null if not defined
      */
     protected open fun getenv(varname: String?): String? {
-        return System.getProperty(varname)
+        return varname?.let(::platformProperty)
     }
 
     /**
@@ -418,21 +361,15 @@ open class OsLib
      * @return long value for the time
      */
     protected fun time(table: LuaTable?): Double {
-        val d: java.util.Date
-        if (table == null) {
-            d = Date()
-        } else {
-            val c: Calendar = Calendar.getInstance()
-            c.set(Calendar.YEAR, table.get("year")!!.checkint())
-            c.set(Calendar.MONTH, table.get("month")!!.checkint() - 1)
-            c.set(Calendar.DAY_OF_MONTH, table.get("day")!!.checkint())
-            c.set(Calendar.HOUR_OF_DAY, table.get("hour")!!.optint(12))
-            c.set(Calendar.MINUTE, table.get("min")!!.optint(0))
-            c.set(Calendar.SECOND, table.get("sec")!!.optint(0))
-            c.set(Calendar.MILLISECOND, 0)
-            d = c.getTime()
-        }
-        return d.getTime() / 1000.0
+        if (table == null) return currentTimeMillis() / 1000.0
+        return epochSeconds(
+            table.get("year")!!.checkint(),
+            table.get("month")!!.checkint(),
+            table.get("day")!!.checkint(),
+            table.get("hour")!!.optint(12),
+            table.get("min")!!.optint(0),
+            table.get("sec")!!.optint(0),
+        ).toDouble()
     }
 
     /**
@@ -448,11 +385,8 @@ open class OsLib
      * 
      * @return String filename to use
      */
-    protected open fun tmpname(): String {
-        kotlin.synchronized(net.blueva.luak.lib.OsLib::class.java) {
-            return net.blueva.luak.lib.OsLib.Companion.TMP_PREFIX + (net.blueva.luak.lib.OsLib.Companion.tmpnames++) + net.blueva.luak.lib.OsLib.Companion.TMP_SUFFIX
-        }
-    }
+    protected open fun tmpname(): String =
+        TMP_PREFIX + (tmpnames++) + TMP_SUFFIX
 
     companion object {
         val TMP_PREFIX: String = ".luaj"
@@ -484,7 +418,7 @@ open class OsLib
             "tmpname",
         )
 
-        private val t0: Long = System.currentTimeMillis()
+        private val t0: Long = currentTimeMillis()
         private var tmpnames: Long = net.blueva.luak.lib.OsLib.Companion.t0
 
         private val WeekdayNameAbbrev = arrayOf<String?>("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")

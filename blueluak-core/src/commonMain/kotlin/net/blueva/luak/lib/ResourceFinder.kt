@@ -16,7 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak.lib
 
-import java.io.InputStream
+import net.blueva.luak.io.InputStream
 
 /**
  * Interface for opening application resource files such as scripts sources.

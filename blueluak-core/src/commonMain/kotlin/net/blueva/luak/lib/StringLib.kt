@@ -23,8 +23,8 @@ import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
 import net.blueva.luak.compiler.DumpState
-import java.io.ByteArrayOutputStream
-import java.io.IOException
+import net.blueva.luak.io.ByteArrayOutputStream
+import net.blueva.luak.io.IOException
 
 /**
  * Subclass of [LibFunction] which implements the lua standard `string`
@@ -247,7 +247,7 @@ open class StringLib
                             val fdsc: FormatDesc = FormatDesc(args, fmt, i)
                             i += fdsc.length
                             when (fdsc.conversion) {
-                                'c'.code -> fdsc.format(result, args.checkint(arg) as Byte)
+                                'c'.code -> fdsc.format(result, args.checkint(arg).toByte())
                                 'i'.code, 'd'.code -> fdsc.format(result, args.checklong(arg))
                                 'o'.code, 'u'.code, 'x'.code, 'X'.code -> fdsc.format(result, args.checklong(arg))
                                 'e'.code, 'E'.code, 'f'.code, 'g'.code, 'G'.code -> fdsc.format(result, args.checkdouble(arg))
@@ -307,10 +307,10 @@ open class StringLib
             if (p - start > 5) error("invalid format (repeated flags)")
 
             width = -1
-            if (Character.isDigit(c.toChar())) {
+            if (c.toChar().isDigit()) {
                 width = c - '0'.code
                 c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                if (Character.isDigit(c.toChar())) {
+                if (c.toChar().isDigit()) {
                     width = width * 10 + (c - '0'.code)
                     c = (if (p < n) strfrmt.luaByte(p++) else 0)
                 }
@@ -319,17 +319,17 @@ open class StringLib
             precision = -1
             if (c == '.'.code) {
                 c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                if (Character.isDigit(c.toChar())) {
+                if (c.toChar().isDigit()) {
                     precision = c - '0'.code
                     c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                    if (Character.isDigit(c.toChar())) {
+                    if (c.toChar().isDigit()) {
                         precision = precision * 10 + (c - '0'.code)
                         c = (if (p < n) strfrmt.luaByte(p++) else 0)
                     }
                 }
             }
 
-            if (Character.isDigit(c.toChar())) error("invalid format (width or precision too long)")
+            if (c.toChar().isDigit()) error("invalid format (width or precision too long)")
 
             zeroPad = zeroPad and !leftAdjust // '-' overrides '0'
             conversion = c
@@ -354,7 +354,7 @@ open class StringLib
                     'o'.code -> radix = 8
                     else -> radix = 10
                 }
-                digits = java.lang.Long.toString(number, radix)
+                digits = number.toString(radix)
                 if (conversion == 'X'.code) digits = digits.uppercase()
             }
 
@@ -548,7 +548,7 @@ open class StringLib
                     lastmatch = res
                     soffset = lastmatch
                 } else if (soffset < srclen)  /* otherwise, skip one character */
-                    lbuf.append(src.luaByte(soffset++) as Byte)
+                    lbuf.append(src.luaByte(soffset++).toByte())
                 else break /* end of subject */
                 if (anchor) break
             }
@@ -630,7 +630,7 @@ open class StringLib
             var i = 0
             var j = n - 1
             while (i < n) {
-                b[j] = s.luaByte(i) as Byte
+                b[j] = s.luaByte(i).toByte()
                 i++
                 j--
             }
@@ -709,13 +709,13 @@ open class StringLib
             val l: Int = news.length()
             var i = 0
             while (i < l) {
-                var b = news.luaByte(i) as Byte
+                var b = news.luaByte(i).toByte()
                 if (b.toInt() != net.blueva.luak.lib.StringLib.Companion.L_ESC) {
                     lbuf.append(b)
                 } else {
                     ++i // skip ESC
                     b = (if (i < l) news.luaByte(i) else 0).toByte()
-                    if (!Character.isDigit(Char(b.toUShort()))) {
+                    if (!Char(b.toUShort()).isDigit()) {
                         if (b.toInt() != net.blueva.luak.lib.StringLib.Companion.L_ESC) error(
                             "invalid use of '" + net.blueva.luak.lib.StringLib.Companion.L_ESC.toChar() +
                                     "' in replacement string: after '" + net.blueva.luak.lib.StringLib.Companion.L_ESC.toChar() +
@@ -923,7 +923,7 @@ open class StringLib
 
                                 else -> {
                                     val c: Int = p.luaByte(poffset + 1)
-                                    if (Character.isDigit(c.toChar())) {
+                                    if (c.toChar().isDigit()) {
                                         soffset = match_capture(soffset, c)
                                         if (soffset == -1) return -1
                                         return match(soffset, poffset + 2)
@@ -1040,7 +1040,7 @@ open class StringLib
 
         companion object {
             fun match_class(c: Int, cl: Int): Boolean {
-                val lcl: Char = Character.toLowerCase(cl.toChar())
+                val lcl: Char = cl.toChar().lowercaseChar()
                 val cdata: Int = net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[c].toInt()
 
                 val res: Boolean
@@ -1109,9 +1109,9 @@ open class StringLib
             var init: Int = args.optint(3, 1)
 
             if (init > 0) {
-                init = Math.min(init - 1, s.length())
+                init = minOf(init - 1, s.length())
             } else if (init < 0) {
-                init = Math.max(0, s.length() + init)
+                init = maxOf(0, s.length() + init)
             }
 
             val fastMatch = find && (args.arg(4)
@@ -1178,9 +1178,9 @@ open class StringLib
             for (i in 0..127) {
                 val c = i.toChar()
                 net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i] =
-                    ((if (Character.isDigit(c)) net.blueva.luak.lib.StringLib.Companion.MASK_DIGIT else 0).toInt() or
-                            (if (Character.isLowerCase(c)) net.blueva.luak.lib.StringLib.Companion.MASK_LOWERCASE else 0).toInt() or
-                            (if (Character.isUpperCase(c)) net.blueva.luak.lib.StringLib.Companion.MASK_UPPERCASE else 0).toInt() or
+                    ((if (c.isDigit()) net.blueva.luak.lib.StringLib.Companion.MASK_DIGIT else 0).toInt() or
+                            (if (c.isLowerCase()) net.blueva.luak.lib.StringLib.Companion.MASK_LOWERCASE else 0).toInt() or
+                            (if (c.isUpperCase()) net.blueva.luak.lib.StringLib.Companion.MASK_UPPERCASE else 0).toInt() or
                             (if (c < ' ' || c.code == 0x7F) net.blueva.luak.lib.StringLib.Companion.MASK_CONTROL else 0).toInt()).toByte()
                 if ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') || (c >= '0' && c <= '9')) {
                     net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i] =

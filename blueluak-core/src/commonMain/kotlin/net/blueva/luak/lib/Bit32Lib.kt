@@ -53,12 +53,12 @@ class Bit32Lib : TwoArgFunction() {
     override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val t: LuaTable = LuaTable()
         bind(
-            t, net.blueva.luak.lib.Bit32Lib.Bit32LibV::class.java, arrayOf<String?>(
+            t, { Bit32LibV() }, arrayOf<String?>(
                 "band", "bnot", "bor", "btest", "bxor", "extract", "replace"
             )
         )
         bind(
-            t, net.blueva.luak.lib.Bit32Lib.Bit32Lib2::class.java, arrayOf<String?>(
+            t, { Bit32Lib2() }, arrayOf<String?>(
                 "arshift", "lrotate", "lshift", "rrotate", "rshift"
             )
         )

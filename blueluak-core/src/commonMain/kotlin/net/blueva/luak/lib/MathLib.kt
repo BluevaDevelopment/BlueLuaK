@@ -20,7 +20,7 @@ import net.blueva.luak.LuaDouble
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
-import java.util.Random
+import kotlin.random.Random
 
 /**
  * Subclass of [LibFunction] which implements the lua standard `math`
@@ -103,7 +103,7 @@ open class MathLib : TwoArgFunction() {
         math.set("max", net.blueva.luak.lib.MathLib.max())
         math.set("min", net.blueva.luak.lib.MathLib.min())
         math.set("modf", net.blueva.luak.lib.MathLib.modf())
-        math.set("pi", Math.PI)
+        math.set("pi", kotlin.math.PI)
         math.set("pow", net.blueva.luak.lib.MathLib.pow())
         val r: random?
         math.set("random", net.blueva.luak.lib.MathLib.random().also { r = it })
@@ -135,61 +135,61 @@ open class MathLib : TwoArgFunction() {
 
     internal class abs : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.abs(d)
+            return kotlin.math.abs(d)
         }
     }
 
     internal class ceil : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.ceil(d)
+            return kotlin.math.ceil(d)
         }
     }
 
     internal class cos : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.cos(d)
+            return kotlin.math.cos(d)
         }
     }
 
     internal class deg : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.toDegrees(d)
+            return d * 180.0 / kotlin.math.PI
         }
     }
 
     internal class floor : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.floor(d)
+            return kotlin.math.floor(d)
         }
     }
 
     internal class rad : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.toRadians(d)
+            return d * kotlin.math.PI / 180.0
         }
     }
 
     internal class sin : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.sin(d)
+            return kotlin.math.sin(d)
         }
     }
 
     internal class sqrt : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.sqrt(d)
+            return kotlin.math.sqrt(d)
         }
     }
 
     internal class tan : UnaryOp() {
         override fun call(d: Double): Double {
-            return Math.tan(d)
+            return kotlin.math.tan(d)
         }
     }
 
     internal class exp(val mathlib: MathLib) : UnaryOp() {
         override fun call(d: Double): Double {
-            return mathlib.dpow_lib(Math.E, d)
+            return mathlib.dpow_lib(kotlin.math.E, d)
         }
     }
 
@@ -262,7 +262,7 @@ open class MathLib : TwoArgFunction() {
             if (n.islong()) return (varargsOf(n, valueOf(0.0)))!!
             val x: Double = n.checkdouble()
             /* integer part (rounds toward zero) */
-            val intPart: Double = if (x > 0) Math.floor(x) else Math.ceil(x)
+            val intPart: Double = if (x > 0) kotlin.math.floor(x) else kotlin.math.ceil(x)
             /* fractional part (test needed for inf/-inf) */
             val fracPart = if (x == intPart) 0.0 else x - intPart
             return (varargsOf(valueOf(intPart), valueOf(fracPart)))!!
@@ -270,7 +270,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class random : LibFunction() {
-        var random: Random = Random()
+        var random: Random = Random.Default
         override fun call(): LuaValue? {
             return valueOf(random.nextDouble())
         }
@@ -292,7 +292,7 @@ open class MathLib : TwoArgFunction() {
     internal class randomseed(val random: MathLib.random) : OneArgFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
             val seed: Long = arg!!.checklong()
-            random.random = Random(seed)
+            random.random = kotlin.random.Random(seed)
             return (NONE)!!
         }
     }
@@ -345,7 +345,7 @@ open class MathLib : TwoArgFunction() {
             if ((whole.let { b -= it; b }) > 0) {
                 var frac = (0x10000 * b).toInt()
                 while ((frac and 0xffff) != 0) {
-                    a = Math.sqrt(a)
+                    a = kotlin.math.sqrt(a)
                     if ((frac and 0x8000) != 0) p *= a
                     frac = frac shl 1
                 }

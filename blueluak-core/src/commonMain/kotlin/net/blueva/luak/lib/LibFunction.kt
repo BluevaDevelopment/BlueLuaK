@@ -111,7 +111,7 @@ protected constructor() : LuaFunction() {
      * @param names array of String names, one for each function.
      * @see .bind
      */
-    protected fun bind(env: LuaValue, factory: Class<*>, names: Array<String?>) {
+    protected fun bind(env: LuaValue, factory: () -> LibFunction, names: Array<String?>) {
         bind(env, factory, names, 0)
     }
 
@@ -127,12 +127,12 @@ protected constructor() : LuaFunction() {
      * @param firstopcode the first opcode to use
      * @see .bind
      */
-    protected fun bind(env: LuaValue, factory: Class<*>, names: Array<String?>, firstopcode: Int) {
+    protected fun bind(env: LuaValue, factory: () -> LibFunction, names: Array<String?>, firstopcode: Int) {
         try {
             var i = 0
             val n = names.size
             while (i < n) {
-                val f = factory!!.getDeclaredConstructor().newInstance() as LibFunction
+                val f = factory()
                 f.opcode = firstopcode + i
                 f.name = names[i]
                 env.set(f.name, f)
@@ -175,16 +175,19 @@ protected constructor() : LuaFunction() {
 
     companion object {
         /** Java code generation utility to allocate storage for upvalue, leave it empty  */
+        @kotlin.jvm.JvmStatic
         protected fun newupe(): Array<LuaValue?> {
             return arrayOfNulls<LuaValue>(1)
         }
 
         /** Java code generation utility to allocate storage for upvalue, initialize with nil  */
+        @kotlin.jvm.JvmStatic
         protected fun newupn(): Array<LuaValue?> {
             return arrayOf<LuaValue?>(NIL)
         }
 
         /** Java code generation utility to allocate storage for upvalue, initialize with value  */
+        @kotlin.jvm.JvmStatic
         protected fun newupl(v: LuaValue?): Array<LuaValue?> {
             return arrayOf<LuaValue?>(v)
         }
