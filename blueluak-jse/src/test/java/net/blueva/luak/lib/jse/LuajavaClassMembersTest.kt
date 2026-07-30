@@ -169,11 +169,11 @@ class LuajavaClassMembersTest : TestCase() {
         assertEquals(JavaClass::class.java, c.javaClass)
         val constr: LuaValue = c.get("new")!!
         assertEquals(JavaConstructor::class.java, constr.javaClass)
-        val v: LuaValue = constr.call(NUMS)
+        val v: LuaValue = constr.call(NUMS)!!
         val b: Any = v.touserdata()!!
         assertEquals(B::class.java, b.javaClass)
         TestCase.assertEquals(123, (b as B).m_int_field)
-        val b0: Any = constr.call().touserdata()!!
+        val b0: Any = constr.call()!!.touserdata()!!
         assertEquals(B::class.java, b0.javaClass)
         TestCase.assertEquals(0, (b0 as B).m_int_field)
     }
@@ -184,7 +184,7 @@ class LuajavaClassMembersTest : TestCase() {
         assertEquals(JavaConstructor::class.java, constr.javaClass)
         try {
             val v = constr.call(LuaValue.userdataOf(Any()))
-            val b: Any = v.touserdata()!!
+            val b: Any = v!!.touserdata()!!
             // fail( "did not throw lua error as expected" );
             TestCase.assertEquals(0, (b as B).m_int_field)
         } catch (e: LuaError) {
@@ -195,10 +195,10 @@ class LuajavaClassMembersTest : TestCase() {
         val f = forClass(C::class.java)
         val constr: LuaValue = f.get("new")!!
         assertEquals(JavaConstructor.Overload::class.java, constr.javaClass)
-        val c: Any = constr.call().touserdata()!!
-        val ci: Any = constr.call(LuaValue.valueOf(123)).touserdata()!!
-        val cs: Any = constr.call(LuaValue.valueOf("abc")).touserdata()!!
-        val csi: Any = constr.call(LuaValue.valueOf("def"), LuaValue.valueOf(456)).touserdata()!!
+        val c: Any = constr.call()!!.touserdata()!!
+        val ci: Any = constr.call(LuaValue.valueOf(123))!!.touserdata()!!
+        val cs: Any = constr.call(LuaValue.valueOf("abc"))!!.touserdata()!!
+        val csi: Any = constr.call(LuaValue.valueOf("def"), LuaValue.valueOf(456))!!.touserdata()!!
         assertEquals(C::class.java, c.javaClass)
         assertEquals(C::class.java, ci.javaClass)
         assertEquals(C::class.java, cs.javaClass)
@@ -216,7 +216,7 @@ class LuajavaClassMembersTest : TestCase() {
     fun testOverloadedFactoryUncoercible() {
         val f = forClass(C::class.java)
         try {
-            val c: Any = f.call(LuaValue.userdataOf(Any()))
+            val c: Any = f.call(LuaValue.userdataOf(Any()))!!
 
             // fail( "did not throw lua error as expected" );
             TestCase.assertEquals(0, (c as C).m_int_field)
@@ -256,10 +256,10 @@ class LuajavaClassMembersTest : TestCase() {
         val b_getint: LuaValue = ib.get("getint")!!
         assertEquals(JavaMethod::class.java, b_getString.javaClass)
         assertEquals(JavaMethod::class.java, b_getint.javaClass)
-        TestCase.assertEquals("abc", b_getString.call(SOMEB).tojstring())
-        TestCase.assertEquals(100000, b_getint.call(SOMEB).toint())
-        TestCase.assertEquals("abc", b_getString.call(SOMEC).tojstring())
-        TestCase.assertEquals(200000, b_getint.call(SOMEC).toint())
+        TestCase.assertEquals("abc", b_getString.call(SOMEB)!!.tojstring())
+        TestCase.assertEquals(100000, b_getint.call(SOMEB)!!.toint())
+        TestCase.assertEquals("abc", b_getString.call(SOMEC)!!.tojstring())
+        TestCase.assertEquals(200000, b_getint.call(SOMEC)!!.toint())
     }
 
     fun testUniqueMethodAttributeArgsCoercible() {
@@ -275,11 +275,11 @@ class LuajavaClassMembersTest : TestCase() {
         assertEquals(JavaMethod::class.java, uniqi.javaClass)
         assertEquals(JavaMethod::class.java, uniqsi.javaClass)
         assertEquals(JavaMethod::class.java, uniqis.javaClass)
-        TestCase.assertEquals("uniq()", uniq.call(SOMEB).tojstring())
-        TestCase.assertEquals("uniqs(string:abc)", uniqs.call(SOMEB, ABC).tojstring())
-        TestCase.assertEquals("uniqi(int:1)", uniqi.call(SOMEB, ONE).tojstring())
-        TestCase.assertEquals("uniqsi(string:abc,int:1)", uniqsi.call(SOMEB, ABC, ONE).tojstring())
-        TestCase.assertEquals("uniqis(int:1,string:abc)", uniqis.call(SOMEB, ONE, ABC).tojstring())
+        TestCase.assertEquals("uniq()", uniq.call(SOMEB)!!.tojstring())
+        TestCase.assertEquals("uniqs(string:abc)", uniqs.call(SOMEB, ABC)!!.tojstring())
+        TestCase.assertEquals("uniqi(int:1)", uniqi.call(SOMEB, ONE)!!.tojstring())
+        TestCase.assertEquals("uniqsi(string:abc,int:1)", uniqsi.call(SOMEB, ABC, ONE)!!.tojstring())
+        TestCase.assertEquals("uniqis(int:1,string:abc)", uniqis.call(SOMEB, ONE, ABC)!!.tojstring())
         TestCase.assertEquals(
             "uniqis(int:1,string:abc)", uniqis.invoke(
                 net.blueva.luak.LuaValue.varargsOf(
@@ -298,11 +298,11 @@ class LuajavaClassMembersTest : TestCase() {
         val b = B()
         val ib = JavaInstance(b)
         val p: LuaValue = ib.get("pick")!!
-        TestCase.assertEquals("pick()", p.call(SOMEB).tojstring())
-        TestCase.assertEquals("pick(string:abc)", p.call(SOMEB, ABC).tojstring())
-        TestCase.assertEquals("pick(int:1)", p.call(SOMEB, ONE).tojstring())
-        TestCase.assertEquals("pick(string:abc,int:1)", p.call(SOMEB, ABC, ONE).tojstring())
-        TestCase.assertEquals("pick(int:1,string:abc)", p.call(SOMEB, ONE, ABC).tojstring())
+        TestCase.assertEquals("pick()", p.call(SOMEB)!!.tojstring())
+        TestCase.assertEquals("pick(string:abc)", p.call(SOMEB, ABC)!!.tojstring())
+        TestCase.assertEquals("pick(int:1)", p.call(SOMEB, ONE)!!.tojstring())
+        TestCase.assertEquals("pick(string:abc,int:1)", p.call(SOMEB, ABC, ONE)!!.tojstring())
+        TestCase.assertEquals("pick(int:1,string:abc)", p.call(SOMEB, ONE, ABC)!!.tojstring())
         TestCase.assertEquals(
             "pick(int:1,string:abc)", p.invoke(
                 net.blueva.luak.LuaValue.varargsOf(
@@ -322,11 +322,11 @@ class LuajavaClassMembersTest : TestCase() {
         val ib = JavaInstance(b)
         val p: LuaValue = ib.get("pick")!!
         assertEquals(JavaMethod.Overload::class.java, p.javaClass)
-        TestCase.assertEquals("pick()", p.call(SOMEC).tojstring())
-        TestCase.assertEquals("class-c-pick(string:abc)", p.call(SOMEC, ABC).tojstring())
-        TestCase.assertEquals("class-c-pick(int:1)", p.call(SOMEC, ONE).tojstring())
-        TestCase.assertEquals("pick(string:abc,int:1)", p.call(SOMEC, ABC, ONE).tojstring())
-        TestCase.assertEquals("pick(int:1,string:abc)", p.call(SOMEC, ONE, ABC).tojstring())
+        TestCase.assertEquals("pick()", p.call(SOMEC)!!.tojstring())
+        TestCase.assertEquals("class-c-pick(string:abc)", p.call(SOMEC, ABC)!!.tojstring())
+        TestCase.assertEquals("class-c-pick(int:1)", p.call(SOMEC, ONE)!!.tojstring())
+        TestCase.assertEquals("pick(string:abc,int:1)", p.call(SOMEC, ABC, ONE)!!.tojstring())
+        TestCase.assertEquals("pick(int:1,string:abc)", p.call(SOMEC, ONE, ABC)!!.tojstring())
         TestCase.assertEquals(
             "pick(int:1,string:abc)", p.invoke(
                 net.blueva.luak.LuaValue.varargsOf(
@@ -345,11 +345,11 @@ class LuajavaClassMembersTest : TestCase() {
         val b = B()
         val ib = JavaInstance(b)
         val p: LuaValue = ib.get("staticpick")!!
-        TestCase.assertEquals("static-pick()", p.call(SOMEB).tojstring())
-        TestCase.assertEquals("static-pick(string:abc)", p.call(SOMEB, ABC).tojstring())
-        TestCase.assertEquals("static-pick(int:1)", p.call(SOMEB, ONE).tojstring())
-        TestCase.assertEquals("static-pick(string:abc,int:1)", p.call(SOMEB, ABC, ONE).tojstring())
-        TestCase.assertEquals("static-pick(int:1,string:abc)", p.call(SOMEB, ONE, ABC).tojstring())
+        TestCase.assertEquals("static-pick()", p.call(SOMEB)!!.tojstring())
+        TestCase.assertEquals("static-pick(string:abc)", p.call(SOMEB, ABC)!!.tojstring())
+        TestCase.assertEquals("static-pick(int:1)", p.call(SOMEB, ONE)!!.tojstring())
+        TestCase.assertEquals("static-pick(string:abc,int:1)", p.call(SOMEB, ABC, ONE)!!.tojstring())
+        TestCase.assertEquals("static-pick(int:1,string:abc)", p.call(SOMEB, ONE, ABC)!!.tojstring())
         TestCase.assertEquals(
             "static-pick(int:1,string:abc)", p.invoke(
                 net.blueva.luak.LuaValue.varargsOf(
@@ -369,7 +369,7 @@ class LuajavaClassMembersTest : TestCase() {
         val ic = JavaInstance(c)
         val d: LuaValue = ic.get("D")!!
         assertFalse(d.isnil())
-        assertSame(d, forClass(D::class.java))
+        assertSame(d, forClass(C.D::class.java))
         val e: LuaValue = ic.get("E")!!
         assertTrue(e.isnil())
     }

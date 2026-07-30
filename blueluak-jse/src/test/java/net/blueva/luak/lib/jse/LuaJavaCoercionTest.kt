@@ -112,7 +112,7 @@ class LuaJavaCoercionTest : TestCase() {
 
     fun testIntArrayScoringTables() {
         val a = 5
-        val la: LuaValue? = LuaInteger.valueOf(a)
+        val la: LuaValue = LuaInteger.valueOf(a)!!
         val tb = LuaTable()
         tb.set(1, la)
         val tc = LuaTable()
@@ -216,8 +216,8 @@ class LuaJavaCoercionTest : TestCase() {
     fun testExceptionMessage() {
         val script = "local c = luajava.bindClass( \"" + SomeClass::class.java.getName() + "\" )\n" +
                 "return pcall( c.someMethod, c )"
-        val vresult: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))
-            .invoke(net.blueva.luak.LuaValue.NONE)!!
+        val vresult: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))!!
+            .invoke(net.blueva.luak.LuaValue.NONE!!)!!
         val status = vresult.arg1()
         val message: LuaValue = vresult.arg(2)!!
         assertEquals(LuaValue.FALSE, status)
@@ -227,7 +227,7 @@ class LuaJavaCoercionTest : TestCase() {
 
     fun testLuaErrorCause() {
         val script = "luajava.bindClass( \"" + SomeClass::class.java.getName() + "\"):someMethod()"
-        val chunk: LuaValue = globals!!.get("load")!!.call(LuaValue.valueOf(script))
+        val chunk: LuaValue = globals!!.get("load")!!.call(LuaValue.valueOf(script))!!
         try {
             chunk.invoke(LuaValue.NONE!!)
             fail("call should not have succeeded")
@@ -239,7 +239,7 @@ class LuaJavaCoercionTest : TestCase() {
 
     interface VarArgsInterface {
         fun varargsMethod(a: String?, vararg v: String?): String?
-        fun arrayargsMethod(a: String?, v: Array<String?>?): String?
+        fun arrayargsMethod(a: String?, v: Array<out String?>?): String?
     }
 
     fun testVarArgsProxy() {
@@ -256,10 +256,10 @@ class LuaJavaCoercionTest : TestCase() {
                 "			) or '-nil')\n" +
                 "	end,\n" +
                 "} )\n"
-        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))
+        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))!!
         if (!chunk.arg1()!!.toboolean()) fail(chunk.arg(2).toString())
         val result = chunk.arg1()!!.call()
-        val u: Any? = result.touserdata()
+        val u: Any? = result!!.touserdata()
         val v = u as VarArgsInterface
         TestCase.assertEquals("foo", v.varargsMethod("foo"))
         TestCase.assertEquals("foo-bar", v.varargsMethod("foo", "bar"))
@@ -279,7 +279,7 @@ class LuaJavaCoercionTest : TestCase() {
                     //"print(bigNumB:toString())\n" +
                     //"print(bigNumC:toString())\n" +
                     "return bigNumA:toString(), bigNumB:toString(), bigNumC:toString()"
-        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))
+        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))!!
         if (!chunk.arg1()!!.toboolean()) fail(chunk.arg(2).toString())
         val results: Varargs = chunk.arg1()!!.invoke()!!
         val nresults = results.narg()
@@ -496,7 +496,7 @@ class LuaJavaCoercionTest : TestCase() {
                     "local b = a:set(a:get" + typename + "())\n" +
                     "local c = a:setr(a:get" + typename + "())\n" +
                     "return b,c"
-        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))
+        val chunk: Varargs = globals!!.get("load")!!.call(LuaValue.valueOf(script))!!
         if (!chunk.arg1()!!.toboolean()) fail(chunk.arg(2).toString())
         val results: Varargs = chunk.arg1()!!.invoke()!!
         val nresults = results.narg()

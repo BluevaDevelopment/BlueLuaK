@@ -17,7 +17,7 @@ class LuajavaAccessibleMembersTest : TestCase() {
     private fun invokeScript(script: String?): String? {
         try {
             val c: LuaValue = globals!!.load(script!!, "script")!!
-            return c.call().tojstring()
+            return c.call()!!.tojstring()
         } catch (e: Exception) {
             fail("exception: " + e)
             return "failed"
