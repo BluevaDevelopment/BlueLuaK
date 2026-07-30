@@ -133,7 +133,7 @@ open class LuaNil internal constructor() : LuaValue() {
         return defval
     }
 
-    override fun optuserdata(c: Class?, defval: Object?): Object? {
+    override fun optuserdata(c: Class<*>?, defval: Object?): Object? {
         return defval
     }
 

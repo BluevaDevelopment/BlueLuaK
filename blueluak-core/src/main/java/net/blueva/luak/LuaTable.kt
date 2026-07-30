@@ -772,7 +772,7 @@ open class LuaTable : LuaValue, Metatable {
      * @return array of keys in the table
      */
     fun keys(): Array<LuaValue?> {
-        val l: Vector = Vector()
+        val l: Vector<LuaValue> = Vector<LuaValue>()
         var k: LuaValue = LuaValue.NIL
         while (true) {
             val n: Varargs = next(k)
@@ -1183,7 +1183,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         fun key(): LuaValue? {
-            return (if (key is WeakReference) (key as WeakReference).get() else key) as LuaValue?
+            return (if (key is WeakReference) (key as WeakReference<*>).get() else key) as LuaValue?
         }
 
         override fun keyindex(hashMask: Int): Int {

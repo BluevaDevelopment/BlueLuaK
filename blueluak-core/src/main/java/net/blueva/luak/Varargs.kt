@@ -323,7 +323,7 @@ abstract class Varargs {
      * @return java Object value if argument i is a userdata whose instance Class c or a subclass, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun optuserdata(i: Int, c: Class?, defval: Object?): Object {
+    fun optuserdata(i: Int, c: Class<*>?, defval: Object?): Object {
         return arg(i).optuserdata(c, defval)
     }
 
@@ -460,7 +460,7 @@ abstract class Varargs {
      * @return java Object value if argument i is a userdata whose instance Class c or a subclass
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun checkuserdata(i: Int, c: Class?): Object {
+    fun checkuserdata(i: Int, c: Class<*>?): Object {
         return arg(i).checkuserdata(c)
     }
 
@@ -593,7 +593,7 @@ abstract class Varargs {
      * @param c the class to which the userdata instance must be assignable
      * @return java Object value if argument i is a userdata whose instance Class c or a subclass, otherwise null
      */
-    fun touserdata(i: Int, c: Class?): Object {
+    fun touserdata(i: Int, c: Class<*>?): Object {
         return arg(i).touserdata(c)
     }
 

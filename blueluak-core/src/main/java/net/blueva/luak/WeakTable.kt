@@ -282,7 +282,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
      * @see WeakTable
      */
     internal open class WeakValue(value: LuaValue?) : LuaValue() {
-        var ref: WeakReference?
+        var ref: WeakReference<Any>?
 
         init {
             ref = WeakReference(value)
@@ -397,7 +397,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         protected fun strengthen(ref: Object): LuaValue? {
             var ref: Object = ref
             if (ref is WeakReference) {
-                ref = (ref as WeakReference).get()
+                ref = (ref as WeakReference<*>).get()
             }
             if (ref is WeakValue) {
                 return ref.strongvalue()

@@ -298,7 +298,7 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun isuserdata(c: Class?): Boolean {
+    open fun isuserdata(c: Class<*>?): Boolean {
         return false
     }
 
@@ -441,7 +441,7 @@ open class LuaValue : Varargs() {
      * @see .isuserdata
      * @see .TUSERDATA
      */
-    open fun touserdata(c: Class?): Object? {
+    open fun touserdata(c: Class<*>?): Object? {
         return null
     }
 
@@ -749,7 +749,7 @@ open class LuaValue : Varargs() {
      * @see .optuserdata
      * @see .TUSERDATA
      */
-    open fun optuserdata(c: Class, defval: Object?): Object? {
+    open fun optuserdata(c: Class<*>, defval: Object?): Object? {
         argerror(c.name)
         return null
     }
@@ -1025,7 +1025,7 @@ open class LuaValue : Varargs() {
      * @see .checkuserdata
      * @see .TUSERDATA
      */
-    open fun checkuserdata(c: Class?): Object? {
+    open fun checkuserdata(c: Class<*>?): Object? {
         argerror("userdata")
         return null
     }

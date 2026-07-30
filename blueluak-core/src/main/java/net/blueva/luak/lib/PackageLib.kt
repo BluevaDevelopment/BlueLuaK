@@ -301,7 +301,7 @@ class PackageLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: String = args.checkjstring(1)
             val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)
-            var c: Class? = null
+            var c: Class<*>? = null
             var v: LuaValue? = null
             try {
                 c = Class.forName(classname)

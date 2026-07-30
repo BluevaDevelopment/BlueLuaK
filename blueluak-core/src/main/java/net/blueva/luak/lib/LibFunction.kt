@@ -111,7 +111,7 @@ protected constructor() : LuaFunction() {
      * @param names array of String names, one for each function.
      * @see .bind
      */
-    protected fun bind(env: LuaValue, factory: Class, names: Array<String?>) {
+    protected fun bind(env: LuaValue, factory: Class<*>, names: Array<String?>) {
         bind(env, factory, names, 0)
     }
 
@@ -127,7 +127,7 @@ protected constructor() : LuaFunction() {
      * @param firstopcode the first opcode to use
      * @see .bind
      */
-    protected fun bind(env: LuaValue, factory: Class, names: Array<String?>, firstopcode: Int) {
+    protected fun bind(env: LuaValue, factory: Class<*>, names: Array<String?>, firstopcode: Int) {
         try {
             var i = 0
             val n = names.size
