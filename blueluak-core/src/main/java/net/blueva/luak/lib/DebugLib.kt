@@ -80,7 +80,7 @@ class DebugLib : TwoArgFunction() {
      */
     fun call(modname: LuaValue?, env: LuaValue): LuaValue {
         globals = env.checkglobals()
-        globals.debuglib = this
+        globals!!.debuglib = this
         val debug: LuaTable = LuaTable()
         debug.set("debug", net.blueva.luak.lib.DebugLib.debug())
         debug.set("gethook", net.blueva.luak.lib.DebugLib.gethook())
@@ -99,7 +99,7 @@ class DebugLib : TwoArgFunction() {
         debug.set("upvalueid", net.blueva.luak.lib.DebugLib.upvalueid())
         debug.set("upvaluejoin", net.blueva.luak.lib.DebugLib.upvaluejoin())
         env.set("debug", debug)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("debug", debug)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("debug", debug)
         return debug
     }
 
@@ -113,7 +113,7 @@ class DebugLib : TwoArgFunction() {
     // debug.gethook ([thread])
     internal inner class gethook : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val t: LuaThread = if (args.narg() > 0) args.checkthread(1) else globals.running
+            val t: LuaThread = if (args.narg() > 0) args.checkthread(1) else globals!!.running
             val s: LuaThread.State = t.state
             return varargsOf(
                 if (s.hookfunc != null) s.hookfunc else NIL,
@@ -127,18 +127,18 @@ class DebugLib : TwoArgFunction() {
     internal inner class getinfo : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
-            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
+            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             var func: LuaValue? = args.arg(a++)
             val what: String = args.optjstring(a++, "flnStu")
             val callstack = callstack(thread)
 
             // find the stack info
             val frame: CallFrame?
-            if (func.isnumber()) {
-                frame = callstack.getCallFrame(func.toint())
+            if (func!!.isnumber()) {
+                frame = callstack.getCallFrame(func!!.toint())
                 if (frame == null) return NONE
                 func = frame.f
-            } else if (func.isfunction()) {
+            } else if (func!!.isfunction()) {
                 frame = callstack.findCallFrame(func)
             } else {
                 return argerror(a - 2, "function or level")
@@ -193,7 +193,7 @@ class DebugLib : TwoArgFunction() {
     internal inner class getlocal : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
-            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
+            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             val level: Int = args.checkint(a++)
             val local: Int = args.checkint(a++)
             val f = callstack(thread).getCallFrame(level)
@@ -225,7 +225,7 @@ class DebugLib : TwoArgFunction() {
                 val c: LuaClosure = func as LuaClosure
                 val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
-                    return varargsOf(name, c.upValues[up - 1].getValue())
+                    return varargsOf(name, c.upValues[up - 1]!!.getValue())
                 }
             }
             return NIL
@@ -244,7 +244,7 @@ class DebugLib : TwoArgFunction() {
     internal inner class sethook : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
-            val t: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
+            val t: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             val func: LuaValue? = args.optfunction(a++, null)
             val str: String = args.optjstring(a++, "")
             val count: Int = args.optint(a++, 0)
@@ -270,7 +270,7 @@ class DebugLib : TwoArgFunction() {
     internal inner class setlocal : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
-            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
+            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             val level: Int = args.checkint(a++)
             val local: Int = args.checkint(a++)
             val value: LuaValue? = args.arg(a++)
@@ -306,7 +306,7 @@ class DebugLib : TwoArgFunction() {
                 val c: LuaClosure = func as LuaClosure
                 val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
-                    c.upValues[up - 1].setValue(value)
+                    c.upValues[up - 1]!!.setValue(value)
                     return name
                 }
             }
@@ -330,7 +330,7 @@ class DebugLib : TwoArgFunction() {
     internal inner class traceback : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
-            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
+            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             val message: String? = args.optjstring(a++, null)
             val level: Int = args.optint(a++, 1)
             val tb = callstack(thread).traceback(level)
@@ -368,21 +368,21 @@ class DebugLib : TwoArgFunction() {
     }
 
     fun onCall(f: LuaFunction?) {
-        val s: LuaThread.State = globals.running.state
+        val s: LuaThread.State = globals!!.running.state
         if (s.inhook) return
         callstack().onCall(f)
         if (s.hookcall) callHook(s, net.blueva.luak.lib.DebugLib.Companion.CALL, NIL)
     }
 
     fun onCall(c: LuaClosure?, varargs: Varargs?, stack: Array<LuaValue?>?) {
-        val s: LuaThread.State = globals.running.state
+        val s: LuaThread.State = globals!!.running.state
         if (s.inhook) return
         callstack().onCall(c, varargs, stack)
         if (s.hookcall) callHook(s, net.blueva.luak.lib.DebugLib.Companion.CALL, NIL)
     }
 
     fun onInstruction(pc: Int, v: Varargs?, top: Int) {
-        val s: LuaThread.State = globals.running.state
+        val s: LuaThread.State = globals!!.running.state
         if (s.inhook) return
         callstack().onInstruction(pc, v, top)
         if (s.hookfunc == null) return
@@ -401,7 +401,7 @@ class DebugLib : TwoArgFunction() {
     }
 
     fun onReturn() {
-        val s: LuaThread.State = globals.running.state
+        val s: LuaThread.State = globals!!.running.state
         if (s.inhook) return
         callstack().onReturn()
         if (s.hookrtrn) callHook(s, net.blueva.luak.lib.DebugLib.Companion.RETURN, NIL)
@@ -430,7 +430,7 @@ class DebugLib : TwoArgFunction() {
     }
 
     @kotlin.jvm.JvmOverloads
-    fun callstack(t: LuaThread = globals.running): CallStack {
+    fun callstack(t: LuaThread = globals!!.running): CallStack {
         if (t.callstack == null) t.callstack = net.blueva.luak.lib.DebugLib.CallStack()
         return t.callstack as CallStack
     }
@@ -452,7 +452,7 @@ class DebugLib : TwoArgFunction() {
 
         fun funcinfo(f: LuaFunction) {
             if (f.isclosure()) {
-                val p: Prototype = f.checkclosure().p
+                val p: Prototype = f.checkclosure()!!.p
                 this.source = if (p.source != null) p.source.tojstring() else "=?"
                 this.linedefined = p.linedefined
                 this.lastlinedefined = p.lastlinedefined
@@ -566,10 +566,10 @@ class DebugLib : TwoArgFunction() {
             while (i < n) {
                 when (what[i]) {
                     'S' -> ar.funcinfo(f)
-                    'l' -> ar.currentline = if (ci != null && ci.f.isclosure()) ci.currentline() else -1
+                    'l' -> ar.currentline = if (ci != null && ci.f!!.isclosure()) ci.currentline() else -1
                     'u' -> if (f != null && f.isclosure()) {
-                        val p: Prototype = f.checkclosure().p
-                        ar.nups = p.upvalues.size as Short
+                        val p: Prototype = f.checkclosure()!!.p
+                        ar.nups = p.upvalues!!.size as Short
                         ar.nparams = p.numparams as Short
                         ar.isvararg = p.is_vararg !== 0
                     } else {
@@ -582,7 +582,7 @@ class DebugLib : TwoArgFunction() {
                     'n' -> {
                         /* calling function is a known Lua function? */
                         if (ci != null && ci.previous != null) {
-                            if (ci.previous!!.f.isclosure()) {
+                            if (ci.previous!!.f!!.isclosure()) {
                                 val nw: NameWhat? = net.blueva.luak.lib.DebugLib.Companion.getfuncname(ci.previous)
                                 if (nw != null) {
                                     ar.name = nw.name
@@ -623,7 +623,7 @@ class DebugLib : TwoArgFunction() {
         }
 
         fun shortsource(): String? {
-            return if (f.isclosure()) f.checkclosure().p.shortsource() else "[Java]"
+            return if (f!!.isclosure()) f!!.checkclosure()!!.p.shortsource() else "[Java]"
         }
 
         fun set(function: LuaFunction?) {
@@ -640,7 +640,7 @@ class DebugLib : TwoArgFunction() {
             this.pc = pc
             this.v = v
             this.top = top
-            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState(f.checkclosure(), pc, stack, top, v)
+            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState(f!!.checkclosure(), pc, stack, top, v)
         }
 
         fun getLocal(i: Int): Varargs {
@@ -663,23 +663,23 @@ class DebugLib : TwoArgFunction() {
         }
 
         fun currentline(): Int {
-            if (!f.isclosure()) return -1
-            val li: IntArray? = f.checkclosure().p.lineinfo
+            if (!f!!.isclosure()) return -1
+            val li: IntArray? = f!!.checkclosure()!!.p.lineinfo
             return if (li == null || pc < 0 || pc >= li.size) -1 else li[pc]
         }
 
         fun sourceline(): String? {
-            if (!f.isclosure()) return f.tojstring()
-            return f.checkclosure().p.shortsource() + ":" + currentline()
+            if (!f!!.isclosure()) return f!!.tojstring()
+            return f!!.checkclosure()!!.p.shortsource() + ":" + currentline()
         }
 
         fun linedefined(): Int {
-            return if (f.isclosure()) f.checkclosure().p.linedefined else -1
+            return if (f!!.isclosure()) f!!.checkclosure()!!.p.linedefined else -1
         }
 
         fun getlocalname(index: Int): LuaString? {
-            if (!f.isclosure()) return null
-            return f.checkclosure().p.getlocalname(index, pc)
+            if (!f!!.isclosure()) return null
+            return f!!.checkclosure()!!.p.getlocalname(index, pc)
         }
     }
 
@@ -724,7 +724,7 @@ class DebugLib : TwoArgFunction() {
 
         fun findupvalue(c: LuaClosure, up: Int): LuaString? {
             if (c.upValues != null && up > 0 && up <= c.upValues.size) {
-                if (c.p.upvalues != null && up <= c.p.upvalues.size) return c.p.upvalues[up - 1].name
+                if (c.p.upvalues != null && up <= c.p.upvalues.size) return c.p.upvalues[up - 1]!!.name
                 else return LuaString.valueOf("." + up)
             }
             return null
@@ -736,8 +736,8 @@ class DebugLib : TwoArgFunction() {
 
         // Return the name info if found, or null if no useful information could be found.
         fun getfuncname(frame: CallFrame): NameWhat? {
-            if (!frame.f.isclosure()) return net.blueva.luak.lib.DebugLib.NameWhat(frame.f.classnamestub(), "Java")
-            val p: Prototype = frame.f.checkclosure().p
+            if (!frame.f!!.isclosure()) return net.blueva.luak.lib.DebugLib.NameWhat(frame.f!!.classnamestub(), "Java")
+            val p: Prototype = frame.f!!.checkclosure()!!.p
             val pc = frame.pc
             val i: Int = p.code[pc] /* calling instruction */
             val tm: LuaString
@@ -796,7 +796,7 @@ class DebugLib : TwoArgFunction() {
                         val vn: LuaString? = if (Lua.GET_OPCODE(i) === Lua.OP_GETTABLE)
                             p.getlocalname(t + 1, pc)
                         else
-                            (if (t < p.upvalues.size) p.upvalues[t].name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
+                            (if (t < p.upvalues!!.size) p.upvalues[t]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK)
                         val jname: String = net.blueva.luak.lib.DebugLib.Companion.kname(p, pc, k)
                         return net.blueva.luak.lib.DebugLib.NameWhat(
                             jname,
@@ -807,7 +807,7 @@ class DebugLib : TwoArgFunction() {
                     Lua.OP_GETUPVAL -> {
                         val u: Int = Lua.GETARG_B(i) /* upvalue index */
                         name =
-                            if (u < p.upvalues.size) p.upvalues[u].name else net.blueva.luak.lib.DebugLib.Companion.QMARK
+                            if (u < p.upvalues!!.size) p.upvalues[u]!!.name else net.blueva.luak.lib.DebugLib.Companion.QMARK
                         return if (name == null) null else net.blueva.luak.lib.DebugLib.NameWhat(
                             name.tojstring(),
                             "upvalue"
@@ -819,9 +819,9 @@ class DebugLib : TwoArgFunction() {
                             Lua.GETARG_Bx(i)
                         else
                             Lua.GETARG_Ax(p.code[pc + 1])
-                        if (p.k[b].isstring()) {
-                            name = p.k[b].strvalue()
-                            return net.blueva.luak.lib.DebugLib.NameWhat(name.tojstring(), "constant")
+                        if (p.k[b]!!.isstring()) {
+                            name = p.k[b]!!.strvalue()
+                            return net.blueva.luak.lib.DebugLib.NameWhat(name!!.tojstring(), "constant")
                         }
                     }
 

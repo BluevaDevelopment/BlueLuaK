@@ -113,7 +113,7 @@ open class MathLib : TwoArgFunction() {
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
         math.set("tan", net.blueva.luak.lib.MathLib.tan())
         env.set("math", math)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("math", math)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("math", math)
         return math
     }
 

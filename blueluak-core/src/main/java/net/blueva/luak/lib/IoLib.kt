@@ -115,7 +115,7 @@ class IoLib : TwoArgFunction() {
 
         // delegate method access to file methods table
         fun get(key: LuaValue?): LuaValue {
-            return filemethods.get(key)
+            return filemethods!!.get(key)
         }
 
         // essentially a userdata instance
@@ -248,7 +248,7 @@ class IoLib : TwoArgFunction() {
 
         // return the table
         env.set("io", t)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("io", t)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("io", t)
         return t
     }
 
@@ -570,14 +570,14 @@ class IoLib : TwoArgFunction() {
         var fmt: LuaString
         i = 0
         while (i < n) {
-            item@ when ((args.arg(i + 1).also { ai = it }).type()) {
+            item@ when ((args.arg(i + 1).also { ai = it })!!.type()) {
                 LuaValue.TNUMBER -> {
-                    vi = net.blueva.luak.lib.IoLib.Companion.freadbytes(f, ai.toint())
+                    vi = net.blueva.luak.lib.IoLib.Companion.freadbytes(f, ai!!.toint())
                     break@item
                 }
 
                 LuaValue.TSTRING -> {
-                    fmt = ai.checkstring()
+                    fmt = ai!!.checkstring()
                     if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*') {
                         when (fmt.m_bytes[fmt.m_offset + 1]) {
                             'n' -> {
@@ -606,7 +606,7 @@ class IoLib : TwoArgFunction() {
 
                 else -> return argerror(i + 1, "(invalid format)")
             }
-            if ((vi.also { v[i++] = it }).isnil()) break
+            if ((vi.also { v[i++] = it })!!.isnil()) break
         }
         return if (i == 0) NIL else varargsOf(v, 0, i)
     }

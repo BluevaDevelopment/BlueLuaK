@@ -87,7 +87,7 @@ class StringLib
         string.set("upper", net.blueva.luak.lib.StringLib.upper())
 
         env.set("string", string)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("string", string)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("string", string)
         if (LuaString.s_metatable == null) {
             LuaString.s_metatable = LuaValue.tableOf(arrayOf<LuaValue?>(INDEX, string))
         }
@@ -568,7 +568,7 @@ class StringLib
      */
     internal class len : OneArgFunction() {
         fun call(arg: LuaValue): LuaValue {
-            return arg.checkstring().len()
+            return arg.checkstring()!!.len()
         }
     }
 
@@ -581,7 +581,7 @@ class StringLib
      */
     internal class lower : OneArgFunction() {
         fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.checkjstring().toLowerCase())
+            return valueOf(arg.checkjstring()!!.toLowerCase())
         }
     }
 
@@ -680,7 +680,7 @@ class StringLib
      */
     internal class upper : OneArgFunction() {
         fun call(arg: LuaValue): LuaValue {
-            return valueOf(arg.checkjstring().toUpperCase())
+            return valueOf(arg.checkjstring()!!.toUpperCase())
         }
     }
 
@@ -745,7 +745,7 @@ class StringLib
                     return
                 }
 
-                LuaValue.TFUNCTION -> repl = repl.invoke(push_captures(true, soffset, end)).arg1()
+                LuaValue.TFUNCTION -> repl = repl.invoke(push_captures(true, soffset, end))!!.arg1()
                 LuaValue.TTABLE ->                // Need to call push_onecapture here for the error checking
                     repl = repl.get(push_onecapture(0, soffset, end))
 
@@ -1118,7 +1118,7 @@ class StringLib
             }
 
             val fastMatch = find && (args.arg(4)
-                .toboolean() || pat.indexOfAny(net.blueva.luak.lib.StringLib.Companion.SPECIALS) === -1)
+                !!.toboolean() || pat.indexOfAny(net.blueva.luak.lib.StringLib.Companion.SPECIALS) === -1)
 
             if (fastMatch) {
                 val result: Int = s.indexOf(pat, init)

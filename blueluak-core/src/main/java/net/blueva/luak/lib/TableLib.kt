@@ -61,26 +61,26 @@ class TableLib : TwoArgFunction() {
         table.set("sort", net.blueva.luak.lib.TableLib.sort())
         table.set("unpack", net.blueva.luak.lib.TableLib.unpack())
         env.set("table", table)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("table", table)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("table", table)
         return NIL
     }
 
     // "concat" (table [, sep [, i [, j]]]) -> string
     internal class concat : TableLibFunction() {
         fun call(list: LuaValue): LuaValue {
-            return list.checktable().concat(EMPTYSTRING, 1, list.length())
+            return list.checktable()!!.concat(EMPTYSTRING, 1, list.length())
         }
 
         fun call(list: LuaValue, sep: LuaValue): LuaValue {
-            return list.checktable().concat(sep.checkstring(), 1, list.length())
+            return list.checktable()!!.concat(sep.checkstring(), 1, list.length())
         }
 
         fun call(list: LuaValue, sep: LuaValue, i: LuaValue): LuaValue {
-            return list.checktable().concat(sep.checkstring(), i.checkint(), list.length())
+            return list.checktable()!!.concat(sep.checkstring(), i.checkint(), list.length())
         }
 
         fun call(list: LuaValue, sep: LuaValue, i: LuaValue, j: LuaValue): LuaValue {
-            return list.checktable().concat(sep.checkstring(), i.checkint(), j.checkint())
+            return list.checktable()!!.concat(sep.checkstring(), i.checkint(), j.checkint())
         }
     }
 
@@ -151,7 +151,7 @@ class TableLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val t: LuaTable = args.checktable(1)
             // do not waste resource for calc rawlen if arg3 is not nil
-            val len = if (args.arg(3).isnil()) t.length() else 0
+            val len = if (args.arg(3)!!.isnil()) t.length() else 0
             return t.unpack(args.optint(2, 1), args.optint(3, len))
         }
     }

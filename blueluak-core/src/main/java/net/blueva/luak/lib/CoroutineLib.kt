@@ -72,7 +72,7 @@ class CoroutineLib : TwoArgFunction() {
         coroutine.set("yield", net.blueva.luak.lib.CoroutineLib.YieldFunction())
         coroutine.set("wrap", net.blueva.luak.lib.CoroutineLib.wrap())
         env.set("coroutine", coroutine)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("coroutine", coroutine)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
         return coroutine
     }
 
@@ -91,7 +91,7 @@ class CoroutineLib : TwoArgFunction() {
 
     internal inner class running : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs {
-            val r: LuaThread = globals.running
+            val r: LuaThread = globals!!.running
             return varargsOf(r, valueOf(r.isMainThread()))
         }
     }
@@ -105,7 +105,7 @@ class CoroutineLib : TwoArgFunction() {
 
     internal inner class YieldFunction : VarArgFunction() {
         override fun invoke(args: Varargs?): Varargs {
-            return globals.yield(args)
+            return globals!!.yield(args)
         }
     }
 
@@ -126,10 +126,10 @@ class CoroutineLib : TwoArgFunction() {
 
         override fun invoke(args: Varargs?): Varargs {
             val result: Varargs = luathread.resume(args)
-            if (result.arg1().toboolean()) {
+            if (result.arg1()!!.toboolean()) {
                 return result.subargs(2)
             } else {
-                return error(result.arg(2).tojstring())
+                return error(result.arg(2)!!.tojstring())
             }
         }
     }

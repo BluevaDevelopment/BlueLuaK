@@ -64,7 +64,7 @@ class Bit32Lib : TwoArgFunction() {
         )
         val e = env!!
         e.set("bit32", t)
-        if (!e.get("package").isnil()) e.get("package").get("loaded").set("bit32", t)
+        if (!e.get("package")!!.isnil()) e.get("package")!!.get("loaded")!!.set("bit32", t)
         return t
     }
 

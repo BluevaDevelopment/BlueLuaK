@@ -96,7 +96,7 @@ class OsLib
             net.blueva.luak.lib.OsLib.OsLibFunc(i, net.blueva.luak.lib.OsLib.Companion.NAMES[i])
         )
         env.set("os", os)
-        if (!env.get("package").isnil()) env.get("package").get("loaded").set("os", os)
+        if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("os", os)
         return os
     }
 
@@ -423,12 +423,12 @@ class OsLib
             d = Date()
         } else {
             val c: Calendar = Calendar.getInstance()
-            c.set(Calendar.YEAR, table.get("year").checkint())
-            c.set(Calendar.MONTH, table.get("month").checkint() - 1)
-            c.set(Calendar.DAY_OF_MONTH, table.get("day").checkint())
-            c.set(Calendar.HOUR_OF_DAY, table.get("hour").optint(12))
-            c.set(Calendar.MINUTE, table.get("min").optint(0))
-            c.set(Calendar.SECOND, table.get("sec").optint(0))
+            c.set(Calendar.YEAR, table.get("year")!!.checkint())
+            c.set(Calendar.MONTH, table.get("month")!!.checkint() - 1)
+            c.set(Calendar.DAY_OF_MONTH, table.get("day")!!.checkint())
+            c.set(Calendar.HOUR_OF_DAY, table.get("hour")!!.optint(12))
+            c.set(Calendar.MINUTE, table.get("min")!!.optint(0))
+            c.set(Calendar.SECOND, table.get("sec")!!.optint(0))
             c.set(Calendar.MILLISECOND, 0)
             d = c.getTime()
         }
