@@ -3662,7 +3662,7 @@ open class LuaValue : Varargs() {
         }
 
         override fun copyto(dest: Array<LuaValue?>, offset: Int, length: Int) {
-            override var offset = offset            var length = length
+            var offset = offset            var length = length
             while (length > 0) {
                 dest[offset++] = net.blueva.luak.LuaValue.Companion.NIL
                 length--

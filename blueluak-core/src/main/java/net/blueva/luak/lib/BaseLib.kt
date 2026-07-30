@@ -139,7 +139,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     // "collectgarbage", // ( opt [,arg] ) -> value
     internal class collectgarbage : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            override val s: String? = args.optjstring(1, "collect")            if ("collect".equals(s)) {
+        override fun invoke(args: Varargs): Varargs {            val s: String? = args.optjstring(1, "collect")            if ("collect".equals(s)) {
                 System.gc()
                 return ZERO
             } else if ("count".equals(s)) {
@@ -160,7 +160,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class dofile : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
-            override val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            val v: Varargs = if (filename == null) loadStream(
+            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            val v: Varargs = if (filename == null) loadStream(
                 globals.STDIN,
                 "=stdin",
                 "bt",
@@ -194,7 +194,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     // "load", // ( ld [, source [, mode [, env]]] ) -> chunk | nil, msg
     internal inner class load : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            override val ld: LuaValue = args.arg1()            if (!ld.isstring() && !ld.isfunction()) {
+            val ld: LuaValue = args.arg1()            if (!ld.isstring() && !ld.isfunction()) {
                 throw LuaError("bad argument #1 to 'load' (string or function expected, got " + ld.typename() + ")")
             }
             val source: String? = args.optjstring(2, if (ld.isstring()) ld.tojstring() else "=(load)")
@@ -214,7 +214,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class loadfile : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
             args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
-            override val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            override val mode: String? = args.optjstring(2, "bt")            val env: LuaValue? = args.optvalue(3, globals)
+            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null            val mode: String? = args.optjstring(2, "bt")            val env: LuaValue? = args.optvalue(3, globals)
             return if (filename == null) loadStream(globals.STDIN, "=stdin", mode, env) else loadFile(
                 filename,
                 mode,
@@ -247,7 +247,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun invoke(args: Varargs): Varargs {
             val tostring: LuaValue = globals.get("tostring")
             var i = 1
-            override val n: Int = args.narg()            while (i <= n) {
+            val n: Int = args.narg()            while (i <= n) {
                 if (i > 1) globals.STDOUT.print('\t')
                 val s: LuaString = tostring.call(args.arg(i)).strvalue()
                 globals.STDOUT.print(s.tojstring())
@@ -302,7 +302,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         }
 
         override fun call(table: LuaValue, index: LuaValue, value: LuaValue?): LuaValue {
-            override val t: LuaTable = table.checktable()            if (!index.isvalidkey()) argerror(2, "table index is nil")
+            val t: LuaTable = table.checktable()            if (!index.isvalidkey()) argerror(2, "table index is nil")
             t.rawset(index, value)
             return t
         }
@@ -326,7 +326,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
         }
 
         override fun call(table: LuaValue, metatable: LuaValue): LuaValue {
-            override val mt0: LuaValue? = table.checktable().getmetatable()            if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
+            val mt0: LuaValue? = table.checktable().getmetatable()            if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
             return table.setmetatable(if (metatable.isnil()) null else metatable.checktable())
         }
     }

@@ -88,7 +88,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         abstract fun set(value: LuaValue?): Slot?
 
         override fun first(): StrongSlot? {
-            override val key: LuaValue? = strongkey()            val value: LuaValue? = strongvalue()
+            val key: LuaValue? = strongkey()            val value: LuaValue? = strongvalue()
             if (key != null && value != null) {
                 return NormalEntry(key, value)
             } else {
@@ -99,11 +99,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun find(key: LuaValue?): StrongSlot? {
-            override val first: StrongSlot? = first()            return if (first != null) first.find(key) else null
+            val first: StrongSlot? = first()            return if (first != null) first.find(key) else null
         }
 
         override fun keyeq(key: LuaValue?): Boolean {
-            override val first: StrongSlot? = first()
+            val first: StrongSlot? = first()
             return (first != null) && first.keyeq(key)
         }
 

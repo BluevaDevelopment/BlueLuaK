@@ -127,7 +127,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
 
     override fun call(): LuaValue {
-        override val stack: Array<LuaValue> = this.newStack        return execute(stack, NONE).arg1()
+        val stack: Array<LuaValue> = this.newStack        return execute(stack, NONE).arg1()
     }
 
     override fun call(arg: LuaValue): LuaValue {
@@ -187,7 +187,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
     override fun onInvoke(varargs: Varargs): Varargs? {
-        override val stack: Array<LuaValue> = this.newStack        for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
+        val stack: Array<LuaValue> = this.newStack        for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
         return execute(stack, if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)
     }
 

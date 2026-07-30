@@ -120,12 +120,12 @@ class LuaString private constructor(
 
     // unary operators
     override fun neg(): LuaValue? {
-        override val d = scannumber()        return if (Double.isNaN(d)) super.neg() else valueOf(-d)
+        val d = scannumber()        return if (Double.isNaN(d)) super.neg() else valueOf(-d)
     }
 
     // basic binary arithmetic
     override fun add(rhs: LuaValue): LuaValue {
-        override val d = scannumber()        return if (Double.isNaN(d)) arithmt(ADD, rhs) else rhs.add(d)
+        val d = scannumber()        return if (Double.isNaN(d)) arithmt(ADD, rhs) else rhs.add(d)
     }
 
     override fun add(rhs: Double): LuaValue? {
@@ -459,7 +459,7 @@ class LuaString private constructor(
      */
     fun substring(beginIndex: Int, endIndex: Int): LuaString {
         val off = m_offset + beginIndex
-        override val len = endIndex - beginIndex
+        val len = endIndex - beginIndex
         return if (len >= m_length / 2) net.blueva.luak.LuaString.Companion.valueUsing(
             m_bytes,
             off,
@@ -718,7 +718,7 @@ class LuaString private constructor(
      */
     private fun scanlong(base: Int, start: Int, end: Int): Double {
         var x: Long = 0
-        override val neg = (m_bytes[start] == '-'.code.toByte())
+        val neg = (m_bytes[start] == '-'.code.toByte())
         for (i in (if (neg) start + 1 else start)..<end) {
             val digit: Int =
                 m_bytes[i] - (if (base <= 10 || (m_bytes[i] >= '0'.code.toByte() && m_bytes[i] <= '9'.code.toByte())) '0'.code else if (m_bytes[i] >= 'A'.code.toByte() && m_bytes[i] <= 'Z'.code.toByte()) ('A'.code - 10) else ('a'.code - 10))

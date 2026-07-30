@@ -89,7 +89,7 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal inner class running : VarArgFunction() {
-        override fun invoke(args: Varargs?): Varargs {            override val r: LuaThread = globals.running            return varargsOf(r, valueOf(r.isMainThread()))
+        override fun invoke(args: Varargs?): Varargs {            val r: LuaThread = globals.running            return varargsOf(r, valueOf(r.isMainThread()))
         }
     }
 
@@ -122,7 +122,7 @@ class CoroutineLib : TwoArgFunction() {
         }
 
         override fun invoke(args: Varargs?): Varargs {
-            override val result: Varargs = luathread.resume(args)            if (result.arg1().toboolean()) {
+            val result: Varargs = luathread.resume(args)            if (result.arg1().toboolean()) {
                 return result.subargs(2)
             } else {
                 return error(result.arg(2).tojstring())

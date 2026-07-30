@@ -111,7 +111,7 @@ class DebugLib : TwoArgFunction() {
 
     // debug.gethook ([thread])
     internal inner class gethook : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            override val t: LuaThread = if (args.narg() > 0) args.checkthread(1) else globals.running            val s: LuaThread.State = t.state
+        override fun invoke(args: Varargs): Varargs {            val t: LuaThread = if (args.narg() > 0) args.checkthread(1) else globals.running            val s: LuaThread.State = t.state
             return varargsOf(
                 if (s.hookfunc != null) s.hookfunc else NIL,
                 valueOf((if (s.hookcall) "c" else "") + (if (s.hookline) "l" else "") + (if (s.hookrtrn) "r" else "")),
@@ -123,7 +123,7 @@ class DebugLib : TwoArgFunction() {
     //	debug.getinfo ([thread,] f [, what])
     internal inner class getinfo : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            override var a = 1            override val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running            var func: LuaValue? = args.arg(a++)
+            var a = 1            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running            var func: LuaValue? = args.arg(a++)
             val what: String = args.optjstring(a++, "flnStu")
             val callstack = callstack(thread)
 
@@ -188,7 +188,7 @@ class DebugLib : TwoArgFunction() {
     internal inner class getlocal : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
             var a = 1
-            override val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running            override val level: Int = args.checkint(a++)            val local: Int = args.checkint(a++)
+            val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running            val level: Int = args.checkint(a++)            val local: Int = args.checkint(a++)
             val f = callstack(thread).getCallFrame(level)
             return if (f != null) f.getLocal(local) else NONE
         }
@@ -215,7 +215,7 @@ class DebugLib : TwoArgFunction() {
             val func: LuaValue? = args.checkfunction(1)
             val up: Int = args.checkint(2)
             if (func is LuaClosure) {
-                override val c: LuaClosure = func as LuaClosure                val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
+                val c: LuaClosure = func as LuaClosure                val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
                     return varargsOf(name, c.upValues[up - 1].getValue())
                 }
@@ -237,8 +237,8 @@ class DebugLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
             val t: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
-            override val func: LuaValue? = args.optfunction(a++, null)            val str: String = args.optjstring(a++, "")
-            override val count: Int = args.optint(a++, 0)            var call = false
+            val func: LuaValue? = args.optfunction(a++, null)            val str: String = args.optjstring(a++, "")
+            val count: Int = args.optint(a++, 0)            var call = false
             var line = false
             var rtrn = false
             for (i in 0..<str.length()) when (str.charAt(i)) {
@@ -262,8 +262,8 @@ class DebugLib : TwoArgFunction() {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals.running
             val level: Int = args.checkint(a++)
-            override val local: Int = args.checkint(a++)            val value: LuaValue? = args.arg(a++)
-            override val f = callstack(thread).getCallFrame(level)            return if (f != null) f.setLocal(local, value) else NONE
+            val local: Int = args.checkint(a++)            val value: LuaValue? = args.arg(a++)
+            val f = callstack(thread).getCallFrame(level)            return if (f != null) f.setLocal(local, value) else NONE
         }
     }
 
@@ -291,7 +291,7 @@ class DebugLib : TwoArgFunction() {
             val up: Int = args.checkint(2)
             val value: LuaValue? = args.arg(3)
             if (func is LuaClosure) {
-                override val c: LuaClosure = func as LuaClosure                val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
+                val c: LuaClosure = func as LuaClosure                val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
                     c.upValues[up - 1].setValue(value)
                     return name

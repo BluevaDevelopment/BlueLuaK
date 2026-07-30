@@ -114,7 +114,7 @@ class TableLib : TwoArgFunction() {
 
     // "pack" (...) -> table
     internal class pack : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            override val t: LuaValue = tableOf(args, 1)            t.set("n", args.narg())
+        override fun invoke(args: Varargs): Varargs {            val t: LuaValue = tableOf(args, 1)            t.set("n", args.narg())
             return t
         }
     }
@@ -122,7 +122,7 @@ class TableLib : TwoArgFunction() {
     // "remove" (table [, pos]) -> removed-ele
     internal class remove : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            override val table: LuaTable = args.checktable(1)            override val size: Int = table.length()            val pos: Int = args.optint(2, size)
+            val table: LuaTable = args.checktable(1)            val size: Int = table.length()            val pos: Int = args.optint(2, size)
             if (pos != size && (pos < 1 || pos > size + 1)) {
                 argerror(2, "position out of bounds: " + pos + " not between 1 and " + (size + 1))
             }
@@ -146,7 +146,7 @@ class TableLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val t: LuaTable = args.checktable(1)
             // do not waste resource for calc rawlen if arg3 is not nil
-            override val len = if (args.arg(3).isnil()) t.length() else 0            return t.unpack(args.optint(2, 1), args.optint(3, len))
+            val len = if (args.arg(3).isnil()) t.length() else 0            return t.unpack(args.optint(2, 1), args.optint(3, len))
         }
     }
 }

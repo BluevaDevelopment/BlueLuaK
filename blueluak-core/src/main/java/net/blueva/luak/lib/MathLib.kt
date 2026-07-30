@@ -227,7 +227,7 @@ open class MathLib : TwoArgFunction() {
     }
 
     internal class max : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs {            override var m: LuaValue = args.checkvalue(1)            var i = 2
+        override fun invoke(args: Varargs): Varargs {            var m: LuaValue = args.checkvalue(1)            var i = 2
             val n: Int = args.narg()
             while (i <= n) {
                 val v: LuaValue = args.checkvalue(i)
@@ -240,7 +240,7 @@ open class MathLib : TwoArgFunction() {
 
     internal class min : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
-            override var m: LuaValue? = args.checkvalue(1)            override var i = 2            val n: Int = args.narg()
+            var m: LuaValue? = args.checkvalue(1)            var i = 2            val n: Int = args.narg()
             while (i <= n) {
                 val v: LuaValue = args.checkvalue(i)
                 if (v.lt_b(m)) m = v

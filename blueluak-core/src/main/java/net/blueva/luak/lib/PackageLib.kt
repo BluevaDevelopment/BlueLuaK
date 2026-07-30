@@ -211,14 +211,14 @@ class PackageLib : TwoArgFunction() {
 
     inner class preload_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs? {
-            override val name: LuaString? = args.checkstring(1)            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
+            val name: LuaString? = args.checkstring(1)            val `val`: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
             return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`
         }
     }
 
     inner class lua_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            override val name: LuaString? = args.checkstring(1)
+            val name: LuaString? = args.checkstring(1)
 
             // get package path
             val path: LuaValue = package_.get(net.blueva.luak.lib.PackageLib.Companion._PATH)
@@ -248,7 +248,7 @@ class PackageLib : TwoArgFunction() {
     inner class searchpath : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var name: String = args.checkjstring(1)
-            override val path: String = args.checkjstring(2)            val sep: String = args.optjstring(3, ".")
+            val path: String = args.checkjstring(2)            val sep: String = args.optjstring(3, ".")
             val rep: String = args.optjstring(4, net.blueva.luak.lib.PackageLib.Companion.FILE_SEP)
 
 
@@ -296,7 +296,7 @@ class PackageLib : TwoArgFunction() {
     inner class java_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: String = args.checkjstring(1)
-            override val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)            override var c: Class? = null            var v: LuaValue? = null
+            val classname: String? = net.blueva.luak.lib.PackageLib.Companion.toClassname(name)            var c: Class? = null            var v: LuaValue? = null
             try {
                 c = Class.forName(classname)
                 v = c.newInstance() as LuaValue?
