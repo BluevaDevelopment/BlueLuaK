@@ -21,9 +21,9 @@ import net.blueva.luak.LocVars
 import net.blueva.luak.LuaString
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Prototype
-import java.io.DataOutputStream
-import java.io.IOException
-import java.io.OutputStream
+import net.blueva.luak.io.DataOutputStream
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.OutputStream
 
 /** Class to dump a [Prototype] into an output stream, as part of compiling.
  * 
@@ -60,14 +60,14 @@ class DumpState(w: OutputStream?, strip: Boolean) {
     var status: Int
 
     init {
-        this.writer = DataOutputStream(w)
+        this.writer = DataOutputStream(w!!)
         this.strip = strip
         this.status = 0
     }
 
     @kotlin.Throws(IOException::class)
     fun dumpBlock(b: ByteArray?, size: Int) {
-        writer!!.write(b, 0, size)
+        writer!!.write(b!!, 0, size)
     }
 
     @kotlin.Throws(IOException::class)

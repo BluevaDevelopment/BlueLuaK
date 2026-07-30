@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak.compiler
 
+import net.blueva.luak.arrayCopy
 import net.blueva.luak.LocVars
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaError
@@ -25,9 +26,8 @@ import net.blueva.luak.LuaValue
 import net.blueva.luak.Prototype
 import net.blueva.luak.compiler.FuncState.BlockCnt
 import net.blueva.luak.lib.MathLib
-import java.io.IOException
-import java.io.InputStream
-import java.util.Hashtable
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
 
 internal class LexState internal constructor(state: LuaC.CompileState?, stream: InputStream?) : Constants() {
     /* semantics information */
@@ -125,11 +125,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun txtToken(token: Int): String? {
         when (token) {
-            net.blueva.luak.compiler.LexState.Companion.TK_NAME, net.blueva.luak.compiler.LexState.Companion.TK_STRING, net.blueva.luak.compiler.LexState.Companion.TK_NUMBER -> return String(
-                buff,
-                0,
-                nbuff
-            )
+            net.blueva.luak.compiler.LexState.Companion.TK_NAME, net.blueva.luak.compiler.LexState.Companion.TK_STRING, net.blueva.luak.compiler.LexState.Companion.TK_NUMBER ->
+                return buff.concatToString(0, nbuff)
 
             else -> return token2str(token)
         }
@@ -152,7 +149,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     fun newstring(chars: CharArray?, offset: Int, len: Int): LuaString {
-        return (L!!.newTString(String((chars)!!, offset, len)))!!
+        return (L!!.newTString(chars!!.concatToString(offset, offset + len)))!!
     }
 
     fun inclinenumber() {
@@ -269,7 +266,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             if (isxdigit(current) || current == '.'.code) save_and_next()
             else break
         }
-        val str = String(buff, 0, nbuff)
+        val str = buff.concatToString(0, nbuff)
         str2d(str, seminfo)
     }
 
@@ -559,9 +556,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                             save_and_next()
                         } while (isalnum(current))
                         ts = newstring(buff, 0, nbuff)
-                        if (net.blueva.luak.compiler.LexState.Companion.RESERVED.containsKey(ts)) return (net.blueva.luak.compiler.LexState.Companion.RESERVED.get(
+                        if (net.blueva.luak.compiler.LexState.Companion.RESERVED.containsKey(ts)) return net.blueva.luak.compiler.LexState.Companion.RESERVED[
                             ts
-                        ) as Integer).toInt()
+                        ]!!
                         else {
                             seminfo.ts = ts
                             return net.blueva.luak.compiler.LexState.Companion.TK_NAME
@@ -775,7 +772,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val reg = registerlocalvar(name)
         fs!!.checklimit(dyd.n_actvar + 1, LUAI_MAXVARS, "local variables")
         if (dyd.actvar == null || dyd.n_actvar + 1 > dyd.actvar!!.size) dyd.actvar =
-            realloc(dyd.actvar, Math.max(1, dyd.n_actvar * 2))
+            realloc(dyd.actvar, maxOf(1, dyd.n_actvar * 2))
         dyd.actvar!![dyd.n_actvar++] = net.blueva.luak.compiler.LexState.Vardesc(reg)
     }
 
@@ -787,7 +784,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun adjustlocalvars(nvars: Int) {
         var nvars = nvars
         val fs: FuncState = this.fs!!
-        fs.nactvar = (fs.nactvar + nvars) as Short
+        fs.nactvar = (fs.nactvar + nvars).toShort()
         while (nvars > 0) {
             fs.getlocvar(fs.nactvar - nvars).startpc = fs.pc
             nvars--
@@ -868,7 +865,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
         fs.patchlist(gt.pc, label.pc)
         /* remove goto from pending list */
-        System.arraycopy(gl, g + 1, gl, g, this.dyd.n_gt - g - 1)
+        arrayCopy(gl, g + 1, gl, g, this.dyd.n_gt - g - 1)
         gl[--this.dyd.n_gt] = null
     }
 
@@ -943,7 +940,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val clp: Prototype?
         val f: Prototype = fs!!.f!! /* prototype of current function */
         if (f.p == null || fs!!.np >= f.p!!.size) {
-            f.p = realloc(f.p, Math.max(1, fs!!.np * 2))
+            f.p = realloc(f.p, maxOf(1, fs!!.np * 2))
         }
         clp = Prototype()
         f.p!![fs!!.np++] = clp
@@ -1476,7 +1473,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun check_conflict(lh: LHS_assign?, v: expdesc) {
         var lh = lh
         val fs: FuncState = this.fs!!
-        val extra = fs.freereg as Short /* eventual position to save local variable */
+        val extra = fs.freereg.toShort() /* eventual position to save local variable */
         var conflict = false
         while (lh != null) {
             if (lh.v.k == net.blueva.luak.compiler.LexState.Companion.VINDEXED) {
@@ -2024,7 +2021,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STATE,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STEP
         )
-        private val RESERVED_LOCAL_VAR_KEYWORDS_TABLE: Hashtable<String, Boolean> = Hashtable()
+        private val RESERVED_LOCAL_VAR_KEYWORDS_TABLE: HashMap<String?, Boolean> = HashMap()
 
         init {
             for (i in net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS.indices) net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS_TABLE!!.put(
@@ -2034,7 +2031,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
 
         private val EOZ = (-1)
-        private val MAX_INT: Int = Integer.MAX_VALUE - 2
+        private val MAX_INT: Int = Int.MAX_VALUE - 2
         private const val UCHAR_MAX = 255 // TODO, convert to unicode CHAR_MAX?
         private const val LUAI_MAXCCALLS = 200
 
@@ -2150,7 +2147,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val NUM_RESERVED: Int =
             net.blueva.luak.compiler.LexState.Companion.TK_WHILE + 1 - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED
 
-        val RESERVED: Hashtable<LuaString, Int> = Hashtable()
+        val RESERVED: HashMap<LuaString?, Int> = HashMap()
 
         init {
             for (i in 0..<net.blueva.luak.compiler.LexState.Companion.NUM_RESERVED) {

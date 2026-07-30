@@ -26,7 +26,6 @@ import net.blueva.luak.Prototype
 import net.blueva.luak.Upvaldesc
 import net.blueva.luak.compiler.LexState.ConsControl
 import net.blueva.luak.compiler.LexState.expdesc
-import java.util.Hashtable
 
 internal class FuncState internal constructor() : Constants() {
     internal class BlockCnt {
@@ -39,7 +38,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     var f: Prototype? = null /* current function header */
-    var h: Hashtable<LuaValue, Int>? = null /* table to find (and reuse) elements in `k' */
+    var h: HashMap<LuaValue?, Int>? = null /* table to find (and reuse) elements in `k' */
     var prev: FuncState? = null /* enclosing function */
     var ls: LexState? = null /* lexical state */
     var bl: BlockCnt? = null /* chain of current blocks */
@@ -177,8 +176,8 @@ internal class FuncState internal constructor() : Constants() {
     fun enterblock(bl: BlockCnt, isloop: Boolean) {
         bl.isloop = isloop
         bl.nactvar = nactvar
-        bl.firstlabel = ls!!.dyd.n_label as Short
-        bl.firstgoto = ls!!.dyd.n_gt as Short
+        bl.firstlabel = ls!!.dyd.n_label.toShort()
+        bl.firstgoto = ls!!.dyd.n_gt.toShort()
         bl.upval = false
         bl.previous = this.bl
         this.bl = bl
@@ -281,7 +280,7 @@ internal class FuncState internal constructor() : Constants() {
         val jmp: InstructionPtr = InstructionPtr((this.f!!.code)!!, pc)
         val offset = dest - (pc + 1)
         _assert(dest != LexState.NO_JUMP)
-        if (Math.abs(offset) > MAXARG_sBx) ls!!.syntaxerror("control structure too long")
+        if (kotlin.math.abs(offset) > MAXARG_sBx) ls!!.syntaxerror("control structure too long")
         SETARG_sBx(jmp, offset)
     }
 
@@ -428,7 +427,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun addk(v: LuaValue?): Int {
-        if (this.h == null) this.h = Hashtable()
+        if (this.h == null) this.h = HashMap()
         val constants = this.h!!
         if (constants.containsKey(v)) return constants[v]!!
         val idx = this.nk
@@ -799,10 +798,10 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun indexed(t: expdesc, k: expdesc) {
-        t.u.ind_t = t.u.info as Short
+        t.u.ind_t = t.u.info.toShort()
         t.u.ind_idx = this.exp2RK(k).toShort()
         _assert(t.k === LexState.VUPVAL || net.blueva.luak.compiler.FuncState.Companion.vkisinreg(t.k))
-        t.u.ind_vt = (if (t.k === LexState.VUPVAL) LexState.VUPVAL else LexState.VLOCAL) as Short
+        t.u.ind_vt = (if (t.k === LexState.VUPVAL) LexState.VUPVAL else LexState.VLOCAL).toShort()
         t.k = LexState.VINDEXED
     }
 

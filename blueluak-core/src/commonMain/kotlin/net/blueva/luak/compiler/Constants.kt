@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak.compiler
 
+import net.blueva.luak.arrayCopy
 import net.blueva.luak.LocVars
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaError
@@ -91,68 +92,71 @@ open class Constants : Lua() {
     // vector reallocation
     internal fun realloc(v: Array<LuaValue?>?, n: Int): Array<LuaValue?> {
         val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: Array<Prototype?>?, n: Int): Array<Prototype?> {
         val a: Array<Prototype?> = arrayOfNulls<Prototype>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: Array<LuaString?>?, n: Int): Array<LuaString?> {
         val a: Array<LuaString?> = arrayOfNulls<LuaString>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: Array<LocVars?>?, n: Int): Array<LocVars?> {
         val a: Array<LocVars?> = arrayOfNulls<LocVars>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: Array<Upvaldesc?>?, n: Int): Array<Upvaldesc?> {
         val a: Array<Upvaldesc?> = arrayOfNulls<Upvaldesc>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: Array<LexState.Vardesc?>?, n: Int): Array<LexState.Vardesc?> {
         val a: Array<LexState.Vardesc?> = arrayOfNulls<LexState.Vardesc>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun grow(v: Array<LexState.Labeldesc?>?, min_n: Int): Array<LexState.Labeldesc?> {
-        return if (v == null) arrayOfNulls<LexState.Labeldesc>(2) else if (v.size < min_n) realloc(
-            v,
-            v.size * 2
-        ) else v
+        return if (v == null) {
+            arrayOfNulls(maxOf(2, min_n))
+        } else if (v.size < min_n) {
+            realloc(v, maxOf(2, min_n, v.size * 2))
+        } else {
+            v
+        }
     }
 
     internal fun realloc(v: Array<LexState.Labeldesc?>?, n: Int): Array<LexState.Labeldesc?> {
         val a: Array<LexState.Labeldesc?> = arrayOfNulls<LexState.Labeldesc>(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: IntArray?, n: Int): IntArray {
         val a = IntArray(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: ByteArray?, n: Int): ByteArray {
         val a = ByteArray(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 
     internal fun realloc(v: CharArray?, n: Int): CharArray {
         val a = CharArray(n)
-        if (v != null) System.arraycopy(v, 0, a, 0, Math.min(v.size, n))
+        if (v != null) arrayCopy(v, 0, a, 0, minOf(v.size, n))
         return a
     }
 }

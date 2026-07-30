@@ -22,9 +22,8 @@ import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaString
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Prototype
-import java.io.IOException
-import java.io.InputStream
-import java.util.Hashtable
+import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
 
 /**
  * Compiler for Lua.
@@ -98,7 +97,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
 
     internal class CompileState {
         var nCcalls: Int = 0
-        private val strings: Hashtable<LuaString, LuaString> = Hashtable()
+        private val strings: HashMap<LuaString, LuaString> = HashMap()
 
         /** Parse the input  */
         @kotlin.Throws(IOException::class)
