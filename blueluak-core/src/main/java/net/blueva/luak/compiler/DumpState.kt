@@ -191,7 +191,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpInt(f.lineinfo[i])
+            dumpInt(f.lineinfo!![i])
             i++
         }
         n = if (strip) 0 else f.locvars.size
@@ -208,7 +208,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpString(f.upvalues[i]!!.name)
+            dumpString(f.upvalues!![i]!!.name)
             i++
         }
     }

@@ -62,7 +62,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun getcode(e: expdesc): Int {
-        return f!!.code[e.u.info]
+        return f!!.code!![e.u.info]
     }
 
     fun codeAsBx(o: Int, A: Int, sBx: Int): Int {
@@ -107,7 +107,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun getlocvar(i: Int): LocVars {
-        val idx: Int = ls!!.dyd.actvar[firstlocal + i]!!.idx
+        val idx: Int = ls!!.dyd.actvar!![firstlocal + i]!!.idx
         _assert(idx < nlocvars)
         return f!!.locvars[idx]
     }
@@ -133,7 +133,7 @@ internal class FuncState internal constructor() : Constants() {
         checklimit(nups + 1, LUAI_MAXUPVAL, "upvalues")
         if (f!!.upvalues == null || nups + 1 > f!!.upvalues.size) f!!.upvalues =
             realloc(f!!.upvalues, if (nups > 0) nups * 2 else 1)
-        f!!.upvalues[nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
+        f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
         return (nups++).toInt()
     }
 
@@ -240,7 +240,7 @@ internal class FuncState internal constructor() : Constants() {
         var from = from
         var l = from + n - 1 /* last register to set nil */
         if (this.pc > this.lasttarget && pc > 0) {  /* no jumps to current position? */
-            val previous_code: Int = f!!.code[pc - 1]
+            val previous_code: Int = f!!.code!![pc - 1]
             if (GET_OPCODE(previous_code) === OP_LOADNIL) {
                 val pfrom: Int = GETARG_A(previous_code)
                 val pl: Int = pfrom + GETARG_B(previous_code)
@@ -297,7 +297,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun getjump(pc: Int): Int {
-        val offset: Int = GETARG_sBx(this.f!!.code[pc])
+        val offset: Int = GETARG_sBx(this.f!!.code!![pc])
         /* point to itself represents end of list */
         if (offset == LexState.NO_JUMP)  /* end of list */
             return LexState.NO_JUMP
@@ -378,8 +378,8 @@ internal class FuncState internal constructor() : Constants() {
         while (list != LexState.NO_JUMP) {
             val next = getjump(list)
             _assert(
-                GET_OPCODE(f!!.code[list]) === OP_JMP
-                        && (GETARG_A(f!!.code[list]) === 0 || GETARG_A(f!!.code[list]) >= level)
+                GET_OPCODE(f!!.code!![list]) === OP_JMP
+                        && (GETARG_A(f!!.code!![list]) === 0 || GETARG_A(f!!.code!![list]) >= level)
             )
             SETARG_A(f!!.code, list, level)
             list = next
@@ -437,7 +437,7 @@ internal class FuncState internal constructor() : Constants() {
         this.h.put(v, Integer(idx))
         val f: Prototype = this.f
         if (f.k == null || nk + 1 >= f.k.size) f.k = realloc(f.k, nk * 2 + 1)
-        f.k[this.nk++] = v
+        f.k!![this.nk++] = v
         return idx
     }
 
@@ -977,7 +977,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun fixline(line: Int) {
-        this.f!!.lineinfo[this.pc - 1] = line
+        this.f!!.lineinfo!![this.pc - 1] = line
     }
 
 
@@ -986,13 +986,13 @@ internal class FuncState internal constructor() : Constants() {
         this.dischargejpc() /* `pc' will change */
         /* put new instruction in code array */
         if (f.code == null || this.pc + 1 > f.code.size) f.code = LuaC.realloc(f.code, this.pc * 2 + 1)
-        f.code[this.pc] = instruction
+        f.code!![this.pc] = instruction
         /* save corresponding line information */
         if (f.lineinfo == null || this.pc + 1 > f.lineinfo.size) f.lineinfo = LuaC.realloc(
             f.lineinfo,
             this.pc * 2 + 1
         )
-        f.lineinfo[this.pc] = line
+        f.lineinfo!![this.pc] = line
         return this.pc++
     }
 

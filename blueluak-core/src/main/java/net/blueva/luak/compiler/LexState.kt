@@ -119,7 +119,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 String.valueOf(token.toChar())
             )
         } else {
-            return net.blueva.luak.compiler.LexState.Companion.luaX_tokens[token - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED]
+            return net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![token - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED]
         }
     }
 
@@ -943,7 +943,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             f.p = realloc(f.p, Math.max(1, fs!!.np * 2))
         }
         clp = Prototype()
-        f.p[fs!!.np++] = clp
+        f.p!![fs!!.np++] = clp
         return clp
     }
 
@@ -2152,7 +2152,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         init {
             for (i in 0..<net.blueva.luak.compiler.LexState.Companion.NUM_RESERVED) {
                 val ts: LuaString? =
-                    LuaValue.valueOf(net.blueva.luak.compiler.LexState.Companion.luaX_tokens[i]) as LuaString?
+                    LuaValue.valueOf(net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![i]) as LuaString?
                 net.blueva.luak.compiler.LexState.Companion.RESERVED.put(
                     ts,
                     Integer(net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED + i)
