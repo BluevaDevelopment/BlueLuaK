@@ -300,7 +300,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                         "unfinished long comment", net.blueva.luak.compiler.LexState.Companion.TK_EOS
                 )
 
-                '[' -> {
+                '['.code -> {
                     if (skip_sep() == sep) {
                         save_and_next() /* skip 2nd `[' */
                         cont++
@@ -310,7 +310,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                ']' -> {
+                ']'.code -> {
                     if (skip_sep() == sep) {
                         save_and_next() /* skip 2nd `]' */
                         if (net.blueva.luak.compiler.LexState.Companion.LUA_COMPAT_LSTR == 2) {
@@ -321,7 +321,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '\n', '\r' -> {
+                '\n'.code, '\r'.code -> {
                     save('\n'.code)
                     inclinenumber()
                     if (seminfo == null) nbuff = 0 /* avoid wasting space */
@@ -361,31 +361,31 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     continue  /* to avoid warnings */
                 }
 
-                '\n', '\r' -> {
+                '\n'.code, '\r'.code -> {
                     lexerror("unfinished string", net.blueva.luak.compiler.LexState.Companion.TK_STRING)
                     continue  /* to avoid warnings */
                 }
 
-                '\\' -> {
+                '\\'.code -> {
                     var c: Int
                     nextChar() /* do not save the `\' */
                     when (current) {
-                        'a' -> c = '\u0007'.code
-                        'b' -> c = '\b'.code
-                        'f' -> c = '\u000C'.code
-                        'n' -> c = '\n'.code
-                        'r' -> c = '\r'.code
-                        't' -> c = '\t'.code
-                        'v' -> c = '\u000B'.code
-                        'x' -> c = readhexaesc()
-                        '\n', '\r' -> {
+                        'a'.code -> c = '\u0007'.code
+                        'b'.code -> c = '\b'.code
+                        'f'.code -> c = '\u000C'.code
+                        'n'.code -> c = '\n'.code
+                        'r'.code -> c = '\r'.code
+                        't'.code -> c = '\t'.code
+                        'v'.code -> c = '\u000B'.code
+                        'x'.code -> c = readhexaesc()
+                        '\n'.code, '\r'.code -> {
                             save('\n'.code)
                             inclinenumber()
                             continue
                         }
 
                         net.blueva.luak.compiler.LexState.Companion.EOZ -> continue  /* will raise an error next loop */
-                        'z' -> {
+                        'z'.code -> {
                             /* zap following span of spaces */
                             nextChar() /* skip the 'z' */
                             while (isspace(current)) {
@@ -429,17 +429,17 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         nbuff = 0
         while (true) {
             when (current) {
-                '\n', '\r' -> {
+                '\n'.code, '\r'.code -> {
                     inclinenumber()
                     continue
                 }
 
-                ' ', '\u000C', '\t', 0x0B -> {
+                ' '.code, '\u000C'.code, '\t'.code, 0x0B -> {
                     nextChar()
                     continue
                 }
 
-                '-' -> {
+                '-'.code -> {
                     nextChar()
                     if (current != '-'.code) return '-'.code
                     /* else is a comment */
@@ -458,7 +458,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     continue
                 }
 
-                '[' -> {
+                '['.code -> {
                     run {
                         val sep = skip_sep()
                         if (sep >= 0) {
@@ -480,7 +480,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '=' -> {
+                '='.code -> {
                     nextChar()
                     if (current != '='.code) return '='.code
                     else {
@@ -489,7 +489,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '<' -> {
+                '<'.code -> {
                     nextChar()
                     if (current != '='.code) return '<'.code
                     else {
@@ -498,7 +498,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '>' -> {
+                '>'.code -> {
                     nextChar()
                     if (current != '='.code) return '>'.code
                     else {
@@ -507,7 +507,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '~' -> {
+                '~'.code -> {
                     nextChar()
                     if (current != '='.code) return '~'.code
                     else {
@@ -516,7 +516,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                ':' -> {
+                ':'.code -> {
                     nextChar()
                     if (current != ':'.code) return ':'.code
                     else {
@@ -525,12 +525,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '"', '\'' -> {
+                '"'.code, '\''.code -> {
                     read_string(current, seminfo)
                     return net.blueva.luak.compiler.LexState.Companion.TK_STRING
                 }
 
-                '.' -> {
+                '.'.code -> {
                     save_and_next()
                     if (check_next(".")) {
                         if (check_next(".")) return net.blueva.luak.compiler.LexState.Companion.TK_DOTS /* ... */
@@ -542,7 +542,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
                 }
 
-                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
+                '0'.code, '1'.code, '2'.code, '3'.code, '4'.code, '5'.code, '6'.code, '7'.code, '8'.code, '9'.code -> {
                     read_numeral(seminfo)
                     return net.blueva.luak.compiler.LexState.Companion.TK_NUMBER
                 }
@@ -1079,7 +1079,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     else this.recfield(cc)
                 }
 
-                '[' -> {
+                '['.code -> {
                     /* constructor_item -> recfield */
                     this.recfield(cc)
                 }
@@ -1173,7 +1173,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val base: Int
         val nparams: Int
         when (this.t.token) {
-            '(' -> {
+            '('.code -> {
                 /* funcargs -> `(' [ explist1 ] `)' */
                 this.next()
                 if (this.t.token == ')'.code)  /* arg list is empty? */
@@ -1185,7 +1185,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 this.check_match(')'.code, '('.code, line)
             }
 
-            '{' -> {
+            '{'.code -> {
                 /* funcargs -> constructor */
                 this.constructor(args)
             }
@@ -1223,7 +1223,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun primaryexp(v: expdesc) {
         /* primaryexp -> NAME | '(' expr ')' */
         when (t.token) {
-            '(' -> {
+            '('.code -> {
                 val line = linenumber
                 this.next()
                 this.expr(v)
@@ -1252,12 +1252,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         primaryexp(v)
         while (true) {
             when (t.token) {
-                '.' -> {
+                '.'.code -> {
                     /* fieldsel */
                     this.fieldsel(v)
                 }
 
-                '[' -> {
+                '['.code -> {
                     /* `[' exp1 `]' */
                     val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
                     fs!!.exp2anyregup(v)
@@ -1265,7 +1265,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     fs!!.indexed(v, key)
                 }
 
-                ':' -> {
+                ':'.code -> {
                     /* `:' NAME funcargs */
                     val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
                     this.next()
@@ -1274,7 +1274,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     this.funcargs(v, line)
                 }
 
-                '(', net.blueva.luak.compiler.LexState.Companion.TK_STRING, '{' -> {
+                '('.code, net.blueva.luak.compiler.LexState.Companion.TK_STRING, '{'.code -> {
                     /* funcargs */
                     fs!!.exp2nextreg(v)
                     this.funcargs(v, line)
@@ -1323,7 +1323,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 v.init(net.blueva.luak.compiler.LexState.Companion.VVARARG, fs.codeABC(Lua.OP_VARARG, 0, 1, 0))
             }
 
-            '{' -> {
+            '{'.code -> {
                 /* constructor */
                 this.constructor(v)
                 return
@@ -1347,8 +1347,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun getunopr(op: Int): Int {
         when (op) {
             net.blueva.luak.compiler.LexState.Companion.TK_NOT -> return net.blueva.luak.compiler.LexState.Companion.OPR_NOT
-            '-' -> return net.blueva.luak.compiler.LexState.Companion.OPR_MINUS
-            '#' -> return net.blueva.luak.compiler.LexState.Companion.OPR_LEN
+            '-'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MINUS
+            '#'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_LEN
             else -> return net.blueva.luak.compiler.LexState.Companion.OPR_NOUNOPR
         }
     }
@@ -1356,18 +1356,18 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun getbinopr(op: Int): Int {
         when (op) {
-            '+' -> return net.blueva.luak.compiler.LexState.Companion.OPR_ADD
-            '-' -> return net.blueva.luak.compiler.LexState.Companion.OPR_SUB
-            '*' -> return net.blueva.luak.compiler.LexState.Companion.OPR_MUL
-            '/' -> return net.blueva.luak.compiler.LexState.Companion.OPR_DIV
-            '%' -> return net.blueva.luak.compiler.LexState.Companion.OPR_MOD
-            '^' -> return net.blueva.luak.compiler.LexState.Companion.OPR_POW
+            '+'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_ADD
+            '-'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_SUB
+            '*'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MUL
+            '/'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_DIV
+            '%'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MOD
+            '^'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_POW
             net.blueva.luak.compiler.LexState.Companion.TK_CONCAT -> return net.blueva.luak.compiler.LexState.Companion.OPR_CONCAT
             net.blueva.luak.compiler.LexState.Companion.TK_NE -> return net.blueva.luak.compiler.LexState.Companion.OPR_NE
             net.blueva.luak.compiler.LexState.Companion.TK_EQ -> return net.blueva.luak.compiler.LexState.Companion.OPR_EQ
-            '<' -> return net.blueva.luak.compiler.LexState.Companion.OPR_LT
+            '<'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_LT
             net.blueva.luak.compiler.LexState.Companion.TK_LE -> return net.blueva.luak.compiler.LexState.Companion.OPR_LE
-            '>' -> return net.blueva.luak.compiler.LexState.Companion.OPR_GT
+            '>'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_GT
             net.blueva.luak.compiler.LexState.Companion.TK_GE -> return net.blueva.luak.compiler.LexState.Companion.OPR_GE
             net.blueva.luak.compiler.LexState.Companion.TK_AND -> return net.blueva.luak.compiler.LexState.Companion.OPR_AND
             net.blueva.luak.compiler.LexState.Companion.TK_OR -> return net.blueva.luak.compiler.LexState.Companion.OPR_OR
@@ -1729,8 +1729,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         this.next() /* skip `for' */
         varname = this.str_checkname() /* first variable name */
         when (this.t.token) {
-            '=' -> this.fornum(varname, line)
-            ',', net.blueva.luak.compiler.LexState.Companion.TK_IN -> this.forlist(varname)
+            '='.code -> this.fornum(varname, line)
+            ','.code, net.blueva.luak.compiler.LexState.Companion.TK_IN -> this.forlist(varname)
             else -> this.syntaxerror(
                 net.blueva.luak.compiler.LexState.Companion.LUA_QL("=")
                     .toString() + " or " + net.blueva.luak.compiler.LexState.Companion.LUA_QL("in") + " expected"
@@ -1899,7 +1899,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val line = this.linenumber /* may be needed for error messages */
         enterlevel()
         when (this.t.token) {
-            ';' -> {
+            ';'.code -> {
                 /* stat -> ';' (empty statement) */
                 next() /* skip ';' */
             }
