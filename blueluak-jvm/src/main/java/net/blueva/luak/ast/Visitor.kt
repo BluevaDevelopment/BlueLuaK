@@ -123,7 +123,7 @@ abstract class Visitor {
         field.rhs?.accept(this)
     }
 
-    fun visit(exp: AnonFuncDef) {
+    open fun visit(exp: AnonFuncDef) {
         exp.body?.accept(this)
     }
 
