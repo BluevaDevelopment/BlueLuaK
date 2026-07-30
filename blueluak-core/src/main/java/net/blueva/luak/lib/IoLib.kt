@@ -234,7 +234,7 @@ class IoLib : TwoArgFunction() {
         bind(
             mt,
             net.blueva.luak.lib.IoLib.IoLibV::class.java,
-            arrayOf<String>("__index"),
+            arrayOf<String?>("__index"),
             net.blueva.luak.lib.IoLib.Companion.IO_INDEX
         )
         t.setmetatable(mt)
@@ -320,7 +320,7 @@ class IoLib : TwoArgFunction() {
                     net.blueva.luak.lib.IoLib.Companion.FILE_LINES -> return (iolib!!._file_lines(args))!!
                     net.blueva.luak.lib.IoLib.Companion.FILE_READ -> return iolib!!._file_read(
                         args.arg1(),
-                        args.subargs(2)
+                        args.subargs(2)!!
                     )
 
                     net.blueva.luak.lib.IoLib.Companion.FILE_SEEK -> return iolib!!._file_seek(
@@ -331,7 +331,7 @@ class IoLib : TwoArgFunction() {
 
                     net.blueva.luak.lib.IoLib.Companion.FILE_WRITE -> return iolib!!._file_write(
                         args.arg1(),
-                        args.subargs(2)
+                        args.subargs(2)!!
                     )
 
                     net.blueva.luak.lib.IoLib.Companion.IO_INDEX -> return (iolib!!._io_index((args.arg(2))!!))!!
@@ -566,11 +566,11 @@ class IoLib : TwoArgFunction() {
         if (n == 0) return net.blueva.luak.lib.IoLib.Companion.freadline(f, false)
         val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(n)
         var ai: LuaValue?
-        var vi: LuaValue?
+        var vi: LuaValue? = NIL
         var fmt: LuaString
         i = 0
         while (i < n) {
-            item@ run {
+            run item@ {
                 when ((args.arg(i + 1).also { ai = it })!!.type()) {
                 LuaValue.TNUMBER -> {
                     vi = net.blueva.luak.lib.IoLib.Companion.freadbytes(f, ai!!.toint())
@@ -578,7 +578,7 @@ class IoLib : TwoArgFunction() {
                 }
 
                 LuaValue.TSTRING -> {
-                    fmt = ai!!.checkstring()
+                    fmt = ai!!.checkstring()!!
                     if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*'.code.toByte()) {
                         when (fmt.m_bytes[fmt.m_offset + 1]) {
                             'n'.code.toByte() -> {
@@ -839,7 +839,7 @@ class IoLib : TwoArgFunction() {
             var c: Int
             while (true) {
                 c = f.peek()
-                if (chars.indexOf(c) < 0) {
+                if (chars.indexOf(c.toChar()) < 0) {
                     return
                 }
                 f.read()
