@@ -835,7 +835,7 @@ open class LuaTable : LuaValue, Metatable {
     /**
      * Represents a slot in the hash table.
      */
-    internal interface Slot {
+    interface Slot {
         /** Return hash{pow2,mod}( first().key().hashCode(), sizeMask )  */
         fun keyindex(hashMask: Int): Int
 
@@ -888,7 +888,7 @@ open class LuaTable : LuaValue, Metatable {
      * Subclass of Slot guaranteed to have a strongly-referenced key and value,
      * to support weak tables.
      */
-    internal interface StrongSlot : Slot {
+    interface StrongSlot : Slot {
         /** Return first entry's key  */
         fun key(): LuaValue?
 
@@ -992,7 +992,7 @@ open class LuaTable : LuaValue, Metatable {
      * If the key may be an integer, the [.arraykey] method must be
      * overridden to handle that case.
      */
-    internal abstract class Entry : Varargs(), StrongSlot {
+    abstract class Entry : Varargs(), StrongSlot {
         abstract override fun key(): LuaValue?
         abstract override fun value(): LuaValue
         abstract fun set(value: LuaValue?): Entry

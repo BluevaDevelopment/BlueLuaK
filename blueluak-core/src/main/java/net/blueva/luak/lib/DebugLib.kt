@@ -435,7 +435,7 @@ class DebugLib : TwoArgFunction() {
         return t.callstack as CallStack
     }
 
-    internal class DebugInfo {
+    class DebugInfo {
         var name: String? = null /* (n) */
         var namewhat: String? = null /* (n) 'global', 'local', 'field', 'method' */
         var what: String? = null /* (S) 'Lua', 'C', 'main', 'tail' */
@@ -683,7 +683,7 @@ class DebugLib : TwoArgFunction() {
         }
     }
 
-    internal class NameWhat(val name: String, val namewhat: String)
+    class NameWhat(val name: String, val namewhat: String)
 
     companion object {
         var CALLS: Boolean = false

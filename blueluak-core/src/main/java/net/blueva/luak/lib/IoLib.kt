@@ -70,7 +70,7 @@ import java.io.IOException
  */
 abstract
 class IoLib : TwoArgFunction() {
-    protected abstract
+    abstract
     inner class File : LuaValue() {
         @kotlin.Throws(IOException::class)
         abstract fun write(string: LuaString?)

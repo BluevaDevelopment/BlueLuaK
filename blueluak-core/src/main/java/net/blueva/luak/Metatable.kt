@@ -21,7 +21,7 @@ import net.blueva.luak.LuaTable.Slot
 /**
  * Provides operations that depend on the __mode key of the metatable.
  */
-internal interface Metatable {
+interface Metatable {
     /** Return whether or not this table's keys are weak.  */
     fun useWeakKeys(): Boolean
 
