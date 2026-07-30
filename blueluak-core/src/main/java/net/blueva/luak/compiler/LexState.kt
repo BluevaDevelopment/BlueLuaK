@@ -189,7 +189,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 	** =======================================================
 	*/
     fun check_next(set: String): Boolean {
-        if (set.indexOf(current) < 0) return false
+        if (set.indexOf(current.toChar()) < 0) return false
         save_and_next()
         return true
     }
@@ -768,12 +768,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val f: Prototype = fs.f!!
         if (f.locvars == null || fs.nlocvars + 1 > f.locvars.size) f.locvars = realloc(f.locvars, fs.nlocvars * 2 + 1)
         f.locvars[(fs.nlocvars).toInt()] = LocVars(varname, 0, 0)
-        return fs.nlocvars++
+        return fs.nlocvars.toInt().also { fs.nlocvars++ }
     }
 
     fun new_localvar(name: LuaString?) {
         val reg = registerlocalvar(name)
-        fs!!.checklimit(dyd.n_actvar + 1, FuncState.LUAI_MAXVARS, "local variables")
+        fs!!.checklimit(dyd.n_actvar + 1, LUAI_MAXVARS, "local variables")
         if (dyd.actvar == null || dyd.n_actvar + 1 > dyd.actvar!!.size) dyd.actvar =
             realloc(dyd.actvar, Math.max(1, dyd.n_actvar * 2))
         dyd.actvar!![dyd.n_actvar++] = net.blueva.luak.compiler.LexState.Vardesc(reg)
@@ -796,7 +796,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun removevars(tolevel: Int) {
         val fs: FuncState = this.fs!!
-        while (fs.nactvar > tolevel) fs.getlocvar(--(fs.nactvar).toInt()).endpc = fs.pc
+        while (fs.nactvar > tolevel) {
+            fs.nactvar--
+            fs.getlocvar(fs.nactvar.toInt()).endpc = fs.pc
+        }
     }
 
     internal fun singlevar(`var`: expdesc) {
@@ -878,7 +881,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val dyd = this.dyd
         val gt = dyd.gt[g]!!
         /* check labels in current block for a match */
-        i = bl.firstlabel
+        i = bl.firstlabel.toInt()
         while (i < dyd.n_label) {
             val lb = dyd.label[i]!!
             if (lb.name!!.eq_b(gt.name)) {  /* correct label? */
@@ -1124,7 +1127,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             } while ((f.is_vararg === 0) && this.testnext(','.code))
         }
         this.adjustlocalvars(nparams)
-        f.numparams = fs.nactvar
+        f.numparams = fs.nactvar.toInt()
         fs.reserveregs((fs.nactvar).toInt()) /* reserve register for parameters */
     }
 
@@ -1519,7 +1522,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             nexps = this.explist(e)
             if (nexps != nvars) {
                 this.adjust_assign(nvars, nexps, e)
-                if (nexps > nvars) this.fs!!.freereg -= nexps - nvars /* remove extra values */
+                if (nexps > nvars) this.fs!!.freereg = (this.fs!!.freereg - (nexps - nvars)).toShort() /* remove extra values */
             } else {
                 fs!!.setoneret(e) /* close last expression */
                 fs!!.storevar(lh.v, e)
@@ -1879,14 +1882,14 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     SET_OPCODE((fs.getcodePtr(e))!!, Lua.OP_TAILCALL)
                     _assert(Lua.GETARG_A(fs.getcode(e)) == fs.nactvar.toInt())
                 }
-                first = fs.nactvar
+                first = fs.nactvar.toInt()
                 nret = Lua.LUA_MULTRET /* return all values */
             } else {
                 if (nret == 1)  /* only one single value? */
                     first = fs.exp2anyreg(e)
                 else {
                     fs.exp2nextreg(e) /* values must go to the `stack' */
-                    first = fs.nactvar /* return all `active' values */
+                    first = fs.nactvar.toInt() /* return all `active' values */
                     _assert(nret == fs.freereg - first)
                 }
             }
@@ -2013,7 +2016,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         protected val RESERVED_LOCAL_VAR_FOR_INDEX: String = "(for index)"
 
         // keywords array
-        protected val RESERVED_LOCAL_VAR_KEYWORDS: Array<String?> = arrayOf<String>(
+        protected val RESERVED_LOCAL_VAR_KEYWORDS: Array<String?> = arrayOf<String?>(
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CONTROL,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_GENERATOR,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX,
@@ -2026,7 +2029,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         init {
             for (i in net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS.indices) net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS_TABLE!!.put(
                 net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_KEYWORDS[i],
-                Boolean.TRUE
+                true
             )
         }
 
@@ -2039,7 +2042,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             return "'" + s + "'"
         }
 
-        private fun LUA_QL(o: Object?): String {
+        private fun LUA_QL(o: Any?): String {
             return net.blueva.luak.compiler.LexState.Companion.LUA_QS((o).toString())
         }
 
@@ -2155,7 +2158,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     LuaValue.valueOf(net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![i]) as LuaString?
                 net.blueva.luak.compiler.LexState.Companion.RESERVED!!.put(
                     ts,
-                    Integer(net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED + i)
+                    net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED + i
                 )
             }
         }
