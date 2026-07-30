@@ -234,10 +234,10 @@ class OsLib
                     if (i >= n) break
                     when (fmt[i++].also { c = it }) {
                         '%' -> result.append('%'.code.toByte())
-                        'a' -> result.append(net.blueva.luak.lib.OsLib.Companion.WeekdayNameAbbrev[d.get(Calendar.DAY_OF_WEEK) - 1])
-                        'A' -> result.append(net.blueva.luak.lib.OsLib.Companion.WeekdayName[d.get(Calendar.DAY_OF_WEEK) - 1])
-                        'b' -> result.append(net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])
-                        'B' -> result.append(net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])
+                        'a' -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayNameAbbrev[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
+                        'A' -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayName[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
+                        'b' -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])!!)
+                        'B' -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])!!)
                         'c' -> result.append(date("%a %b %d %H:%M:%S %Y", time))
                         'd' -> result.append((100 + d.get(Calendar.DAY_OF_MONTH)).toString().substring(1))
                         'H' -> result.append((100 + d.get(Calendar.HOUR_OF_DAY)).toString().substring(1))
@@ -328,7 +328,7 @@ class OsLib
      * @param command command to pass to the system
      */
     protected fun execute(command: String?): Varargs {
-        return varargsOf(NIL, valueOf("exit"), ONE)
+        return varargsOf(NIL, valueOf("exit"), (ONE)!!)
     }
 
     /**

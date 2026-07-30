@@ -78,7 +78,7 @@ class CoroutineLib : TwoArgFunction() {
 
     internal inner class create : LibFunction() {
         fun call(f: LuaValue): LuaValue {
-            return LuaThread(globals, f.checkfunction())
+            return LuaThread((globals)!!, f.checkfunction())
         }
     }
 
@@ -112,7 +112,7 @@ class CoroutineLib : TwoArgFunction() {
     internal inner class wrap : LibFunction() {
         fun call(f: LuaValue): LuaValue {
             val func: LuaValue? = f.checkfunction()
-            val thread: LuaThread = LuaThread(globals, func)
+            val thread: LuaThread = LuaThread((globals)!!, func)
             return net.blueva.luak.lib.CoroutineLib.wrapper(thread)
         }
     }

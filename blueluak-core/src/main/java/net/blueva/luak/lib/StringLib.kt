@@ -730,7 +730,7 @@ class StringLib
                     } else if (b == '0'.code.toByte()) {
                         lbuf.append(s.substring(soff, e))
                     } else {
-                        lbuf.append(push_onecapture(b - '1'.code.toByte(), soff, e).strvalue())
+                        lbuf.append((push_onecapture(b - '1'.code.toByte(), soff, e).strvalue())!!)
                     }
                 }
                 ++i
@@ -741,7 +741,7 @@ class StringLib
             var repl: LuaValue = repl
             when (repl.type()) {
                 LuaValue.TSTRING, LuaValue.TNUMBER -> {
-                    add_s(lbuf, repl.strvalue(), soffset, end)
+                    add_s(lbuf, (repl.strvalue())!!, soffset, end)
                     return
                 }
 
@@ -760,7 +760,7 @@ class StringLib
             } else if (!repl.isstring()) {
                 error("invalid replacement value (a " + repl.typename() + ")")
             }
-            lbuf.append(repl.strvalue())
+            lbuf.append((repl.strvalue())!!)
         }
 
         fun push_captures(wholeMatch: Boolean, soff: Int, end: Int): Varargs {
@@ -1118,7 +1118,7 @@ class StringLib
             }
 
             val fastMatch = find && (args.arg(4)
-                !!.toboolean() || pat.indexOfAny(net.blueva.luak.lib.StringLib.Companion.SPECIALS) === -1)
+                !!.toboolean() || pat.indexOfAny((net.blueva.luak.lib.StringLib.Companion.SPECIALS)!!) === -1)
 
             if (fastMatch) {
                 val result: Int = s.indexOf(pat, init)

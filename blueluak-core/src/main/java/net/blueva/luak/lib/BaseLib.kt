@@ -110,7 +110,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
         val next: next?
         env.set("next", net.blueva.luak.lib.BaseLib.next().also { next = it })
-        env.set("pairs", net.blueva.luak.lib.BaseLib.pairs(next))
+        env.set("pairs", net.blueva.luak.lib.BaseLib.pairs((next)!!))
         env.set("ipairs", net.blueva.luak.lib.BaseLib.ipairs())
 
         return env
@@ -208,7 +208,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             val env: LuaValue? = args.optvalue(4, globals)
             return loadStream(
                 if (ld.isstring()) ld.strvalue()
-                    !!.toInputStream() else net.blueva.luak.lib.BaseLib.StringInputStream(ld.checkfunction()),
+                    !!.toInputStream() else net.blueva.luak.lib.BaseLib.StringInputStream((ld.checkfunction())!!),
                 source,
                 mode,
                 env
@@ -237,7 +237,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             val func: LuaValue = args.checkvalue(1)
             if (globals != null && globals.debuglib != null) globals.debuglib.onCall(this)
             try {
-                return varargsOf(TRUE, func.invoke(args.subargs(2)))
+                return varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!)
             } catch (le: LuaError) {
                 val m: LuaValue? = le.getMessageObject()
                 return varargsOf(FALSE, if (m != null) m else NIL)
@@ -385,7 +385,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
             try {
                 if (globals != null && globals.debuglib != null) globals.debuglib.onCall(this)
                 try {
-                    return varargsOf(TRUE, args.arg1()!!.invoke(args.subargs(3)))
+                    return varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!)
                 } catch (le: LuaError) {
                     val m: LuaValue? = le.getMessageObject()
                     return varargsOf(FALSE, if (m != null) m else NIL)
@@ -412,7 +412,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     internal class ipairs : VarArgFunction() {
         var inext: inext = net.blueva.luak.lib.BaseLib.inext()
         override fun invoke(args: Varargs): Varargs {
-            return varargsOf(inext, args.checktable(1), ZERO)
+            return varargsOf(inext, args.checktable(1), (ZERO)!!)
         }
     }
 
@@ -453,7 +453,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
     fun loadStream(`is`: InputStream?, chunkname: String?, mode: String?, env: LuaValue?): Varargs {
         try {
             if (`is` == null) return varargsOf(NIL, valueOf("not found: " + chunkname))
-            return globals!!.load(`is`, chunkname, mode, env)
+            return globals!!.load(`is`, chunkname, (mode)!!, env)
         } catch (e: Exception) {
             return varargsOf(NIL, valueOf(e.message))
         }

@@ -115,7 +115,7 @@ class IoLib : TwoArgFunction() {
 
         // delegate method access to file methods table
         fun get(key: LuaValue?): LuaValue {
-            return filemethods!!.get(key)
+            return filemethods!!.get((key)!!)
         }
 
         // essentially a userdata instance
@@ -223,7 +223,7 @@ class IoLib : TwoArgFunction() {
         // create file methods table
         filemethods = LuaTable()
         bind(
-            filemethods,
+            (filemethods)!!,
             net.blueva.luak.lib.IoLib.IoLibV::class.java,
             net.blueva.luak.lib.IoLib.Companion.FILE_NAMES,
             net.blueva.luak.lib.IoLib.Companion.FILE_CLOSE
@@ -242,7 +242,7 @@ class IoLib : TwoArgFunction() {
 
         // all functions link to library instance
         setLibInstance(t)
-        setLibInstance(filemethods)
+        setLibInstance((filemethods)!!)
         setLibInstance(mt)
 
 
@@ -257,7 +257,7 @@ class IoLib : TwoArgFunction() {
         var i = 0
         val n = k.size
         while (i < n) {
-            (t.get(k[i]) as IoLibV).iolib = this
+            (t.get((k[i])!!) as IoLibV).iolib = this
             i++
         }
     }
@@ -291,9 +291,9 @@ class IoLib : TwoArgFunction() {
                 when (opcode) {
                     net.blueva.luak.lib.IoLib.Companion.IO_FLUSH -> return iolib!!._io_flush()
                     net.blueva.luak.lib.IoLib.Companion.IO_TMPFILE -> return iolib!!._io_tmpfile()
-                    net.blueva.luak.lib.IoLib.Companion.IO_CLOSE -> return iolib!!._io_close(args.arg1())
-                    net.blueva.luak.lib.IoLib.Companion.IO_INPUT -> return iolib!!._io_input(args.arg1())
-                    net.blueva.luak.lib.IoLib.Companion.IO_OUTPUT -> return iolib!!._io_output(args.arg1())
+                    net.blueva.luak.lib.IoLib.Companion.IO_CLOSE -> return iolib!!._io_close((args.arg1())!!)
+                    net.blueva.luak.lib.IoLib.Companion.IO_INPUT -> return iolib!!._io_input((args.arg1())!!)
+                    net.blueva.luak.lib.IoLib.Companion.IO_OUTPUT -> return iolib!!._io_output((args.arg1())!!)
                     net.blueva.luak.lib.IoLib.Companion.IO_TYPE -> return iolib!!._io_type(args.arg1())
                     net.blueva.luak.lib.IoLib.Companion.IO_POPEN -> return iolib!!._io_popen(
                         args.checkjstring(1),
@@ -334,8 +334,8 @@ class IoLib : TwoArgFunction() {
                         args.subargs(2)
                     )
 
-                    net.blueva.luak.lib.IoLib.Companion.IO_INDEX -> return iolib!!._io_index(args.arg(2))
-                    net.blueva.luak.lib.IoLib.Companion.LINES_ITER -> return iolib!!._lines_iter(f, toclose, this.args)
+                    net.blueva.luak.lib.IoLib.Companion.IO_INDEX -> return iolib!!._io_index((args.arg(2))!!)
+                    net.blueva.luak.lib.IoLib.Companion.LINES_ITER -> return iolib!!._lines_iter(f, toclose, (this.args)!!)
                 }
             } catch (ioe: IOException) {
                 if (opcode === net.blueva.luak.lib.IoLib.Companion.LINES_ITER) {
@@ -428,14 +428,14 @@ class IoLib : TwoArgFunction() {
             filename,
             "r"
         )
-        net.blueva.luak.lib.IoLib.Companion.checkopen(infile)
-        return lines(infile, filename != null, args.subargs(2))
+        net.blueva.luak.lib.IoLib.Companion.checkopen((infile)!!)
+        return lines(infile, filename != null, (args.subargs(2))!!)
     }
 
     //	io.read(...) -> (...)
     @kotlin.Throws(IOException::class)
     fun _io_read(args: Varargs): Varargs {
-        net.blueva.luak.lib.IoLib.Companion.checkopen(input())
+        net.blueva.luak.lib.IoLib.Companion.checkopen((input())!!)
         return ioread(infile!!, args)
     }
 
@@ -443,7 +443,7 @@ class IoLib : TwoArgFunction() {
     @kotlin.Throws(IOException::class)
     fun _io_write(args: Varargs): Varargs {
         net.blueva.luak.lib.IoLib.Companion.checkopen(output())
-        return net.blueva.luak.lib.IoLib.Companion.iowrite(outfile, args)
+        return net.blueva.luak.lib.IoLib.Companion.iowrite((outfile)!!, args)
     }
 
     // file:close() -> void
@@ -473,7 +473,7 @@ class IoLib : TwoArgFunction() {
 
     // file:lines(...) -> iterator
     fun _file_lines(args: Varargs): Varargs? {
-        return lines(net.blueva.luak.lib.IoLib.Companion.checkfile(args.arg1()), false, args.subargs(2))
+        return lines(net.blueva.luak.lib.IoLib.Companion.checkfile(args.arg1()), false, (args.subargs(2))!!)
     }
 
     //	file:read(...) -> (...)
@@ -751,7 +751,7 @@ class IoLib : TwoArgFunction() {
         private fun checkfile(`val`: LuaValue?): File {
             val f: File? = net.blueva.luak.lib.IoLib.Companion.optfile(`val`)
             if (f == null) argerror(1, "file")
-            net.blueva.luak.lib.IoLib.Companion.checkopen(f)
+            net.blueva.luak.lib.IoLib.Companion.checkopen((f)!!)
             return f!!
         }
 

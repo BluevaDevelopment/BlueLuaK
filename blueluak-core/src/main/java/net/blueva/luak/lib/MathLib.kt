@@ -107,7 +107,7 @@ open class MathLib : TwoArgFunction() {
         math.set("pow", net.blueva.luak.lib.MathLib.pow())
         val r: random?
         math.set("random", net.blueva.luak.lib.MathLib.random().also { r = it })
-        math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed(r))
+        math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed((r)!!))
         math.set("rad", net.blueva.luak.lib.MathLib.rad())
         math.set("sin", net.blueva.luak.lib.MathLib.sin())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
@@ -218,7 +218,7 @@ open class MathLib : TwoArgFunction() {
     internal class frexp : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Double = args.checkdouble(1)
-            if (x == 0.0) return varargsOf(ZERO, ZERO)
+            if (x == 0.0) return varargsOf(ZERO, (ZERO)!!)
             val bits: Long = (x).toBits()
             val m =
                 ((bits and ((-1L shl 52).inv()).toLong()) + (1L shl 52)) * (if (bits >= 0) (.5 / (1L shl 52)) else (-.5 / (1L shl 52)))
@@ -248,7 +248,7 @@ open class MathLib : TwoArgFunction() {
             val n: Int = args.narg()
             while (i <= n) {
                 val v: LuaValue = args.checkvalue(i)
-                if (v.lt_b(m)) m = v
+                if (v.lt_b((m)!!)) m = v
                 ++i
             }
             return m

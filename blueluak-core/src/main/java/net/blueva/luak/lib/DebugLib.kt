@@ -225,7 +225,7 @@ class DebugLib : TwoArgFunction() {
                 val c: LuaClosure = func as LuaClosure
                 val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
-                    return varargsOf(name, c.upValues[up - 1]!!.getValue())
+                    return varargsOf(name, (c.upValues[up - 1]!!.getValue())!!)
                 }
             }
             return NIL
@@ -565,7 +565,7 @@ class DebugLib : TwoArgFunction() {
             val n: Int = what.length()
             while (i < n) {
                 when (what[i]) {
-                    'S' -> ar.funcinfo(f)
+                    'S' -> ar.funcinfo((f)!!)
                     'l' -> ar.currentline = if (ci != null && ci.f!!.isclosure()) ci.currentline() else -1
                     'u' -> if (f != null && f.isclosure()) {
                         val p: Prototype = f.checkclosure()!!.p
@@ -640,7 +640,7 @@ class DebugLib : TwoArgFunction() {
             this.pc = pc
             this.v = v
             this.top = top
-            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState(f!!.checkclosure(), pc, stack, top, v)
+            if (net.blueva.luak.lib.DebugLib.Companion.TRACE) Print.printState((f!!.checkclosure())!!, pc, stack, top, v)
         }
 
         fun getLocal(i: Int): Varargs {

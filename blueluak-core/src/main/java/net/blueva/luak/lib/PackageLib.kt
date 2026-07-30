@@ -111,7 +111,7 @@ class PackageLib : TwoArgFunction() {
         searchers.set(3, net.blueva.luak.lib.PackageLib.java_searcher().also { java_searcher = it })
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._SEARCHERS, searchers)
         package_!!.set("config", net.blueva.luak.lib.PackageLib.Companion.FILE_SEP.toString() + "\n;\n?\n!\n-\n")
-        package_!!.get(net.blueva.luak.lib.PackageLib.Companion._LOADED).set("package", package_)
+        package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set("package", package_)
         env.set("package", package_)
         globals!!.package_ = this
         return env
@@ -119,7 +119,7 @@ class PackageLib : TwoArgFunction() {
 
     /** Allow packages to mark themselves as loaded  */
     fun setIsLoaded(name: String?, value: LuaTable?) {
-        package_!!.get(net.blueva.luak.lib.PackageLib.Companion._LOADED).set(name, value)
+        package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set(name, value)
     }
 
 
@@ -164,8 +164,8 @@ class PackageLib : TwoArgFunction() {
     inner class require : OneArgFunction() {
         fun call(arg: LuaValue): LuaValue {
             val name: LuaString? = arg.checkstring()
-            val loaded: LuaValue = package_!!.get(net.blueva.luak.lib.PackageLib.Companion._LOADED)
-            var result: LuaValue = loaded.get(name)
+            val loaded: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!)
+            var result: LuaValue = loaded.get((name)!!)
             if (result.toboolean()) {
                 if (result === net.blueva.luak.lib.PackageLib.Companion._SENTINEL) error("loop or previous error loading module '" + name + "'")
                 return result
@@ -173,7 +173,7 @@ class PackageLib : TwoArgFunction() {
 
 
             /* else must load it; iterate over available loaders */
-            val tbl: LuaTable = package_!!.get(net.blueva.luak.lib.PackageLib.Companion._SEARCHERS).checktable()
+            val tbl: LuaTable = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!).checktable()
             val sb: StringBuffer = StringBuffer()
             var loader: Varargs? = null
             var i = 1
@@ -185,7 +185,7 @@ class PackageLib : TwoArgFunction() {
 
 
                 /* call loader with module name as argument */
-                loader = searcher.invoke(name)
+                loader = searcher.invoke((name)!!)
                 if (loader!!.isfunction(1)) break
                 if (loader!!.isstring(1)) sb.append(loader!!.tojstring(1))
                 i++
@@ -196,7 +196,7 @@ class PackageLib : TwoArgFunction() {
             loaded.set(name, net.blueva.luak.lib.PackageLib.Companion._SENTINEL)
             result = loader!!.arg1()!!.call(name, loader!!.arg(2))
             if (!result.isnil()) loaded.set(name, result)
-            else if ((loaded.get(name)
+            else if ((loaded.get((name)!!)
                     .also { result = it }) === net.blueva.luak.lib.PackageLib.Companion._SENTINEL
             ) loaded.set(name, LuaValue.TRUE.also { result = it })
             return result
@@ -213,7 +213,7 @@ class PackageLib : TwoArgFunction() {
     inner class preload_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: LuaString? = args.checkstring(1)
-            val `val`: LuaValue = package_!!.get(net.blueva.luak.lib.PackageLib.Companion._PRELOAD).get(name)
+            val `val`: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._PRELOAD)!!).get((name)!!)
             return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`
         }
     }
@@ -224,13 +224,13 @@ class PackageLib : TwoArgFunction() {
 
 
             // get package path
-            val path: LuaValue = package_!!.get(net.blueva.luak.lib.PackageLib.Companion._PATH)
+            val path: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._PATH)!!)
             if (!path.isstring()) return valueOf("package.path is not a string")
 
 
             // get the searchpath function.
             var v: Varargs =
-                package_!!.get(net.blueva.luak.lib.PackageLib.Companion._SEARCHPATH).invoke(varargsOf(name, path))
+                package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHPATH)!!).invoke((varargsOf(name, path))!!)
 
 
             // Did we get a result?
@@ -307,7 +307,7 @@ class PackageLib : TwoArgFunction() {
                 c = Class.forName(classname)
                 v = c.newInstance() as LuaValue?
                 if (v!!.isfunction()) (v as LuaFunction).initupvalue1(globals)
-                return varargsOf(v, globals)
+                return varargsOf(v, (globals)!!)
             } catch (cnfe: ClassNotFoundException) {
                 return valueOf("\n\tno class '" + classname + "'")
             } catch (e: Exception) {

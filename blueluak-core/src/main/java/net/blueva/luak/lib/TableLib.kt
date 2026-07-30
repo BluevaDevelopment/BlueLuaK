@@ -90,7 +90,7 @@ class TableLib : TwoArgFunction() {
             when (args.narg()) {
                 2 -> {
                     val table: LuaTable = args.checktable(1)
-                    table.insert(table.length() + 1, args.arg(2))
+                    table.insert(table.length() + 1, (args.arg(2))!!)
                     return NONE
                 }
 
@@ -102,7 +102,7 @@ class TableLib : TwoArgFunction() {
                         2,
                         "position out of bounds: " + pos + " not between 1 and " + max
                     )
-                    table.insert(pos, args.arg(3))
+                    table.insert(pos, (args.arg(3))!!)
                     return NONE
                 }
 
