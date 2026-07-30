@@ -147,14 +147,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             1 -> {
-                stack[0] = arg1
+                stack[0] = arg1!!
                 return (execute(stack, arg2)!!.arg1())!!
             }
 
             0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2) else NONE)!!)!!.arg1())!!
             else -> {
-                stack[0] = arg1
-                stack[1] = arg2
+                stack[0] = arg1!!
+                stack[1] = arg2!!
                 return (execute(stack, (NONE)!!)!!.arg1())!!
             }
         }
@@ -164,20 +164,20 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             2 -> {
-                stack[0] = arg1
-                stack[1] = arg2
+                stack[0] = arg1!!
+                stack[1] = arg2!!
                 return (execute(stack, arg3)!!.arg1())!!
             }
 
             1 -> {
-                stack[0] = arg1
+                stack[0] = arg1!!
                 return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg2, arg3) else NONE)!!)!!.arg1())!!
             }
 
             0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2, arg3) else NONE)!!)!!.arg1())!!
             else -> {
-                stack[0] = arg1
-                stack[1] = arg2
+                stack[0] = arg1!!
+                stack[1] = arg2!!
                 stack[2] = arg3
                 return (execute(stack, (NONE)!!)!!.arg1())!!
             }
@@ -205,7 +205,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         var o: LuaValue
         var v: Varargs = NONE!!
         val code: IntArray = p.code!!
-        val k: Array<LuaValue?> = p.k
+        val k: Array<LuaValue?> = p.k!!
 
 
         // upvalues are only possible when closures create closures
@@ -214,7 +214,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
 
         // allow for debug hooks
-        if (globals != null && globals.debuglib != null) globals.debuglib!!.onCall(this, varargs, stack)
+        if (globals != null && globals.debuglib != null) globals.debuglib!!.onCall(this, varargs, stack as Array<LuaValue?>)
 
         // process instructions
         try {
@@ -236,7 +236,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_LOADK -> {
-                        stack[a] = k[i ushr 14]
+                        stack[a] = k[i ushr 14]!!
                         ++pc
                         continue
                     }
@@ -251,13 +251,13 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                         (if (op < Print.OPNAMES.size - 1) Print.OPNAMES[op] else "UNKNOWN_OP_" + op)
                             )
                         }
-                        stack[a] = k[i ushr 6]
+                        stack[a] = k[i ushr 6]!!
                         ++pc
                         continue
                     }
 
                     Lua.OP_LOADBOOL -> {
-                        stack[a] = if (i ushr 23 != 0) LuaValue.TRUE else LuaValue.FALSE
+                        stack[a] = (if (i ushr 23 != 0) LuaValue.TRUE else LuaValue.FALSE)!!
                         if ((i and (0x1ff shl 14)) != 0) ++pc /* skip next instruction (if C) */
                         ++pc
                         continue
@@ -273,7 +273,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_GETUPVAL -> {
-                        stack[a] = upValues[i ushr 23]!!.getValue()
+                        stack[a] = upValues[i ushr 23]!!.getValue()!!
                         ++pc
                         continue
                     }
@@ -286,9 +286,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_GETTABLE -> {
-                        stack[a] = stack[i ushr 23].get(if ((((i shr 14) and 0x1ff).also {
+                        stack[a] = stack[i ushr 23].get((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -335,9 +335,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_ADD -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.add(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.add((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -345,9 +345,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_SUB -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.sub(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.sub((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -355,9 +355,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_MUL -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.mul(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.mul((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -365,9 +365,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_DIV -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.div(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.div((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -375,9 +375,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_MOD -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.mod(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.mod((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -385,9 +385,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_POW -> {
                         stack[a] = (if (((i ushr 23).also {
                                 b = it
-                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.pow(if ((((i shr 14) and 0x1ff).also {
+                            }) > 0xff) k[b and 0x0ff] else stack[b])!!.pow((if ((((i shr 14) and 0x1ff).also {
                                 c = it
-                            }) > 0xff) k[c and 0x0ff] else stack[c])
+                            }) > 0xff) k[c and 0x0ff] else stack[c])!!)
                         ++pc
                         continue
                     }
@@ -399,7 +399,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_NOT -> {
-                        stack[a] = stack[i ushr 23].not()
+                        stack[a] = stack[i ushr 23].not()!!
                         ++pc
                         continue
                     }
@@ -417,7 +417,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             if (c > b + 1) {
                                 val sb: Buffer = stack[c].buffer()!!
                                 while (--c >= b) sb.concatTo(stack[c])
-                                stack[a] = sb.value()
+                                stack[a] = sb.value()!!
                             } else {
                                 stack[a] = stack[c - 1].concat(stack[c])
                             }
@@ -447,7 +447,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                     b = it
                                 }) > 0xff) k[b and 0x0ff] else stack[b])!!.eq_b(if ((((i shr 14) and 0x1ff).also {
                                     c = it
-                                }) > 0xff) k[c and 0x0ff] else stack[c]) !== (a != 0)) ++pc
+                                }) > 0xff) k[c and 0x0ff] else stack[c])!! !== (a != 0)) ++pc
                         ++pc
                         continue
                     }
@@ -455,9 +455,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_LT -> {
                         if ((if (((i ushr 23).also {
                                     b = it
-                                }) > 0xff) k[b and 0x0ff] else stack[b])!!.lt_b(if ((((i shr 14) and 0x1ff).also {
+                                }) > 0xff) k[b and 0x0ff] else stack[b])!!.lt_b((if ((((i shr 14) and 0x1ff).also {
                                     c = it
-                                }) > 0xff) k[c and 0x0ff] else stack[c]) !== (a != 0)) ++pc
+                                }) > 0xff) k[c and 0x0ff] else stack[c])!!) !== (a != 0)) ++pc
                         ++pc
                         continue
                     }
@@ -465,9 +465,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_LE -> {
                         if ((if (((i ushr 23).also {
                                     b = it
-                                }) > 0xff) k[b and 0x0ff] else stack[b])!!.lteq_b(if ((((i shr 14) and 0x1ff).also {
+                                }) > 0xff) k[b and 0x0ff] else stack[b])!!.lteq_b((if ((((i shr 14) and 0x1ff).also {
                                     c = it
-                                }) > 0xff) k[c and 0x0ff] else stack[c]) !== (a != 0)) ++pc
+                                }) > 0xff) k[c and 0x0ff] else stack[c])!!) !== (a != 0)) ++pc
                         ++pc
                         continue
                     }
@@ -558,7 +558,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                     varargsOf(stack, a + 1, top - v.narg() - (a + 1), v)
                             ) // from prev top
                             if (c > 0) {
-                                v.copyto(stack, a, c - 1)
+                                v.copyto(stack as Array<LuaValue?>, a, c - 1)
                                 v = NONE
                             } else {
                                 top = a + v.narg()
@@ -617,7 +617,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             val limit: LuaValue? = stack[a + 1].checknumber("'for' limit must be a number")
                             val step: LuaValue? = stack[a + 2].checknumber("'for' step must be a number")
                             stack[a] = init.sub((step)!!)
-                            stack[a + 1] = limit
+                            stack[a + 1] = limit!!
                             stack[a + 2] = step
                             pc += (i ushr 14) - 0x1ffff
                         }
@@ -677,12 +677,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         run {
                             val newp: Prototype = p.p!![i ushr 14]!!
                             val ncl: LuaClosure = net.blueva.luak.LuaClosure(newp, globals)
-                            val uv: Array<Upvaldesc?> = newp.upvalues
+                            val uv: Array<Upvaldesc?> = newp.upvalues!!
                             var j = 0
                             val nup = uv.size
                             while (j < nup) {
                                 if (uv[j]!!.instack)  /* upvalue refes to local variable? */
-                                    ncl.upValues[j] = findupval(stack, uv[j]!!.idx, openups)
+                                    ncl.upValues[j] = findupval(stack, uv[j]!!.idx, openups!!)
                                 else  /* get upvalue from enclosing function */
                                     ncl.upValues[j] = upValues[(uv[j]!!.idx).toInt()]
                                 ++j
@@ -776,10 +776,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         le.traceback = errorHook(le.message, le.level)
     }
 
-    private fun findupval(stack: Array<LuaValue>?, idx: Short, openups: Array<UpValue?>): UpValue? {
+    private fun findupval(stack: Array<LuaValue>, idx: Short, openups: Array<UpValue?>): UpValue? {
         val n = openups.size
         for (i in 0..<n) if (openups[i] != null && openups[i]!!.index == idx.toInt()) return openups[i]
-        for (i in 0..<n) if (openups[i] == null) return UpValue(stack, (idx).toInt()).also { openups[i] = it }
+        for (i in 0..<n) if (openups[i] == null) return UpValue(stack as Array<LuaValue?>, (idx).toInt()).also { openups[i] = it }
         error("No space for upvalue")
         return null
     }
