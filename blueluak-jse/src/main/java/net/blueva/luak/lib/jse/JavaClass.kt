@@ -37,9 +37,9 @@ import kotlin.math.max
  * @see CoerceLuaToJava
  */
 internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coercion {
-    var fields: MutableMap<*, *>? = null
-    var methods: MutableMap<*, *>? = null
-    var innerclasses: MutableMap<*, *>? = null
+    var fields: MutableMap<Any?, Any?>? = null
+    var methods: MutableMap<Any?, Any?>? = null
+    var innerclasses: MutableMap<Any?, Any?>? = null
 
     init {
         this.jclass = this
@@ -51,7 +51,7 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
 
     fun getField(key: LuaValue?): Field? {
         if (fields == null) {
-            val m: MutableMap<*, *> = HashMap<Any?, Any?>()
+            val m: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
             val f = (m_instance as Class<*>).getFields()
             for (i in f.indices) {
                 val fi = f[i]
@@ -70,20 +70,20 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
 
     fun getMethod(key: LuaValue?): LuaValue? {
         if (methods == null) {
-            val namedlists: MutableMap<*, *> = HashMap<Any?, Any?>()
+            val namedlists: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
             val m = (m_instance as Class<*>).getMethods()
             for (i in m.indices) {
                 val mi = m[i]
                 if (Modifier.isPublic(mi.getModifiers())) {
                     val name = mi.getName()
-                    var list = namedlists.get(name) as MutableList<*>?
+                    var list = namedlists.get(name) as MutableList<Any?>?
                     if (list == null) namedlists.put(name, ArrayList<Any?>().also { list = it })
                     list!!.add(JavaMethod.Companion.forMethod(mi))
                 }
             }
-            val map: MutableMap<*, *> = HashMap<Any?, Any?>()
+            val map: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
             val c = (m_instance as Class<*>).getConstructors()
-            val list: MutableList<*> = ArrayList<Any?>()
+            val list: MutableList<Any?> = ArrayList<Any?>()
             for (i in c.indices) if (Modifier.isPublic(c[i].getModifiers())) list.add(
                 JavaConstructor.Companion.forConstructor(
                     c[i]
@@ -98,11 +98,11 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
                 )
             }
 
-            val it: MutableIterator<*> = namedlists.entries.iterator()
+            val it: MutableIterator<MutableMap.MutableEntry<Any?, Any?>> = namedlists.entries.iterator()
             while (it.hasNext()) {
-                val e = it.next() as MutableMap.MutableEntry<*, *>
+                val e = it.next()
                 val name = e.key as String?
-                val methods = e.value as MutableList<*>
+                val methods = e.value as MutableList<Any?>
                 map.put(
                     valueOf(name),
                     if (methods.size == 1) methods.get(0) else JavaMethod.Companion.forMethods(methods.toTypedArray() as Array<JavaMethod?>)
@@ -115,7 +115,7 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
 
     fun getInnerClass(key: LuaValue?): Class<*>? {
         if (innerclasses == null) {
-            val m: MutableMap<*, *> = HashMap<Any?, Any?>()
+            val m: MutableMap<Any?, Any?> = HashMap<Any?, Any?>()
             val c = (m_instance as Class<*>).getClasses()
             for (i in c.indices) {
                 val ci = c[i]
@@ -132,7 +132,7 @@ internal class JavaClass(c: Class<*>?) : JavaInstance(c), CoerceJavaToLua.Coerci
         get() = getMethod(NEW)
 
     companion object {
-        val classes: MutableMap<*, *> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
+        val classes: MutableMap<Any?, Any?> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
 
         val NEW: LuaValue = valueOf("new")
 

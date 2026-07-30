@@ -38,7 +38,7 @@ import kotlin.math.max
  * 
  * @see CoerceLuaToJava
  */
-internal abstract class JavaMember protected constructor(params: Array<Class<*>?>, modifiers: Int) : VarArgFunction() {
+internal abstract class JavaMember protected constructor(params: Array<Class<*>>, modifiers: Int) : VarArgFunction() {
     val fixedargs: Array<CoerceLuaToJava.Coercion?>
     val varargs: CoerceLuaToJava.Coercion?
 

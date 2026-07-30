@@ -81,58 +81,58 @@ class JseMathLib : MathLib() {
         return math
     }
 
-    internal class acos : UnaryOp() {
+    private class acos : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.acos(d)
         }
     }
 
-    internal class asin : UnaryOp() {
+    private class asin : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.asin(d)
         }
     }
 
     internal class atan2 : TwoArgFunction() {
-        override fun call(x: LuaValue, y: LuaValue): LuaValue? {
-            return valueOf(kotlin.math.atan2(x.checkdouble(), y.optdouble(1.0)))
+        override fun call(x: LuaValue?, y: LuaValue?): LuaValue? {
+            return valueOf(kotlin.math.atan2(x!!.checkdouble(), y!!.optdouble(1.0)))
         }
     }
 
-    internal class cosh : UnaryOp() {
+    private class cosh : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.cosh(d)
         }
     }
 
-    internal class exp : UnaryOp() {
+    private class exp : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.exp(d)
         }
     }
 
     internal class log : TwoArgFunction() {
-        override fun call(x: LuaValue, base: LuaValue): LuaValue? {
-            var nat = ln(x.checkdouble())
-            val b = base.optdouble(Math.E)
+        override fun call(x: LuaValue?, base: LuaValue?): LuaValue? {
+            var nat = ln(x!!.checkdouble())
+            val b = base!!.optdouble(Math.E)
             if (b != Math.E) nat /= ln(b)
             return valueOf(nat)
         }
     }
 
-    internal class pow : BinaryOp() {
+    private class pow : BinaryOp() {
         override fun call(x: Double, y: Double): Double {
             return x.pow(y)
         }
     }
 
-    internal class sinh : UnaryOp() {
+    private class sinh : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.sinh(d)
         }
     }
 
-    internal class tanh : UnaryOp() {
+    private class tanh : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.tanh(d)
         }

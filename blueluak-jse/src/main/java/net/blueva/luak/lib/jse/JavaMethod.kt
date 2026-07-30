@@ -53,22 +53,22 @@ internal class JavaMethod private constructor(val method: Method) : JavaMember(
     }
 
     override fun call(arg: LuaValue): LuaValue? {
-        return invokeMethod(arg.checkuserdata(), NONE)
+        return invokeMethod(arg.checkuserdata(), NONE!!)
     }
 
     override fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue? {
-        return invokeMethod(arg1.checkuserdata(), arg2)
+        return invokeMethod(arg1.checkuserdata(), arg2!!)
     }
 
     override fun call(arg1: LuaValue, arg2: LuaValue?, arg3: LuaValue): LuaValue? {
-        return invokeMethod(arg1.checkuserdata(), varargsOf(arg2, arg3))
+        return invokeMethod(arg1.checkuserdata(), varargsOf(arg2, arg3)!!)
     }
 
-    override fun invoke(args: Varargs): Varargs? {
-        return invokeMethod(args.checkuserdata(1), args.subargs(2))
+    override fun invoke(args: Varargs): Varargs {
+        return invokeMethod(args.checkuserdata(1), args.subargs(2)!!)!!
     }
 
-    fun invokeMethod(instance: Any?, args: Varargs?): LuaValue? {
+    fun invokeMethod(instance: Any?, args: Varargs): LuaValue? {
         val a = convertArgs(args)
         try {
             return CoerceJavaToLua.coerce(method.invoke(instance, *a))
@@ -107,8 +107,8 @@ internal class JavaMethod private constructor(val method: Method) : JavaMember(
             return invokeBestMethod(arg1.checkuserdata(), varargsOf(arg2, arg3)!!)
         }
 
-        override fun invoke(args: Varargs): Varargs? {
-            return invokeBestMethod(args.checkuserdata(1), args.subargs(2)!!)
+        override fun invoke(args: Varargs): Varargs {
+            return invokeBestMethod(args.checkuserdata(1), args.subargs(2)!!)!!
         }
 
         private fun invokeBestMethod(instance: Any?, args: Varargs): LuaValue? {
@@ -134,7 +134,7 @@ internal class JavaMethod private constructor(val method: Method) : JavaMember(
     }
 
     companion object {
-        val methods: MutableMap<*, *> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
+        val methods: MutableMap<Any?, Any?> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
 
         fun forMethod(m: Method): JavaMethod {
             var j = methods.get(m) as JavaMethod?

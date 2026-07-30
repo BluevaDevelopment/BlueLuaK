@@ -21,8 +21,10 @@ import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
 import net.blueva.luak.lib.VarArgFunction
-import java.lang.reflect.*
-import java.lang.reflect.Array
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
 
 
 /**
@@ -70,7 +72,7 @@ import java.lang.reflect.Array
  * @see [http://www.keplerproject.org/luajava/manual.html.luareference](http://www.keplerproject.org/luajava/manual.html.luareference)
  */
 class LuajavaLib : VarArgFunction() {
-    override fun invoke(args: Varargs): Varargs? {
+    override fun invoke(args: Varargs): Varargs {
         try {
             when (opcode) {
                 INIT -> {
@@ -94,7 +96,7 @@ class LuajavaLib : VarArgFunction() {
                     val clazz =
                         (if (opcode == NEWINSTANCE) classForName(c.tojstring()) else c.checkuserdata(Class::class.java) as Class<*>?)
                     val consargs = args.subargs(2)
-                    return JavaClass.Companion.forClass(clazz).getConstructor().invoke(consargs)
+                    return JavaClass.Companion.forClass(clazz).constructor!!.invoke(consargs)!!
                 }
 
                 CREATEPROXY -> {
@@ -157,25 +159,26 @@ class LuajavaLib : VarArgFunction() {
 
     private class ProxyInvocationHandler(private val lobj: LuaValue) : InvocationHandler {
         @Throws(Throwable::class)
-        override fun invoke(proxy: Any?, method: Method, args: Array<Any?>?): Any? {
-            val name = method.getName()
+        override fun invoke(proxy: Any?, method: Method, args: Array<out Any?>?): Any? {
+            val name = method.name
             val func: LuaValue = lobj.get(name)!!
             if (func.isnil()) return null
-            val isvarargs = ((method.getModifiers() and METHOD_MODIFIERS_VARARGS) != 0)
-            var n = if (args != null) args.size else 0
-            val v: Array<LuaValue?>?
+            val isvarargs = ((method.modifiers and METHOD_MODIFIERS_VARARGS) != 0)
+            val a: Array<out Any?> = args ?: emptyArray<Any?>()
+            var n = a.size
+            val v: Array<LuaValue?>
             if (isvarargs) {
-                val o = args!![--n]
-                val m = Array.getLength(o)
-                v = arrayOfNulls<LuaValue>(n + m)
-                for (i in 0..<n) v[i] = CoerceJavaToLua.coerce(args[i])
-                for (i in 0..<m) v[i + n] = CoerceJavaToLua.coerce(Array.get(o, i))
+                val o = a[--n]
+                val m = java.lang.reflect.Array.getLength(o)
+                v = arrayOfNulls(n + m)
+                for (i in 0..<n) v[i] = CoerceJavaToLua.coerce(a[i])
+                for (i in 0..<m) v[i + n] = CoerceJavaToLua.coerce(java.lang.reflect.Array.get(o, i))
             } else {
-                v = arrayOfNulls<LuaValue>(n)
-                for (i in 0..<n) v[i] = CoerceJavaToLua.coerce(args!![i])
+                v = arrayOfNulls(n)
+                for (i in 0..<n) v[i] = CoerceJavaToLua.coerce(a[i])
             }
             val result = func.invoke(v)!!.arg1()
-            return CoerceLuaToJava.coerce(result, method.getReturnType())
+            return CoerceLuaToJava.coerce(result, method.returnType)
         }
     }
 

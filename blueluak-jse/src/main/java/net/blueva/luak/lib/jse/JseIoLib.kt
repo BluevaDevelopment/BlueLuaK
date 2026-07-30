@@ -85,20 +85,20 @@ class JseIoLib : IoLib() {
         } else {
             if (!readMode) f.setLength(0)
         }
-        return JseIoLib.FileImpl(f)
+        return FileImpl(f)
     }
 
     @Throws(IOException::class)
     override fun openProgram(prog: String?, mode: String?): File {
         val p = Runtime.getRuntime().exec(prog)
-        return if ("w" == mode) JseIoLib.FileImpl(p.getOutputStream()) else JseIoLib.FileImpl(p.getInputStream())
+        return if ("w" == mode) FileImpl(p.getOutputStream()) else FileImpl(p.getInputStream())
     }
 
     @Throws(IOException::class)
     override fun tmpFile(): File {
         val f = java.io.File.createTempFile(".luaj", "bin")
         f.deleteOnExit()
-        return JseIoLib.FileImpl(RandomAccessFile(f, "rw"))
+        return FileImpl(RandomAccessFile(f, "rw"))
     }
 
     private inner class FileImpl(
@@ -114,9 +114,9 @@ class JseIoLib : IoLib() {
             this.`is` = if (`is` != null) if (`is`.markSupported()) `is` else BufferedInputStream(`is`) else null
         }
 
-        private constructor(f: RandomAccessFile?) : this(f, null, null)
-        private constructor(i: InputStream?) : this(null, i, null)
-        private constructor(o: OutputStream?) : this(null, null, o)
+        constructor(f: RandomAccessFile?) : this(f, null, null)
+        constructor(i: InputStream?) : this(null, i, null)
+        constructor(o: OutputStream?) : this(null, null, o)
 
         override fun tojstring(): String {
             return "file (" + (if (this.closed) "closed" else this.hashCode().toString()) + ")"
@@ -140,9 +140,9 @@ class JseIoLib : IoLib() {
         }
 
         @Throws(IOException::class)
-        override fun write(s: LuaString) {
-            if (os != null) os.write(s.m_bytes, s.m_offset, s.m_length)
-            else if (file != null) file.write(s.m_bytes, s.m_offset, s.m_length)
+        override fun write(s: LuaString?) {
+            if (os != null) os.write(s!!.m_bytes, s.m_offset, s.m_length)
+            else if (file != null) file.write(s!!.m_bytes, s.m_offset, s.m_length)
             else notimplemented()
             if (nobuffer) flush()
         }
@@ -208,11 +208,11 @@ class JseIoLib : IoLib() {
 
         // return number of bytes read if positive, -1 if eof, throws IOException
         @Throws(IOException::class)
-        override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+        override fun read(bytes: ByteArray?, offset: Int, length: Int): Int {
             if (file != null) {
-                return file.read(bytes, offset, length)
+                return file.read(bytes!!, offset, length)
             } else if (`is` != null) {
-                return `is`.read(bytes, offset, length)
+                return `is`.read(bytes!!, offset, length)
             } else {
                 notimplemented()
             }
@@ -229,13 +229,13 @@ class JseIoLib : IoLib() {
             get() = if (file_type == FTYPE_STDERR) globals!!.STDERR else globals!!.STDOUT
 
         @Throws(IOException::class)
-        override fun write(string: LuaString) {
-            this.printStream.write(string.m_bytes, string.m_offset, string.m_length)
+        override fun write(string: LuaString?) {
+            this.printStream!!.write(string!!.m_bytes, string.m_offset, string.m_length)
         }
 
         @Throws(IOException::class)
         override fun flush() {
-            this.printStream.flush()
+            this.printStream!!.flush()
         }
 
         override fun isstdfile(): Boolean {
@@ -333,8 +333,8 @@ class JseIoLib : IoLib() {
         }
 
         @Throws(IOException::class)
-        override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
-            return globals!!.STDIN!!.read(bytes, offset, length)
+        override fun read(bytes: ByteArray?, offset: Int, length: Int): Int {
+            return globals!!.STDIN!!.read(bytes!!, offset, length)
         }
     }
 

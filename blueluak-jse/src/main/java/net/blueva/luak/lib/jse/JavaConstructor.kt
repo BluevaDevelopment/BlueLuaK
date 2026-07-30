@@ -42,14 +42,14 @@ import java.util.*
 internal class JavaConstructor private constructor(val constructor: Constructor<*>) : JavaMember(
     constructor.getParameterTypes(), constructor.getModifiers()
 ) {
-    override fun invoke(args: Varargs?): Varargs? {
+    override fun invoke(args: Varargs): Varargs {
         val a = convertArgs(args)
         try {
-            return CoerceJavaToLua.coerce(constructor.newInstance(*a))
+            return CoerceJavaToLua.coerce(constructor.newInstance(*a))!!
         } catch (e: InvocationTargetException) {
             throw LuaError(e.getTargetException())
         } catch (e: Exception) {
-            return error("coercion error " + e)
+            return error("coercion error " + e)!!
         }
     }
 
@@ -65,7 +65,7 @@ internal class JavaConstructor private constructor(val constructor: Constructor<
      * when key is "new" and there is more than one public constructor.
      */
     internal class Overload(val constructors: Array<JavaConstructor?>) : VarArgFunction() {
-        override fun invoke(args: Varargs): Varargs? {
+        override fun invoke(args: Varargs): Varargs {
             var best: JavaConstructor? = null
             var score = CoerceLuaToJava.SCORE_UNCOERCIBLE
             for (i in constructors.indices) {
@@ -78,7 +78,7 @@ internal class JavaConstructor private constructor(val constructor: Constructor<
             }
 
 
-            // any match? 
+            // any match?
             if (best == null) error("no coercible public method")
 
 
@@ -88,7 +88,7 @@ internal class JavaConstructor private constructor(val constructor: Constructor<
     }
 
     companion object {
-        val constructors: MutableMap<*, *> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
+        val constructors: MutableMap<Any?, Any?> = Collections.synchronizedMap<Any?, Any?>(HashMap<Any?, Any?>())
 
         fun forConstructor(c: Constructor<*>): JavaConstructor {
             var j = constructors.get(c) as JavaConstructor?
