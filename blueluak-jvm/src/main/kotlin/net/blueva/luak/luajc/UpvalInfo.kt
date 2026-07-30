@@ -161,8 +161,8 @@ class UpvalInfo {
             val n = prev.size
             while (i < n) {
                 val bp = prev[i]!!
-                v = pi.vars[slot]!![bp.pc1]!!
-                if (v.upvalue !== this) return true
+                v = pi.vars[slot]!![bp.pc1]
+                if (v != null && v.upvalue !== this) return true
                 i++
             }
         }

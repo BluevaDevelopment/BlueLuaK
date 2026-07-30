@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak.luajc
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.Globals
 import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaValue
@@ -76,7 +77,7 @@ class LuaJC protected constructor() : Globals.Loader {
         genmain: Boolean
     ): Hashtable<*, *> {
         val classname: String = toStandardJavaClassName(chunkname)
-        val p = globals.compilePrototype(script!!, classname)
+        val p = globals.compilePrototype(script!!.asLuaReader(), classname)
         return compileProtoAndSubProtos(p, classname, filename, genmain)
     }
 
