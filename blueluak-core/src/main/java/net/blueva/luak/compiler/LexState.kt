@@ -668,11 +668,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     /* dynamic structures used by the parser */
     internal class Dyndata {
-        var actvar: Array<Vardesc?>? /* list of active local variables */
+        var actvar: Array<Vardesc?>? = null /* list of active local variables */
         var n_actvar: Int = 0
-        var gt: Array<Labeldesc> /* list of pending gotos */
+        var gt: Array<Labeldesc?> = arrayOfNulls(0) /* list of pending gotos */
         var n_gt: Int = 0
-        var label: Array<Labeldesc>? /* list of active labels */
+        var label: Array<Labeldesc?> = arrayOfNulls(0) /* list of active labels */
         var n_label: Int = 0
     }
 
@@ -852,7 +852,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun closegoto(g: Int, label: Labeldesc) {
         val fs: FuncState = this.fs!!
         val gl = this.dyd.gt
-        val gt = gl[g]
+        val gt = gl[g]!!
         _assert(gt.name!!.eq_b(label.name))
         if (gt.nactvar < label.nactvar) {
             val vname: LuaString = fs.getlocvar((gt.nactvar).toInt()).varname!!
@@ -876,11 +876,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         var i: Int
         val bl: BlockCnt = fs!!.bl!!
         val dyd = this.dyd
-        val gt = dyd.gt[g]
+        val gt = dyd.gt[g]!!
         /* check labels in current block for a match */
         i = bl.firstlabel
         while (i < dyd.n_label) {
-            val lb = dyd.label!![i]
+            val lb = dyd.label[i]!!
             if (lb.name!!.eq_b(gt.name)) {  /* correct label? */
                 if (gt.nactvar > lb.nactvar &&
                     (bl.upval || dyd.n_label > bl.firstlabel)
@@ -907,7 +907,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val gl = dyd.gt
         var i: Int = fs!!.bl!!.firstgoto.toInt()
         while (i < dyd.n_gt) {
-            if (gl[i].name!!.eq_b(lb.name)) closegoto(i, lb)
+            if (gl[i]!!.name!!.eq_b(lb.name)) closegoto(i, lb)
             else i++
         }
     }
@@ -919,7 +919,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun breaklabel() {
         val n: LuaString? = LuaString.valueOf("break")
         val l = newlabelentry(grow(dyd.label, dyd.n_label + 1).also { dyd.label = it }, dyd.n_label++, n, 0, fs!!.pc)
-        findgotos(dyd.label!![l])
+        findgotos(dyd.label[l]!!)
     }
 
     /*
@@ -1579,9 +1579,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         skipnoopstat() /* skip other no-op statements */
         if (block_follow(false)) {  /* label is last no-op statement in the block? */
             /* assume that locals are already out of scope */
-            dyd.label!![l].nactvar = fs!!.bl!!.nactvar
+            dyd.label[l]!!.nactvar = fs!!.bl!!.nactvar
         }
-        findgotos(dyd.label!![l])
+        findgotos(dyd.label[l]!!)
     }
 
 

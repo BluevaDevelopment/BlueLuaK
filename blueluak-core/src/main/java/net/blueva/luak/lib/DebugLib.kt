@@ -614,7 +614,7 @@ class DebugLib : TwoArgFunction() {
         var pc: Int = 0
         var top: Int = 0
         var v: Varargs? = null
-        var stack: Array<LuaValue?>?
+        var stack: Array<LuaValue?>? = null
         var previous: CallFrame? = null
         fun set(function: LuaClosure?, varargs: Varargs?, stack: Array<LuaValue?>?) {
             this.f = function

@@ -462,7 +462,7 @@ class BaseLib : TwoArgFunction(), ResourceFinder {
 
     private class StringInputStream(func: LuaValue) : InputStream() {
         val func: LuaValue
-        var bytes: ByteArray
+        var bytes: ByteArray = ByteArray(0)
         var offset: Int = 0
         var remaining: Int = 0
 

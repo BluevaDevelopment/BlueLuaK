@@ -319,9 +319,7 @@ class PackageLib : TwoArgFunction() {
     companion object {
         /** The default value to use for package.path.  This can be set with the system property
          * `"luaj.package.path"`, and is `"?.lua"` by default.  */
-        val DEFAULT_LUA_PATH: String?
-
-        init {
+        val DEFAULT_LUA_PATH: String? = run {
             var path: String? = null
             try {
                 path = System.getProperty("luaj.package.path")
@@ -331,7 +329,7 @@ class PackageLib : TwoArgFunction() {
             if (path == null) {
                 path = "?.lua"
             }
-            net.blueva.luak.lib.PackageLib.Companion.DEFAULT_LUA_PATH = path
+            path
         }
 
         val _LOADED: LuaString? = valueOf("loaded")
