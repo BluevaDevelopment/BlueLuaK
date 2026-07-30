@@ -229,20 +229,20 @@ class OsLib
         var i = 0
         while (i < n) {
             when (fmt[i++].also { c = it }) {
-                '\n' -> result.append("\n")
-                '%' -> {
+                '\n'.code.toByte() -> result.append("\n")
+                '%'.code.toByte() -> {
                     if (i >= n) break
                     when (fmt[i++].also { c = it }) {
-                        '%' -> result.append('%'.code.toByte())
-                        'a' -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayNameAbbrev[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
-                        'A' -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayName[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
-                        'b' -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])!!)
-                        'B' -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])!!)
-                        'c' -> result.append(date("%a %b %d %H:%M:%S %Y", time))
-                        'd' -> result.append((100 + d.get(Calendar.DAY_OF_MONTH)).toString().substring(1))
-                        'H' -> result.append((100 + d.get(Calendar.HOUR_OF_DAY)).toString().substring(1))
-                        'I' -> result.append((100 + (d.get(Calendar.HOUR_OF_DAY) % 12)).toString().substring(1))
-                        'j' -> {
+                        '%'.code.toByte() -> result.append('%'.code.toByte())
+                        'a'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayNameAbbrev[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
+                        'A'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.WeekdayName[d.get(Calendar.DAY_OF_WEEK) - 1])!!)
+                        'b'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthNameAbbrev[d.get(Calendar.MONTH)])!!)
+                        'B'.code.toByte() -> result.append((net.blueva.luak.lib.OsLib.Companion.MonthName[d.get(Calendar.MONTH)])!!)
+                        'c'.code.toByte() -> result.append(date("%a %b %d %H:%M:%S %Y", time))
+                        'd'.code.toByte() -> result.append((100 + d.get(Calendar.DAY_OF_MONTH)).toString().substring(1))
+                        'H'.code.toByte() -> result.append((100 + d.get(Calendar.HOUR_OF_DAY)).toString().substring(1))
+                        'I'.code.toByte() -> result.append((100 + (d.get(Calendar.HOUR_OF_DAY) % 12)).toString().substring(1))
+                        'j'.code.toByte() -> {
                             // day of year.
                             val y0: Calendar = beginningOfYear(d)
                             val dayOfYear =
@@ -250,18 +250,18 @@ class OsLib
                             result.append((1001 + dayOfYear).toString().substring(1))
                         }
 
-                        'm' -> result.append((101 + d.get(Calendar.MONTH)).toString().substring(1))
-                        'M' -> result.append((100 + d.get(Calendar.MINUTE)).toString().substring(1))
-                        'p' -> result.append(if (d.get(Calendar.HOUR_OF_DAY) < 12) "AM" else "PM")
-                        'S' -> result.append((100 + d.get(Calendar.SECOND)).toString().substring(1))
-                        'U' -> result.append((weekNumber(d, 0)).toString())
-                        'w' -> result.append(((d.get(Calendar.DAY_OF_WEEK) + 6) % 7).toString())
-                        'W' -> result.append((weekNumber(d, 1)).toString())
-                        'x' -> result.append(date("%m/%d/%y", time))
-                        'X' -> result.append(date("%H:%M:%S", time))
-                        'y' -> result.append((d.get(Calendar.YEAR)).toString().substring(2))
-                        'Y' -> result.append((d.get(Calendar.YEAR)).toString())
-                        'z' -> {
+                        'm'.code.toByte() -> result.append((101 + d.get(Calendar.MONTH)).toString().substring(1))
+                        'M'.code.toByte() -> result.append((100 + d.get(Calendar.MINUTE)).toString().substring(1))
+                        'p'.code.toByte() -> result.append(if (d.get(Calendar.HOUR_OF_DAY) < 12) "AM" else "PM")
+                        'S'.code.toByte() -> result.append((100 + d.get(Calendar.SECOND)).toString().substring(1))
+                        'U'.code.toByte() -> result.append((weekNumber(d, 0)).toString())
+                        'w'.code.toByte() -> result.append(((d.get(Calendar.DAY_OF_WEEK) + 6) % 7).toString())
+                        'W'.code.toByte() -> result.append((weekNumber(d, 1)).toString())
+                        'x'.code.toByte() -> result.append(date("%m/%d/%y", time))
+                        'X'.code.toByte() -> result.append(date("%H:%M:%S", time))
+                        'y'.code.toByte() -> result.append((d.get(Calendar.YEAR)).toString().substring(2))
+                        'Y'.code.toByte() -> result.append((d.get(Calendar.YEAR)).toString())
+                        'z'.code.toByte() -> {
                             val tzo = timeZoneOffset(d) / 60
                             val a: Int = Math.abs(tzo)
                             val h: String? = (100 + a / 60).toString().substring(1)

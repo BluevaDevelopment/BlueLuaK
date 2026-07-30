@@ -580,22 +580,22 @@ class IoLib : TwoArgFunction() {
                     fmt = ai!!.checkstring()
                     if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*') {
                         when (fmt.m_bytes[fmt.m_offset + 1]) {
-                            'n' -> {
+                            'n'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadnumber(f)
                                 break@item
                             }
 
-                            'l' -> {
+                            'l'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadline(f, false)
                                 break@item
                             }
 
-                            'L' -> {
+                            'L'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadline(f, true)
                                 break@item
                             }
 
-                            'a' -> {
+                            'a'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadall(f)
                                 break@item
                             }
@@ -782,8 +782,8 @@ class IoLib : TwoArgFunction() {
                 if (lineonly) {
                     loop@ while ((f.read().also { c = it }) >= 0) {
                         when (c) {
-                            '\r' -> if (withend) baos.write(c)
-                            '\n' -> {
+                            '\r'.code -> if (withend) baos.write(c)
+                            '\n'.code -> {
                                 if (withend) baos.write(c)
                                 break@loop
                             }

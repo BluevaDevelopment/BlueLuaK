@@ -237,7 +237,7 @@ class StringLib
             var i = 0
             while (i < n) {
                 when (fmt.luaByte(i++).also { c = it }) {
-                    '\n' -> result.append("\n")
+                    '\n'.code -> result.append("\n")
                     net.blueva.luak.lib.StringLib.Companion.L_ESC -> if (i < n) {
                         if ((fmt.luaByte(i).also { c = it }) == net.blueva.luak.lib.StringLib.Companion.L_ESC) {
                             ++i
@@ -247,12 +247,12 @@ class StringLib
                             val fdsc: FormatDesc = net.blueva.luak.lib.StringLib.FormatDesc(args, fmt, i)
                             i += fdsc.length
                             when (fdsc.conversion) {
-                                'c' -> fdsc.format(result, args.checkint(arg) as Byte)
-                                'i', 'd' -> fdsc.format(result, args.checklong(arg))
-                                'o', 'u', 'x', 'X' -> fdsc.format(result, args.checklong(arg))
-                                'e', 'E', 'f', 'g', 'G' -> fdsc.format(result, args.checkdouble(arg))
-                                'q' -> net.blueva.luak.lib.StringLib.Companion.addquoted(result, args.checkstring(arg))
-                                's' -> {
+                                'c'.code -> fdsc.format(result, args.checkint(arg) as Byte)
+                                'i'.code, 'd'.code -> fdsc.format(result, args.checklong(arg))
+                                'o'.code, 'u'.code, 'x'.code, 'X'.code -> fdsc.format(result, args.checklong(arg))
+                                'e'.code, 'E'.code, 'f'.code, 'g'.code, 'G'.code -> fdsc.format(result, args.checkdouble(arg))
+                                'q'.code -> net.blueva.luak.lib.StringLib.Companion.addquoted(result, args.checkstring(arg))
+                                's'.code -> {
                                     val s: LuaString = args.checkstring(arg)
                                     if (fdsc.precision == -1 && s.length() >= 100) {
                                         result.append(s)
@@ -296,11 +296,11 @@ class StringLib
             var moreFlags = true
             while (moreFlags) {
                 when ((if (p < n) strfrmt.luaByte(p++) else 0).also { c = it }) {
-                    '-' -> leftAdjust = true
-                    '+' -> explicitPlus = true
-                    ' ' -> space = true
-                    '#' -> alternateForm = true
-                    '0' -> zeroPad = true
+                    '-'.code -> leftAdjust = true
+                    '+'.code -> explicitPlus = true
+                    ' '.code -> space = true
+                    '#'.code -> alternateForm = true
+                    '0'.code -> zeroPad = true
                     else -> moreFlags = false
                 }
             }
@@ -350,8 +350,8 @@ class StringLib
             } else {
                 val radix: Int
                 when (conversion) {
-                    'x', 'X' -> radix = 16
-                    'o' -> radix = 8
+                    'x'.code, 'X'.code -> radix = 16
+                    'o'.code -> radix = 8
                     else -> radix = 10
                 }
                 digits = Long.toString(number, radix)
@@ -825,7 +825,7 @@ class StringLib
                     return poffset + 1
                 }
 
-                '[' -> {
+                '['.code -> {
                     if (poffset != p.length() && p.luaByte(poffset) == '^') poffset++
                     do {
                         if (poffset == p.length()) {
@@ -861,13 +861,13 @@ class StringLib
 
         fun singlematch(c: Int, poff: Int, ep: Int): Boolean {
             when (p.luaByte(poff)) {
-                '.' -> return true
+                '.'.code -> return true
                 net.blueva.luak.lib.StringLib.Companion.L_ESC -> return net.blueva.luak.lib.StringLib.MatchState.Companion.match_class(
                     c,
                     p.luaByte(poff + 1)
                 )
 
-                '[' -> return matchbracketclass(c, poff, ep - 1)
+                '['.code -> return matchbracketclass(c, poff, ep - 1)
                 else -> return p.luaByte(poff) === c
             }
         }
@@ -887,7 +887,7 @@ class StringLib
                     // string is not NUL-terminated.
                     if (poffset == p.length()) return soffset
                     when (p.luaByte(poffset)) {
-                        '(' -> if (++poffset < p.length() && p.luaByte(poffset) == ')') return start_capture(
+                        '('.code -> if (++poffset < p.length() && p.luaByte(poffset) == ')') return start_capture(
                             soffset,
                             poffset + 1,
                             net.blueva.luak.lib.StringLib.Companion.CAP_POSITION
@@ -898,18 +898,18 @@ class StringLib
                             net.blueva.luak.lib.StringLib.Companion.CAP_UNFINISHED
                         )
 
-                        ')' -> return end_capture(soffset, poffset + 1)
+                        ')'.code -> return end_capture(soffset, poffset + 1)
                         net.blueva.luak.lib.StringLib.Companion.L_ESC -> {
                             if (poffset + 1 == p.length()) error("malformed pattern (ends with '%')")
                             when (p.luaByte(poffset + 1)) {
-                                'b' -> {
+                                'b'.code -> {
                                     soffset = matchbalance(soffset, poffset + 2)
                                     if (soffset == -1) return -1
                                     poffset += 4
                                     continue
                                 }
 
-                                'f' -> {
+                                'f'.code -> {
                                     poffset += 2
                                     if (poffset == p.length() || p.luaByte(poffset) != '[') {
                                         error("missing '[' after '%f' in pattern")
@@ -936,23 +936,23 @@ class StringLib
                             if (poffset + 1 == p.length()) return if (soffset == s.length()) soffset else -1
                         }
 
-                        '$' -> if (poffset + 1 == p.length()) return if (soffset == s.length()) soffset else -1
+                        '$'.code -> if (poffset + 1 == p.length()) return if (soffset == s.length()) soffset else -1
                     }
                     val ep = classend(poffset)
                     val m = soffset < s.length() && singlematch(s.luaByte(soffset), poffset, ep)
                     val pc: Int = if (ep < p.length()) p.luaByte(ep) else '\u0000'
 
                     when (pc) {
-                        '?' -> {
+                        '?'.code -> {
                             val res: Int
                             if (m && ((match(soffset + 1, ep + 1).also { res = it }) != -1)) return res
                             poffset = ep + 1
                             continue
                         }
 
-                        '*' -> return max_expand(soffset, poffset, ep)
-                        '+' -> return (if (m) max_expand(soffset + 1, poffset, ep) else -1)
-                        '-' -> return min_expand(soffset, poffset, ep)
+                        '*'.code -> return max_expand(soffset, poffset, ep)
+                        '+'.code -> return (if (m) max_expand(soffset + 1, poffset, ep) else -1)
+                        '-'.code -> return min_expand(soffset, poffset, ep)
                         else -> {
                             if (!m) return -1
                             soffset++
@@ -1078,7 +1078,7 @@ class StringLib
             val n: Int = s.length()
             while (i < n) {
                 when (s.luaByte(i).also { c = it }) {
-                    '"', '\\', '\n' -> {
+                    '"'.code, '\\'.code, '\n'.code -> {
                         buf.append('\\'.code.toByte())
                         buf.append(c.toByte())
                     }
