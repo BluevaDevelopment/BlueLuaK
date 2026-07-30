@@ -96,9 +96,9 @@ class Bit32Lib : TwoArgFunction() {
         override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
             when (opcode) {
                 0 -> return net.blueva.luak.lib.Bit32Lib.Companion.arshift(arg1!!.checkint(), arg2!!.checkint())
-                1 -> return net.blueva.luak.lib.Bit32Lib.Companion.lrotate(arg1!!.checkint(), arg2!!.checkint())
+                1 -> return (net.blueva.luak.lib.Bit32Lib.Companion.lrotate(arg1!!.checkint(), arg2!!.checkint()))!!
                 2 -> return net.blueva.luak.lib.Bit32Lib.Companion.lshift(arg1!!.checkint(), arg2!!.checkint())
-                3 -> return net.blueva.luak.lib.Bit32Lib.Companion.rrotate(arg1!!.checkint(), arg2!!.checkint())
+                3 -> return (net.blueva.luak.lib.Bit32Lib.Companion.rrotate(arg1!!.checkint(), arg2!!.checkint()))!!
                 4 -> return net.blueva.luak.lib.Bit32Lib.Companion.rshift(arg1!!.checkint(), arg2!!.checkint())
             }
             return NIL

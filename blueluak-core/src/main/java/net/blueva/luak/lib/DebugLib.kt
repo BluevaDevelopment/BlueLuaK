@@ -106,7 +106,7 @@ class DebugLib : TwoArgFunction() {
     // debug.debug()
     internal class debug : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -136,12 +136,12 @@ class DebugLib : TwoArgFunction() {
             val frame: CallFrame?
             if (func!!.isnumber()) {
                 frame = callstack.getCallFrame(func!!.toint())
-                if (frame == null) return NONE
+                if (frame == null) return (NONE)!!
                 func = frame.f
             } else if (func!!.isfunction()) {
                 frame = callstack.findCallFrame(func)
             } else {
-                return argerror(a - 2, "function or level")
+                return (argerror(a - 2, "function or level"))!!
             }
 
             // start a table
@@ -197,7 +197,7 @@ class DebugLib : TwoArgFunction() {
             val level: Int = args.checkint(a++)
             val local: Int = args.checkint(a++)
             val f = callstack(thread).getCallFrame(level)
-            return if (f != null) f.getLocal(local) else NONE
+            return (if (f != null) f.getLocal(local) else NONE)!!
         }
     }
 
@@ -212,7 +212,7 @@ class DebugLib : TwoArgFunction() {
     //	debug.getregistry ()
     internal inner class getregistry : ZeroArgFunction() {
         override fun call(): LuaValue {
-            return globals
+            return (globals)!!
         }
     }
 
@@ -225,7 +225,7 @@ class DebugLib : TwoArgFunction() {
                 val c: LuaClosure = func as LuaClosure
                 val name: LuaString? = net.blueva.luak.lib.DebugLib.Companion.findupvalue(c, up)
                 if (name != null) {
-                    return varargsOf(name, (c.upValues[up - 1]!!.getValue())!!)
+                    return (varargsOf(name, (c.upValues[up - 1]!!.getValue())!!))!!
                 }
             }
             return NIL
@@ -262,7 +262,7 @@ class DebugLib : TwoArgFunction() {
             s.hookline = line
             s.hookcount = count
             s.hookrtrn = rtrn
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -275,7 +275,7 @@ class DebugLib : TwoArgFunction() {
             val local: Int = args.checkint(a++)
             val value: LuaValue? = args.arg(a++)
             val f = callstack(thread).getCallFrame(level)
-            return if (f != null) f.setLocal(local, value) else NONE
+            return (if (f != null) f.setLocal(local, value) else NONE)!!
         }
     }
 
@@ -322,7 +322,7 @@ class DebugLib : TwoArgFunction() {
             val u: LuaUserdata = args.arg1() as LuaUserdata
             u.m_instance = v.checkuserdata()
             u.m_metatable = v.getmetatable()
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -363,7 +363,7 @@ class DebugLib : TwoArgFunction() {
             if (n1 < 1 || n1 > f1.upValues.size) argerror("index out of range")
             if (n2 < 1 || n2 > f2.upValues.size) argerror("index out of range")
             f1.upValues[n1 - 1] = f2.upValues[n2 - 1]
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -648,7 +648,7 @@ class DebugLib : TwoArgFunction() {
             if (i >= 1 && i <= stack!!.size && stack!![i - 1] != null) return varargsOf(
                 if (name == null) NIL else name,
                 stack!![i - 1]
-            )
+            )!!
             else return NIL
         }
 

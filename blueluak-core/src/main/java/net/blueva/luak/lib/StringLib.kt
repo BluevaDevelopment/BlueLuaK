@@ -115,7 +115,7 @@ class StringLib
             var i: Int
             if (posi <= 0) posi = 1
             if (pose > l) pose = l
-            if (posi > pose) return NONE /* empty interval; return no values */
+            if (posi > pose) return (NONE)!! /* empty interval; return no values */
             n = (pose - posi + 1)
             if (posi + n <= pose)  /* overflow? */
                 error("string slice too long")
@@ -125,7 +125,7 @@ class StringLib
                 v[i] = valueOf(s.luaByte(posi + i - 1))
                 i++
             }
-            return varargsOf(v)
+            return (varargsOf(v))!!
         }
     }
 
@@ -176,7 +176,7 @@ class StringLib
                 DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, true))
                 return LuaString.valueUsing(baos.toByteArray())
             } catch (e: IOException) {
-                return error(e.message)
+                return (error(e.message))!!
             }
         }
     }
@@ -556,7 +556,7 @@ class StringLib
                 if (anchor) break
             }
             lbuf.append(src.substring(soffset, srclen))
-            return varargsOf(lbuf.tostring(), valueOf(n))
+            return (varargsOf(lbuf.tostring(), valueOf(n)))!!
         }
     }
 
@@ -766,12 +766,12 @@ class StringLib
         fun push_captures(wholeMatch: Boolean, soff: Int, end: Int): Varargs {
             val nlevels = if (this.level == 0 && wholeMatch) 1 else this.level
             when (nlevels) {
-                0 -> return NONE
+                0 -> return (NONE)!!
                 1 -> return push_onecapture(0, soff, end)
             }
             val v: Array<LuaValue?> = arrayOfNulls<LuaValue>(nlevels)
             for (i in 0..<nlevels) v[i] = push_onecapture(i, soff, end)
-            return varargsOf(v)
+            return (varargsOf(v))!!
         }
 
         private fun push_onecapture(i: Int, soff: Int, end: Int): LuaValue {
@@ -779,12 +779,12 @@ class StringLib
                 if (i == 0) {
                     return s.substring(soff, end)
                 } else {
-                    return error("invalid capture index %" + (i + 1))
+                    return (error("invalid capture index %" + (i + 1)))!!
                 }
             } else {
                 val l = clen!![i]
                 if (l == net.blueva.luak.lib.StringLib.Companion.CAP_UNFINISHED) {
-                    return error("unfinished capture")
+                    return (error("unfinished capture"))!!
                 }
                 if (l == net.blueva.luak.lib.StringLib.Companion.CAP_POSITION) {
                     return valueOf(cinit!![i] + 1)
@@ -1123,7 +1123,7 @@ class StringLib
             if (fastMatch) {
                 val result: Int = s.indexOf(pat, init)
                 if (result != -1) {
-                    return varargsOf(valueOf(result + 1), valueOf(result + pat.length()))
+                    return (varargsOf(valueOf(result + 1), valueOf(result + pat.length())))!!
                 }
             } else {
                 val ms: MatchState = net.blueva.luak.lib.StringLib.MatchState(args, s, pat)

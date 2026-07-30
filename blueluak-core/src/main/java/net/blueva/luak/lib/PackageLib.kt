@@ -240,11 +240,11 @@ class PackageLib : TwoArgFunction() {
 
             // Try to load the file.
             v = globals!!.loadfile(filename.tojstring())
-            if (v.arg1().isfunction()) return LuaValue.varargsOf(v.arg1(), filename)
+            if (v.arg1().isfunction()) return (LuaValue.varargsOf(v.arg1(), filename))!!
 
 
             // report error
-            return varargsOf(NIL, valueOf("'" + filename + "': " + v.arg(2)!!.tojstring()))
+            return (varargsOf(NIL, valueOf("'" + filename + "': " + v.arg(2)!!.tojstring())))!!
         }
     }
 
@@ -293,7 +293,7 @@ class PackageLib : TwoArgFunction() {
                 if (sb == null) sb = StringBuffer()
                 sb.append("\n\t" + filename)
             }
-            return varargsOf(NIL, valueOf(sb.toString()))
+            return (varargsOf(NIL, valueOf(sb.toString())))!!
         }
     }
 
@@ -307,7 +307,7 @@ class PackageLib : TwoArgFunction() {
                 c = Class.forName(classname)
                 v = c.newInstance() as LuaValue?
                 if (v!!.isfunction()) (v as LuaFunction).initupvalue1(globals)
-                return varargsOf(v, (globals)!!)
+                return (varargsOf(v, (globals)!!))!!
             } catch (cnfe: ClassNotFoundException) {
                 return valueOf("\n\tno class '" + classname + "'")
             } catch (e: Exception) {

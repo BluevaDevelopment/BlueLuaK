@@ -91,7 +91,7 @@ class TableLib : TwoArgFunction() {
                 2 -> {
                     val table: LuaTable = args.checktable(1)
                     table.insert(table.length() + 1, (args.arg(2))!!)
-                    return NONE
+                    return (NONE)!!
                 }
 
                 3 -> {
@@ -103,11 +103,11 @@ class TableLib : TwoArgFunction() {
                         "position out of bounds: " + pos + " not between 1 and " + max
                     )
                     table.insert(pos, (args.arg(3))!!)
-                    return NONE
+                    return (NONE)!!
                 }
 
                 else -> {
-                    return error("wrong number of arguments to 'table.insert': " + args.narg() + " (must be 2 or 3)")
+                    return (error("wrong number of arguments to 'table.insert': " + args.narg() + " (must be 2 or 3)"))!!
                 }
             }
         }
@@ -131,7 +131,7 @@ class TableLib : TwoArgFunction() {
             if (pos != size && (pos < 1 || pos > size + 1)) {
                 argerror(2, "position out of bounds: " + pos + " not between 1 and " + (size + 1))
             }
-            return table.remove(pos)
+            return (table.remove(pos))!!
         }
     }
 
@@ -141,7 +141,7 @@ class TableLib : TwoArgFunction() {
             args.checktable(1).sort(
                 if (args.isnil(2)) NIL else args.checkfunction(2)
             )
-            return NONE
+            return (NONE)!!
         }
     }
 

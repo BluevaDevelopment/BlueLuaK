@@ -141,7 +141,7 @@ class OsLib
                     net.blueva.luak.lib.OsLib.Companion.EXECUTE -> return execute(args.optjstring(1, null))
                     net.blueva.luak.lib.OsLib.Companion.EXIT -> {
                         exit(args.optint(1, 0))
-                        return NONE
+                        return (NONE)!!
                     }
 
                     net.blueva.luak.lib.OsLib.Companion.GETENV -> {
@@ -151,12 +151,12 @@ class OsLib
 
                     net.blueva.luak.lib.OsLib.Companion.REMOVE -> {
                         remove(args.checkjstring(1))
-                        return LuaValue.TRUE
+                        return (LuaValue.TRUE)!!
                     }
 
                     net.blueva.luak.lib.OsLib.Companion.RENAME -> {
                         rename(args.checkjstring(1), args.checkjstring(2))
-                        return LuaValue.TRUE
+                        return (LuaValue.TRUE)!!
                     }
 
                     net.blueva.luak.lib.OsLib.Companion.SETLOCALE -> {
@@ -167,9 +167,9 @@ class OsLib
                     net.blueva.luak.lib.OsLib.Companion.TIME -> return valueOf(time(args.opttable(1, null)))
                     net.blueva.luak.lib.OsLib.Companion.TMPNAME -> return valueOf(tmpname())
                 }
-                return NONE
+                return (NONE)!!
             } catch (e: IOException) {
-                return varargsOf(NIL, valueOf(e.message))
+                return (varargsOf(NIL, valueOf(e.message)))!!
             }
         }
     }

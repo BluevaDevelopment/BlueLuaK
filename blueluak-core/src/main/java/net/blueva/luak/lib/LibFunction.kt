@@ -144,7 +144,7 @@ protected constructor() : LuaFunction() {
     }
 
     open override fun call(): LuaValue {
-        return argerror(1, "value expected")
+        return (argerror(1, "value expected"))!!
     }
 
     open override fun call(a: LuaValue?): LuaValue {

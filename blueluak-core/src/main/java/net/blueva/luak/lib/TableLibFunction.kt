@@ -20,6 +20,6 @@ import net.blueva.luak.LuaValue
 
 open internal class TableLibFunction : LibFunction() {
     open override fun call(): LuaValue {
-        return argerror(1, "table expected, got no value")
+        return (argerror(1, "table expected, got no value"))!!
     }
 }

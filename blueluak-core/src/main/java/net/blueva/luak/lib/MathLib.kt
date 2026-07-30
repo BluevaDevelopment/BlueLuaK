@@ -218,12 +218,12 @@ open class MathLib : TwoArgFunction() {
     internal class frexp : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Double = args.checkdouble(1)
-            if (x == 0.0) return varargsOf(ZERO, (ZERO)!!)
+            if (x == 0.0) return (varargsOf(ZERO, (ZERO)!!))!!
             val bits: Long = (x).toBits()
             val m =
                 ((bits and ((-1L shl 52).inv()).toLong()) + (1L shl 52)) * (if (bits >= 0) (.5 / (1L shl 52)) else (-.5 / (1L shl 52)))
             val e = ((((bits shr 52).toInt()) and 0x7ff) - 1022).toDouble()
-            return varargsOf(valueOf(m), valueOf(e))
+            return (varargsOf(valueOf(m), valueOf(e)))!!
         }
     }
 
@@ -251,7 +251,7 @@ open class MathLib : TwoArgFunction() {
                 if (v.lt_b((m)!!)) m = v
                 ++i
             }
-            return m
+            return (m)!!
         }
     }
 
@@ -259,13 +259,13 @@ open class MathLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val n: LuaValue = args.arg1()
             /* number is its own integer part, no fractional part */
-            if (n.islong()) return varargsOf(n, valueOf(0.0))
+            if (n.islong()) return (varargsOf(n, valueOf(0.0)))!!
             val x: Double = n.checkdouble()
             /* integer part (rounds toward zero) */
             val intPart: Double = if (x > 0) Math.floor(x) else Math.ceil(x)
             /* fractional part (test needed for inf/-inf) */
             val fracPart = if (x == intPart) 0.0 else x - intPart
-            return varargsOf(valueOf(intPart), valueOf(fracPart))
+            return (varargsOf(valueOf(intPart), valueOf(fracPart)))!!
         }
     }
 
@@ -293,7 +293,7 @@ open class MathLib : TwoArgFunction() {
         fun call(arg: LuaValue): LuaValue {
             val seed: Long = arg.checklong()
             random.random = Random(seed)
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -317,7 +317,7 @@ open class MathLib : TwoArgFunction() {
                     a,
                     b
                 ) else net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
-            )
+            )!!
         }
 
         fun dpow_d(a: Double, b: Double): Double {

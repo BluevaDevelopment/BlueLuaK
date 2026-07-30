@@ -290,11 +290,11 @@ class IoLib : TwoArgFunction() {
             try {
                 when (opcode) {
                     net.blueva.luak.lib.IoLib.Companion.IO_FLUSH -> return iolib!!._io_flush()
-                    net.blueva.luak.lib.IoLib.Companion.IO_TMPFILE -> return iolib!!._io_tmpfile()
+                    net.blueva.luak.lib.IoLib.Companion.IO_TMPFILE -> return (iolib!!._io_tmpfile())!!
                     net.blueva.luak.lib.IoLib.Companion.IO_CLOSE -> return iolib!!._io_close((args.arg1())!!)
-                    net.blueva.luak.lib.IoLib.Companion.IO_INPUT -> return iolib!!._io_input((args.arg1())!!)
-                    net.blueva.luak.lib.IoLib.Companion.IO_OUTPUT -> return iolib!!._io_output((args.arg1())!!)
-                    net.blueva.luak.lib.IoLib.Companion.IO_TYPE -> return iolib!!._io_type(args.arg1())
+                    net.blueva.luak.lib.IoLib.Companion.IO_INPUT -> return (iolib!!._io_input((args.arg1())!!))!!
+                    net.blueva.luak.lib.IoLib.Companion.IO_OUTPUT -> return (iolib!!._io_output((args.arg1())!!))!!
+                    net.blueva.luak.lib.IoLib.Companion.IO_TYPE -> return (iolib!!._io_type(args.arg1()))!!
                     net.blueva.luak.lib.IoLib.Companion.IO_POPEN -> return iolib!!._io_popen(
                         args.checkjstring(1),
                         args.optjstring(2, "r")
@@ -305,7 +305,7 @@ class IoLib : TwoArgFunction() {
                         args.optjstring(2, "r")
                     )
 
-                    net.blueva.luak.lib.IoLib.Companion.IO_LINES -> return iolib!!._io_lines(args)
+                    net.blueva.luak.lib.IoLib.Companion.IO_LINES -> return (iolib!!._io_lines(args))!!
                     net.blueva.luak.lib.IoLib.Companion.IO_READ -> return iolib!!._io_read(args)
                     net.blueva.luak.lib.IoLib.Companion.IO_WRITE -> return iolib!!._io_write(args)
 
@@ -317,7 +317,7 @@ class IoLib : TwoArgFunction() {
                         args.optint(3, 8192)
                     )
 
-                    net.blueva.luak.lib.IoLib.Companion.FILE_LINES -> return iolib!!._file_lines(args)
+                    net.blueva.luak.lib.IoLib.Companion.FILE_LINES -> return (iolib!!._file_lines(args))!!
                     net.blueva.luak.lib.IoLib.Companion.FILE_READ -> return iolib!!._file_read(
                         args.arg1(),
                         args.subargs(2)
@@ -334,7 +334,7 @@ class IoLib : TwoArgFunction() {
                         args.subargs(2)
                     )
 
-                    net.blueva.luak.lib.IoLib.Companion.IO_INDEX -> return iolib!!._io_index((args.arg(2))!!)
+                    net.blueva.luak.lib.IoLib.Companion.IO_INDEX -> return (iolib!!._io_index((args.arg(2))!!))!!
                     net.blueva.luak.lib.IoLib.Companion.LINES_ITER -> return iolib!!._lines_iter(f, toclose, (this.args)!!)
                 }
             } catch (ioe: IOException) {
@@ -344,7 +344,7 @@ class IoLib : TwoArgFunction() {
                 }
                 return errorresult(ioe)
             }
-            return NONE
+            return (NONE)!!
         }
     }
 
@@ -361,7 +361,7 @@ class IoLib : TwoArgFunction() {
     fun _io_flush(): Varargs {
         net.blueva.luak.lib.IoLib.Companion.checkopen(output())
         outfile!!.flush()
-        return LuaValue.TRUE
+        return (LuaValue.TRUE)!!
     }
 
     //	io.tmpfile() -> file
@@ -456,7 +456,7 @@ class IoLib : TwoArgFunction() {
     @kotlin.Throws(IOException::class)
     fun _file_flush(file: LuaValue?): Varargs {
         net.blueva.luak.lib.IoLib.Companion.checkfile(file).flush()
-        return LuaValue.TRUE
+        return (LuaValue.TRUE)!!
     }
 
     // file:setvbuf(mode,[size]) -> void
@@ -468,7 +468,7 @@ class IoLib : TwoArgFunction() {
             argerror(1, "invalid value: '" + mode + "'; must be one of 'no', 'full' or 'line'")
         }
         net.blueva.luak.lib.IoLib.Companion.checkfile(file).setvbuf(mode, size)
-        return LuaValue.TRUE
+        return (LuaValue.TRUE)!!
     }
 
     // file:lines(...) -> iterator
@@ -601,14 +601,14 @@ class IoLib : TwoArgFunction() {
                             }
                         }
                     }
-                    return argerror(i + 1, "(invalid format)")
+                    return (argerror(i + 1, "(invalid format)"))!!
                 }
 
-                else -> return argerror(i + 1, "(invalid format)")
+                else -> return (argerror(i + 1, "(invalid format)"))!!
             }
             if ((vi.also { v[i++] = it })!!.isnil()) break
         }
-        return if (i == 0) NIL else varargsOf(v, 0, i)
+        return (if (i == 0) NIL else varargsOf(v, 0, i))!!
     }
 
     @kotlin.Throws(IOException::class)
@@ -725,7 +725,7 @@ class IoLib : TwoArgFunction() {
         }
 
         private fun successresult(): Varargs {
-            return LuaValue.TRUE
+            return (LuaValue.TRUE)!!
         }
 
         fun errorresult(ioe: Exception): Varargs {
@@ -734,7 +734,7 @@ class IoLib : TwoArgFunction() {
         }
 
         private fun errorresult(errortext: String?): Varargs {
-            return varargsOf(NIL, valueOf(errortext))
+            return (varargsOf(NIL, valueOf(errortext)))!!
         }
 
         @kotlin.Throws(IOException::class)
@@ -797,7 +797,7 @@ class IoLib : TwoArgFunction() {
             } catch (e: EOFException) {
                 c = -1
             }
-            return if (c < 0 && baos.size() === 0) NIL as LuaValue else LuaString.valueUsing(baos.toByteArray()) as LuaValue?
+            return (if (c < 0 && baos.size() === 0) NIL as LuaValue else LuaString.valueUsing(baos.toByteArray()) as LuaValue?)!!
         }
 
         @kotlin.Throws(IOException::class)
