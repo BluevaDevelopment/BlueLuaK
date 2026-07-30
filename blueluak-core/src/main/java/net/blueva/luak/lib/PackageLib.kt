@@ -78,13 +78,13 @@ class PackageLib : TwoArgFunction() {
     var package_: LuaTable? = null
 
     /** Loader that loads from `preload` table if found there  */
-    var preload_searcher: preload_searcher? = null
+    var preloadSearcher: preload_searcher? = null
 
     /** Loader that loads as a lua script using the lua path currently in [path]  */
-    var lua_searcher: lua_searcher? = null
+    var luaSearcher: lua_searcher? = null
 
     /** Loader that loads as a Java class.  Class must have public constructor and be a LuaValue.  */
-    var java_searcher: java_searcher? = null
+    var javaSearcher: java_searcher? = null
 
     /** Perform one-time initialization on the library by adding package functions
      * to the supplied environment, and returning it as the return value.
@@ -106,9 +106,9 @@ class PackageLib : TwoArgFunction() {
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._LOADLIB, net.blueva.luak.lib.PackageLib.loadlib())
         package_!!.set(Companion._SEARCHPATH, searchpath())
         val searchers: LuaTable = LuaTable()
-        searchers.set(1, preload_searcher().also { preload_searcher = it })
-        searchers.set(2, lua_searcher().also { lua_searcher = it })
-        searchers.set(3, java_searcher().also { java_searcher = it })
+        searchers.set(1, preload_searcher().also { preloadSearcher = it })
+        searchers.set(2, lua_searcher().also { luaSearcher = it })
+        searchers.set(3, java_searcher().also { javaSearcher = it })
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._SEARCHERS, searchers)
         package_!!.set("config", net.blueva.luak.lib.PackageLib.Companion.FILE_SEP.toString() + "\n;\n?\n!\n-\n")
         package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set("package", package_)
@@ -198,7 +198,7 @@ class PackageLib : TwoArgFunction() {
             if (!result.isnil()) loaded.set(name, result)
             else if ((loaded.get((name)!!)
                     .also { result = it }) === net.blueva.luak.lib.PackageLib.Companion._SENTINEL
-            ) loaded.set(name, LuaValue.TRUE.also { result = it })
+            ) loaded.set(name, LuaValue.TRUE!!.also { result = it })
             return result
         }
     }
@@ -239,7 +239,7 @@ class PackageLib : TwoArgFunction() {
 
 
             // Try to load the file.
-            v = globals!!.loadfile(filename.tojstring())
+            v = globals!!.loadfile(filename.tojstring())!!
             if (v.arg1().isfunction()) return (LuaValue.varargsOf(v.arg1(), filename))!!
 
 
