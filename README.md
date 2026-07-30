@@ -8,7 +8,8 @@
 
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-3.0.2-blue">
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="Gradle" src="https://img.shields.io/badge/Gradle-9.6.1-02303A?logo=gradle&logoColor=white">
   <img alt="Java" src="https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white">
   <img alt="Lua" src="https://img.shields.io/badge/Lua-5.2-000080?logo=lua&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
@@ -79,7 +80,7 @@ Run tests:
 | Component | Requirement |
 |---|---|
 | Java | 17 or later |
-| Kotlin | 2.1.0 |
+| Kotlin | 2.4.10 |
 | Build | Gradle (Kotlin DSL) |
 
 The project builds with Gradle.
@@ -95,4 +96,3 @@ BlueLuaK is in its very first iteration.
 | Kotlin API | Scaffold planned |
 | JSE runtime | Functional, based on LuaJ 3.0.2 |
 | Lua version | 5.2 (targeting migration toward current Lua 5.5) |
-
