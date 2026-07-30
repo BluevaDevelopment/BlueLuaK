@@ -93,7 +93,7 @@ class OsLib
         val os: LuaTable = LuaTable()
         for (i in net.blueva.luak.lib.OsLib.Companion.NAMES.indices) os.set(
             net.blueva.luak.lib.OsLib.Companion.NAMES[i],
-            net.blueva.luak.lib.OsLib.OsLibFunc(i, net.blueva.luak.lib.OsLib.Companion.NAMES[i])
+            OsLibFunc(i, Companion.NAMES[i])
         )
         env.set("os", os)
         if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("os", os)

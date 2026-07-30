@@ -65,12 +65,12 @@ class CoroutineLib : TwoArgFunction() {
     fun call(modname: LuaValue?, env: LuaValue): LuaValue {
         globals = env.checkglobals()
         val coroutine: LuaTable = LuaTable()
-        coroutine.set("create", net.blueva.luak.lib.CoroutineLib.create())
+        coroutine.set("create", create())
         coroutine.set("resume", net.blueva.luak.lib.CoroutineLib.resume())
-        coroutine.set("running", net.blueva.luak.lib.CoroutineLib.running())
+        coroutine.set("running", running())
         coroutine.set("status", net.blueva.luak.lib.CoroutineLib.status())
-        coroutine.set("yield", net.blueva.luak.lib.CoroutineLib.YieldFunction())
-        coroutine.set("wrap", net.blueva.luak.lib.CoroutineLib.wrap())
+        coroutine.set("yield", YieldFunction())
+        coroutine.set("wrap", wrap())
         env.set("coroutine", coroutine)
         if (!env.get("package")!!.isnil()) env.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
         return coroutine

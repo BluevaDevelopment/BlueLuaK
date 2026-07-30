@@ -75,7 +75,7 @@ class StringLib
         string.set("char", net.blueva.luak.lib.StringLib._char())
         string.set("dump", net.blueva.luak.lib.StringLib.dump())
         string.set("find", net.blueva.luak.lib.StringLib.find())
-        string.set("format", net.blueva.luak.lib.StringLib.format())
+        string.set("format", format())
         string.set("gmatch", net.blueva.luak.lib.StringLib.gmatch())
         string.set("gsub", net.blueva.luak.lib.StringLib.gsub())
         string.set("len", net.blueva.luak.lib.StringLib.len())
@@ -244,7 +244,7 @@ class StringLib
                             result.append(net.blueva.luak.lib.StringLib.Companion.L_ESC.toByte())
                         } else {
                             arg++
-                            val fdsc: FormatDesc = net.blueva.luak.lib.StringLib.FormatDesc(args, fmt, i)
+                            val fdsc: FormatDesc = FormatDesc(args, fmt, i)
                             i += fdsc.length
                             when (fdsc.conversion) {
                                 'c'.code -> fdsc.format(result, args.checkint(arg) as Byte)
