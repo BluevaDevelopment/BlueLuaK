@@ -389,11 +389,11 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         /*	A Bx	R(A) := closure(KPROTO[Bx], R(A), ... ,R(A+n))	*/
                         a = Lua.GETARG_A(ins)
                         b = Lua.GETARG_Bx(ins)
-                        val upvalues: Array<Upvaldesc> = prototype.p!![b]!!.upvalues
+                        val upvalues: Array<Upvaldesc?> = prototype.p!![b]!!.upvalues!!
                         var k = 0
                         val nups = upvalues.size
                         while (k < nups) {
-                            if (upvalues[k].instack) v[upvalues[k].idx.toInt()]!![pc]!!.isreferenced = true
+                            if (upvalues[k]!!.instack) v[upvalues[k]!!.idx.toInt()]!![pc]!!.isreferenced = true
                             ++k
                         }
                         v[a]!![pc] = VarInfo(a, pc)

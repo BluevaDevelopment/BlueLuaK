@@ -105,8 +105,8 @@ class LuaJC protected constructor() : Globals.Loader {
     }
 
     @Throws(IOException::class)
-    override fun load(p: Prototype?, name: String, globals: LuaValue?): LuaFunction? {
-        val luaname: String = toStandardLuaFileName(name)
+    override fun load(p: Prototype?, name: String?, globals: LuaValue?): LuaFunction? {
+        val luaname: String = toStandardLuaFileName(name!!)
         val classname: String = toStandardJavaClassName(luaname)
         val loader = JavaLoader()
         return loader.load(p, classname, luaname, globals)

@@ -110,7 +110,7 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                     }
 
                     Lua.OP_LOADK -> {
-                        builder.loadConstant(p.k!![bx])
+                        builder.loadConstant(p.k!![bx]!!)
                         builder.storeLocal(pc, a)
                     }
 
@@ -440,6 +440,6 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
 
     private fun loadLocalOrConstant(p: Prototype, builder: JavaBuilder, pc: Int, borc: Int) {
         if (borc <= 0xff) builder.loadLocal(pc, borc)
-        else builder.loadConstant(p.k!![borc and 0xff])
+        else builder.loadConstant(p.k!![borc and 0xff]!!)
     }
 }

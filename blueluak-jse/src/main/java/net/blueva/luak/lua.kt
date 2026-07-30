@@ -155,7 +155,7 @@ object lua {
         val slibname: LuaValue = LuaValue.valueOf(libname)
         try {
             // load via plain require
-            globals!!.get("require").call(slibname)
+            globals!!.get("require")!!.call(slibname)
         } catch (e: Exception) {
             try {
                 // load as java class
@@ -174,16 +174,16 @@ object lua {
             var c: LuaValue
             try {
                 script = BufferedInputStream(script)
-                c = if (encoding != null) globals!!.load(
+                c = (if (encoding != null) globals!!.load(
                     InputStreamReader(script, encoding),
                     chunkname
-                ) else globals!!.load(script, chunkname, "bt", globals)
+                ) else globals!!.load(script, chunkname, "bt", globals))!!
             } finally {
                 script.close()
             }
-            if (print && c.isclosure()) Print.print(c.checkclosure().p)
+            if (print && c.isclosure()) Print.print(c.checkclosure()!!.p)
             val scriptargs = setGlobalArg(chunkname, args, firstarg, globals!!)
-            c.invoke(scriptargs)
+            c.invoke(scriptargs!!)
         } catch (e: Exception) {
             e.printStackTrace(System.err)
         }

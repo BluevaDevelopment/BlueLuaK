@@ -126,11 +126,11 @@ class luac private constructor(args: Array<String>) {
             ) else globals.compilePrototype(script, chunkname)
 
             // list the chunk
-            if (list) Print.printCode(chunk)
+            if (list) Print.printCode(chunk!!)
 
             // write out the chunk
             if (!parseonly) {
-                DumpState.dump(chunk, out, stripdebug, numberformat, littleendian)
+                DumpState.dump(chunk!!, out, stripdebug, numberformat, littleendian)
             }
         } catch (e: Exception) {
             e.printStackTrace(System.err)

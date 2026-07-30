@@ -786,7 +786,7 @@ class JavaBuilder(// basic info
         )
         cg.addField(fg.getField())
         val ls = value.checkstring()
-        if (ls.isValidUtf8()) {
+        if (ls.isValidUtf8) {
             init.append(PUSH(cp, value.tojstring()))
             init.append(
                 factory.createInvoke(
