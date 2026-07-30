@@ -261,7 +261,7 @@ class Print : Lua() {
 
                     OP_JMP, OP_FORLOOP, OP_FORPREP -> ps.print("  ; to " + (sbx + pc + 2))
                     OP_CLOSURE -> if (protos != null && bx < protos.size) {
-                        ps.print("  ; " + protos[bx].javaClass.name)
+                        ps.print("  ; " + protos[bx]!!.javaClass.name)
                     } else {
                         ps.print("  ; UNKNOWN_PROTYPE_" + bx)
                     }

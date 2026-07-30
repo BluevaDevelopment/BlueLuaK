@@ -1604,7 +1604,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
-        return callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3)).arg1()
+        return callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1()
     }
 
     /** Call named method on `this` with 0 arguments, including metatag processing,
@@ -2067,7 +2067,7 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     fun invokemethod(name: String?, args: Varargs): Varargs? {
-        return get(name).invoke(net.blueva.luak.LuaValue.Companion.varargsOf(this, args))
+        return get(name)!!.invoke(net.blueva.luak.LuaValue.Companion.varargsOf(this, args))
     }
 
     /** Call named method on `this` with variable arguments, including metatag processing,
@@ -2136,7 +2136,7 @@ open class LuaValue : Varargs() {
      * @see varargsOf
      */
     fun invokemethod(name: String?, args: Array<LuaValue?>): Varargs? {
-        return get(name).invoke(
+        return get(name)!!.invoke(
             net.blueva.luak.LuaValue.Companion.varargsOf(
                 this,
                 net.blueva.luak.LuaValue.Companion.varargsOf(args)

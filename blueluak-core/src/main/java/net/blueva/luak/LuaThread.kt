@@ -169,7 +169,7 @@ class LuaThread : LuaValue {
             try {
                 val a: Varargs? = this.args
                 this.args = LuaValue.NONE
-                this.result = function.invoke(a)
+                this.result = function!!.invoke(a)
             } catch (t: Throwable) {
                 this.error = t.message
             } finally {

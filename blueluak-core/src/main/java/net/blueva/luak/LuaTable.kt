@@ -112,7 +112,7 @@ open class LuaTable : LuaValue, Metatable {
         }
         var i = 0
         while (i < nn) {
-            if (!named!![i + 1].isnil()) rawset(named[i], named[i + 1])
+            if (!named!![i + 1]!!.isnil()) rawset(named[i], named[i + 1])
             i += 2
         }
     }
@@ -528,7 +528,7 @@ open class LuaTable : LuaValue, Metatable {
 
     private fun dropWeakArrayValues() {
         for (i in array.indices) {
-            m_metatable.arrayget(array, i)
+            m_metatable!!.arrayget(array, i)
         }
     }
 
@@ -762,7 +762,7 @@ open class LuaTable : LuaValue, Metatable {
         var i = 0
         while (true) {
             val n: Varargs = next(k)
-            if ((n.arg1().also { k = it }).isnil()) return i
+            if ((n.arg1().also { k = it })!!.isnil()) return i
             i++
         }
     }
@@ -776,7 +776,7 @@ open class LuaTable : LuaValue, Metatable {
         var k: LuaValue = LuaValue.NIL
         while (true) {
             val n: Varargs = next(k)
-            if ((n.arg1().also { k = it }).isnil()) break
+            if ((n.arg1().also { k = it })!!.isnil()) break
             l.addElement(k)
         }
         val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(l.size())

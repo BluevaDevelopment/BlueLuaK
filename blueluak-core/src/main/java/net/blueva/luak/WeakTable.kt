@@ -57,7 +57,7 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
 
     fun entry(key: LuaValue, value: LuaValue?): Slot? {
         var value: LuaValue? = value
-        value = value.strongvalue()
+        value = value!!.strongvalue()
         if (value == null) return null
         if (weakkeys && !(key.isnumber() || key.isstring() || key.isboolean())) {
             if (weakvalues && !(value.isnumber() || value.isstring() || value.isboolean())) {
@@ -124,11 +124,11 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
                 return set(value)
             } else if (key != null) {
                 // Our key is still good.
-                next = next.set(target, value)
+                next = next!!.set(target, value)
                 return this
             } else {
                 // our key was dropped, remove ourselves from the chain.
-                return next.set(target, value)
+                return next!!.set(target, value)
             }
         }
 
@@ -144,12 +144,12 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         fun remove(target: StrongSlot): Slot? {
             val key: LuaValue? = strongkey()
             if (key == null) {
-                return next.remove(target)
+                return next!!.remove(target)
             } else if (target.keyeq(key)) {
                 this.value = null
                 return this
             } else {
-                next = next.remove(target)
+                next = next!!.remove(target)
                 return this
             }
         }

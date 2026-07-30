@@ -233,7 +233,7 @@ class LoadState private constructor(
         }
 
         n = loadInt()
-        for (i in 0..<n) f.upvalues!![i].name = loadString()
+        for (i in 0..<n) f.upvalues!![i]!!.name = loadString()
     }
 
     /**
