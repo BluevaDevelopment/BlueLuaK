@@ -298,12 +298,12 @@ class IoLib : TwoArgFunction() {
                     net.blueva.luak.lib.IoLib.Companion.IO_POPEN -> return iolib!!._io_popen(
                         args.checkjstring(1),
                         args.optjstring(2, "r")
-                    )
+                    )!!
 
                     net.blueva.luak.lib.IoLib.Companion.IO_OPEN -> return iolib!!._io_open(
                         args.checkjstring(1),
                         args.optjstring(2, "r")
-                    )
+                    )!!
 
                     net.blueva.luak.lib.IoLib.Companion.IO_LINES -> return (iolib!!._io_lines(args))!!
                     net.blueva.luak.lib.IoLib.Companion.IO_READ -> return iolib!!._io_read(args)
@@ -570,10 +570,11 @@ class IoLib : TwoArgFunction() {
         var fmt: LuaString
         i = 0
         while (i < n) {
-            item@ when ((args.arg(i + 1).also { ai = it })!!.type()) {
+            item@ run {
+                when ((args.arg(i + 1).also { ai = it })!!.type()) {
                 LuaValue.TNUMBER -> {
                     vi = net.blueva.luak.lib.IoLib.Companion.freadbytes(f, ai!!.toint())
-                    break@item
+                    return@item
                 }
 
                 LuaValue.TSTRING -> {
@@ -582,22 +583,22 @@ class IoLib : TwoArgFunction() {
                         when (fmt.m_bytes[fmt.m_offset + 1]) {
                             'n'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadnumber(f)
-                                break@item
+                                return@item
                             }
 
                             'l'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadline(f, false)
-                                break@item
+                                return@item
                             }
 
                             'L'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadline(f, true)
-                                break@item
+                                return@item
                             }
 
                             'a'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadall(f)
-                                break@item
+                                return@item
                             }
                         }
                     }
@@ -605,6 +606,7 @@ class IoLib : TwoArgFunction() {
                 }
 
                 else -> return (argerror(i + 1, "(invalid format)"))!!
+                }
             }
             if ((vi.also { v[i++] = it })!!.isnil()) break
         }
