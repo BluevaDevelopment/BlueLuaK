@@ -36,10 +36,10 @@ import java.lang.reflect.Array
  * 
  * @see CoerceLuaToJava
  */
-internal class JavaArray(instance: Any?) : LuaUserdata(instance) {
+internal class JavaArray(instance: Any?) : LuaUserdata(instance!!) {
     private class LenFunction : OneArgFunction() {
-        override fun call(u: LuaValue): LuaValue? {
-            return valueOf(Array.getLength((u as LuaUserdata).m_instance))
+        override fun call(u: LuaValue?): LuaValue? {
+            return valueOf(Array.getLength((u!! as LuaUserdata).m_instance))
         }
     }
 
@@ -47,21 +47,22 @@ internal class JavaArray(instance: Any?) : LuaUserdata(instance) {
         setmetatable(array_metatable)
     }
 
-    override fun get(key: LuaValue): LuaValue? {
+    override fun get(key: LuaValue): LuaValue {
         if (key == LENGTH) return valueOf(Array.getLength(m_instance))
-        if (key.isint()) {
+        if (key!!.isint()) {
             val i = key.toint() - 1
             return if (i >= 0 && i < Array.getLength(m_instance)) CoerceJavaToLua.coerce(
                 Array.get(
                     m_instance,
                     key.toint() - 1
                 )
-            ) else NIL
+            )!! else NIL!!
         }
         return super.get(key)
     }
 
-    override fun set(key: LuaValue, value: LuaValue?) {
+    override fun set(key: LuaValue?, value: LuaValue?) {
+        val key = key!!
         if (key.isint()) {
             val i = key.toint() - 1
             if (i >= 0 && i < Array.getLength(m_instance)) Array.set(

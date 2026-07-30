@@ -34,14 +34,14 @@ import net.blueva.luak.LuaValue
  * 
  * @see CoerceLuaToJava
  */
-internal open class JavaInstance(instance: Any?) : LuaUserdata(instance) {
+internal open class JavaInstance(instance: Any?) : LuaUserdata(instance!!) {
     var jclass: JavaClass? = null
 
-    override fun get(key: LuaValue?): LuaValue? {
+    override fun get(key: LuaValue): LuaValue {
         if (jclass == null) jclass = JavaClass.Companion.forClass(m_instance.javaClass)
         val f = jclass!!.getField(key)
         if (f != null) try {
-            return CoerceJavaToLua.coerce(f.get(m_instance))
+            return CoerceJavaToLua.coerce(f.get(m_instance))!!
         } catch (e: Exception) {
             throw LuaError(e)
         }
@@ -49,7 +49,7 @@ internal open class JavaInstance(instance: Any?) : LuaUserdata(instance) {
         if (m != null) return m
         val c = jclass!!.getInnerClass(key)
         if (c != null) return JavaClass.Companion.forClass(c)
-        return super.get(key)
+        return super.get(key)!!
     }
 
     override fun set(key: LuaValue?, value: LuaValue?) {

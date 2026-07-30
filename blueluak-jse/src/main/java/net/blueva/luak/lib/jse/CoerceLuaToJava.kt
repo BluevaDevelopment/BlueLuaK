@@ -284,8 +284,8 @@ object CoerceLuaToJava {
 
         override fun score(value: LuaValue): Int {
             when (value.type()) {
-                LuaValue.TSTRING -> return if (value.checkstring()
-                        .isValidUtf8()
+                LuaValue.TSTRING -> return if (value.checkstring()!!
+                        .isValidUtf8
                 ) (if (targetType == TARGET_TYPE_STRING) 0 else 1) else (if (targetType == TARGET_TYPE_BYTES) 0 else SCORE_WRONG_TYPE)
 
                 LuaValue.TNIL -> return SCORE_NULL_VALUE
@@ -321,7 +321,7 @@ object CoerceLuaToJava {
 
         override fun score(value: LuaValue): Int {
             when (value.type()) {
-                LuaValue.TTABLE -> return if (value.length() == 0) 0 else componentCoercion.score(value.get(1))
+                LuaValue.TTABLE -> return if (value.length() == 0) 0 else componentCoercion.score(value.get(1)!!)
                 LuaValue.TUSERDATA -> return inheritanceLevels(
                     componentType,
                     value.touserdata()!!.javaClass.getComponentType()
@@ -339,7 +339,7 @@ object CoerceLuaToJava {
                     val a = Array.newInstance(componentType, n)
                     var i = 0
                     while (i < n) {
-                        Array.set(a, i, componentCoercion.coerce(value.get(i + 1)))
+                        Array.set(a, i, componentCoercion.coerce(value.get(i + 1)!!))
                         i++
                     }
                     return a

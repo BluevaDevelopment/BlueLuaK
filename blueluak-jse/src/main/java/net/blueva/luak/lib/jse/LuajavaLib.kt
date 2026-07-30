@@ -96,7 +96,7 @@ class LuajavaLib : VarArgFunction() {
                     val clazz =
                         (if (opcode == NEWINSTANCE) classForName(c.tojstring()) else c.checkuserdata(Class::class.java) as Class<*>?)
                     val consargs = args.subargs(2)
-                    return JavaClass.Companion.forClass(clazz).constructor!!.invoke(consargs)!!
+                    return JavaClass.Companion.forClass(clazz).constructor!!.invoke(consargs!!)!!
                 }
 
                 CREATEPROXY -> {

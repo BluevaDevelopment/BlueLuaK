@@ -52,16 +52,16 @@ internal class JavaMethod private constructor(val method: Method) : JavaMember(
         return error("method cannot be called without instance")!!
     }
 
-    override fun call(arg: LuaValue): LuaValue? {
-        return invokeMethod(arg.checkuserdata(), NONE!!)
+    override fun call(arg: LuaValue?): LuaValue? {
+        return invokeMethod(arg!!.checkuserdata(), NONE!!)
     }
 
-    override fun call(arg1: LuaValue, arg2: LuaValue?): LuaValue? {
-        return invokeMethod(arg1.checkuserdata(), arg2!!)
+    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+        return invokeMethod(arg1!!.checkuserdata(), arg2!!)
     }
 
-    override fun call(arg1: LuaValue, arg2: LuaValue?, arg3: LuaValue): LuaValue? {
-        return invokeMethod(arg1.checkuserdata(), varargsOf(arg2, arg3)!!)
+    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+        return invokeMethod(arg1!!.checkuserdata(), varargsOf(arg2, arg3!!)!!)
     }
 
     override fun invoke(args: Varargs): Varargs {
@@ -95,16 +95,16 @@ internal class JavaMethod private constructor(val method: Method) : JavaMember(
             return error("method cannot be called without instance")!!
         }
 
-        override fun call(arg: LuaValue): LuaValue? {
-            return invokeBestMethod(arg.checkuserdata(), NONE!!)
+        override fun call(arg: LuaValue?): LuaValue? {
+            return invokeBestMethod(arg!!.checkuserdata(), NONE!!)
         }
 
-        override fun call(arg1: LuaValue, arg2: LuaValue): LuaValue? {
-            return invokeBestMethod(arg1.checkuserdata(), arg2)
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+            return invokeBestMethod(arg1!!.checkuserdata(), arg2!!)
         }
 
-        override fun call(arg1: LuaValue, arg2: LuaValue?, arg3: LuaValue): LuaValue? {
-            return invokeBestMethod(arg1.checkuserdata(), varargsOf(arg2, arg3)!!)
+        override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+            return invokeBestMethod(arg1!!.checkuserdata(), varargsOf(arg2, arg3!!)!!)
         }
 
         override fun invoke(args: Varargs): Varargs {
