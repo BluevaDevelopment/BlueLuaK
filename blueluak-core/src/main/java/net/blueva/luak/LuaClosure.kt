@@ -778,7 +778,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
     private fun findupval(stack: Array<LuaValue>?, idx: Short, openups: Array<UpValue?>): UpValue? {
         val n = openups.size
-        for (i in 0..<n) if (openups[i] != null && openups[i].index === idx) return openups[i]
+        for (i in 0..<n) if (openups[i] != null && openups[i].index == idx) return openups[i]
         for (i in 0..<n) if (openups[i] == null) return UpValue(stack, idx).also { openups[i] = it }
         error("No space for upvalue")
         return null

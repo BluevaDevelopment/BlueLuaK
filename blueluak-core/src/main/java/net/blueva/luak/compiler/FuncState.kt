@@ -497,7 +497,7 @@ internal class FuncState internal constructor() : Constants() {
             LexState.VINDEXED -> {
                 var op: Int = OP_GETTABUP /* assume 't' is in an upvalue */
                 this.freereg(e.u.ind_idx)
-                if (e.u.ind_vt === LexState.VLOCAL) {  /* 't' is in a register? */
+                if (e.u.ind_vt == LexState.VLOCAL) {  /* 't' is in a register? */
                     this.freereg(e.u.ind_t)
                     op = OP_GETTABLE
                 }
@@ -670,7 +670,7 @@ internal class FuncState internal constructor() : Constants() {
             }
 
             LexState.VINDEXED -> {
-                val op: Int = if (`var`.u.ind_vt === LexState.VLOCAL) OP_SETTABLE else OP_SETTABUP
+                val op: Int = if (`var`.u.ind_vt == LexState.VLOCAL) OP_SETTABLE else OP_SETTABUP
                 val e = this.exp2RK(ex)
                 this.codeABC(op, `var`.u.ind_t, `var`.u.ind_idx, e)
             }

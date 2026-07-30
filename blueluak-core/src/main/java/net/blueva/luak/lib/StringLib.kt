@@ -535,7 +535,7 @@ class StringLib
             var lastmatch = -1 /* end of last match */
             val repl: LuaValue = args.arg(3)
             val max_s: Int = args.optint(4, srclen + 1)
-            val anchor = p.length() > 0 && p.charAt(0) === '^'
+            val anchor = p.length() > 0 && p.charAt(0) == '^'
 
             val lbuf: Buffer = Buffer(srclen)
             val ms: MatchState = net.blueva.luak.lib.StringLib.MatchState(args, src, p)
@@ -826,13 +826,13 @@ class StringLib
                 }
 
                 '[' -> {
-                    if (poffset != p.length() && p.luaByte(poffset) === '^') poffset++
+                    if (poffset != p.length() && p.luaByte(poffset) == '^') poffset++
                     do {
                         if (poffset == p.length()) {
                             error("malformed pattern (missing ']')")
                         }
                         if (p.luaByte(poffset++) === net.blueva.luak.lib.StringLib.Companion.L_ESC && poffset < p.length()) poffset++ /* skip escapes (e.g. '%]') */
-                    } while (poffset == p.length() || p.luaByte(poffset) !== ']')
+                    } while (poffset == p.length() || p.luaByte(poffset) != ']')
                     return poffset + 1
                 }
 
@@ -843,7 +843,7 @@ class StringLib
         fun matchbracketclass(c: Int, poff: Int, ec: Int): Boolean {
             var poff = poff
             var sig = true
-            if (p.luaByte(poff + 1) === '^') {
+            if (p.luaByte(poff + 1) == '^') {
                 sig = false
                 poff++
             }
@@ -851,7 +851,7 @@ class StringLib
                 if (p.luaByte(poff) === net.blueva.luak.lib.StringLib.Companion.L_ESC) {
                     poff++
                     if (net.blueva.luak.lib.StringLib.MatchState.Companion.match_class(c, p.luaByte(poff))) return sig
-                } else if ((p.luaByte(poff + 1) === '-') && (poff + 2 < ec)) {
+                } else if ((p.luaByte(poff + 1) == '-') && (poff + 2 < ec)) {
                     poff += 2
                     if (p.luaByte(poff - 2) <= c && c <= p.luaByte(poff)) return sig
                 } else if (p.luaByte(poff) === c) return sig
@@ -887,7 +887,7 @@ class StringLib
                     // string is not NUL-terminated.
                     if (poffset == p.length()) return soffset
                     when (p.luaByte(poffset)) {
-                        '(' -> if (++poffset < p.length() && p.luaByte(poffset) === ')') return start_capture(
+                        '(' -> if (++poffset < p.length() && p.luaByte(poffset) == ')') return start_capture(
                             soffset,
                             poffset + 1,
                             net.blueva.luak.lib.StringLib.Companion.CAP_POSITION
@@ -911,7 +911,7 @@ class StringLib
 
                                 'f' -> {
                                     poffset += 2
-                                    if (poffset == p.length() || p.luaByte(poffset) !== '[') {
+                                    if (poffset == p.length() || p.luaByte(poffset) != '[') {
                                         error("missing '[' after '%f' in pattern")
                                     }
                                     val ep = classend(poffset)
@@ -1130,7 +1130,7 @@ class StringLib
 
                 var anchor = false
                 var poff = 0
-                if (pat.length() > 0 && pat.luaByte(0) === '^') {
+                if (pat.length() > 0 && pat.luaByte(0) == '^') {
                     anchor = true
                     poff = 1
                 }

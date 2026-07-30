@@ -1877,7 +1877,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 fs.setmultret(e)
                 if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1) { /* tail call? */
                     SET_OPCODE(fs.getcodePtr(e), Lua.OP_TAILCALL)
-                    _assert(Lua.GETARG_A(fs.getcode(e)) === fs.nactvar)
+                    _assert(Lua.GETARG_A(fs.getcode(e)) == fs.nactvar)
                 }
                 first = fs.nactvar
                 nret = Lua.LUA_MULTRET /* return all values */
