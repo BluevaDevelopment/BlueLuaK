@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -17,6 +18,7 @@ package net.blueva.luak.script
 
 import junit.framework.TestCase
 import junit.framework.TestSuite
+import net.blueva.luak.Lua
 import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaValue
 import net.blueva.luak.lib.OneArgFunction
@@ -61,8 +63,8 @@ object ScriptEngineTests : TestSuite() {
         fun testFactoryMetadata() {
             val e = ScriptEngineManager().getEngineByName("luaj")
             val f = e.getFactory()
-            TestCase.assertEquals("Luaj", f.getEngineName())
-            TestCase.assertEquals("Luaj 0.0", f.getEngineVersion())
+            TestCase.assertEquals("BlueLuaK", f.getEngineName())
+            TestCase.assertEquals(Lua._VERSION, f.getEngineVersion())
             TestCase.assertEquals("lua", f.getLanguageName())
             TestCase.assertEquals("5.2", f.getLanguageVersion())
         }
