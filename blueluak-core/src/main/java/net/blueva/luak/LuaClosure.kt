@@ -78,7 +78,7 @@ import net.blueva.luak.lib.DebugLib.CallFrame
 class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     val p: Prototype
 
-    var upValues: Array<UpValue?>
+    lateinit var upValues: Array<UpValue?>
 
     val globals: Globals
 
@@ -90,7 +90,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     init {
         this.p = p
         this.initupvalue1(env)
-        globals = if (env is Globals) env as Globals? else null
+        globals = env as Globals
     }
 
     override fun initupvalue1(env: LuaValue?) {

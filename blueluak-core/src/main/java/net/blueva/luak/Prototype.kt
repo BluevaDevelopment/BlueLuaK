@@ -67,17 +67,17 @@ package net.blueva.luak
  */
 class Prototype {
     /* constants used by the function */
-    var k: Array<LuaValue?>?
-    var code: IntArray?
+    var k: Array<LuaValue?>? = null
+    var code: IntArray? = null
 
     /* functions defined inside the function */
-    var p: Array<Prototype?>?
+    var p: Array<Prototype?>? = null
 
     /* map from opcodes to source lines */
-    var lineinfo: IntArray?
+    var lineinfo: IntArray? = null
 
     /* information about local variables */
-    var locvars: Array<LocVars?>
+    var locvars: Array<LocVars?> = emptyArray()
 
     /* upvalue information */
     var upvalues: Array<Upvaldesc?>?

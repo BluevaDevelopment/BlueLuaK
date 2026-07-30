@@ -64,10 +64,10 @@ import java.util.Vector
  */
 open class LuaTable : LuaValue, Metatable {
     /** the array values  */
-    protected var array: Array<LuaValue?>
+    protected lateinit var array: Array<LuaValue?>
 
     /** the hash part  */
-    protected var hash: Array<Slot?>
+    protected lateinit var hash: Array<Slot?>
 
     /** the number of hash entries  */
     protected var hashEntries: Int = 0

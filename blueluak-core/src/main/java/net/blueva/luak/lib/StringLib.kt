@@ -1174,10 +1174,9 @@ class StringLib
         private const val MASK_CONTROL: Byte = 0x40
         private val MASK_HEXDIGIT = 0x80.toByte()
 
-        val CHAR_TABLE: ByteArray
+        val CHAR_TABLE: ByteArray = ByteArray(256)
 
         init {
-            net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE = ByteArray(256)
 
             for (i in 0..127) {
                 val c = i.toChar()
