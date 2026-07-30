@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -28,6 +29,7 @@ import kotlin.Int
 import kotlin.Long
 import kotlin.String
 import kotlin.code
+import kotlin.reflect.KClass
 import kotlin.toUShort
 
 class TypeTest : TestCase() {
@@ -59,7 +61,7 @@ class TypeTest : TestCase() {
         }
     }
     private val thread = LuaThread(Globals(), somefunc)
-    private val someclosure = LuaClosure(Prototype(), LuaTable())
+    private val someclosure = LuaClosure(Prototype(), Globals())
     private val userdataobj = LuaValue.userdataOf(sampleobject)
     private val userdatacls = LuaValue.userdataOf(sampledata)
 
@@ -300,37 +302,37 @@ class TypeTest : TestCase() {
     }
 
     fun testIsUserdataObject() {
-        TestCase.assertEquals(false, somenil.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, sometrue.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, somefalse.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, longdouble.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, doubledouble.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, stringstring.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, stringint.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, stringdouble.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, thread.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, table.isuserdata(Any::class.java))
-        TestCase.assertEquals(true, userdataobj.isuserdata(Any::class.java))
-        TestCase.assertEquals(true, userdatacls.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, somefunc.isuserdata(Any::class.java))
-        TestCase.assertEquals(false, someclosure.isuserdata(Any::class.java))
+        TestCase.assertEquals(false, somenil.isuserdata(Any::class))
+        TestCase.assertEquals(false, sometrue.isuserdata(Any::class))
+        TestCase.assertEquals(false, somefalse.isuserdata(Any::class))
+        TestCase.assertEquals(false, longdouble.isuserdata(Any::class))
+        TestCase.assertEquals(false, doubledouble.isuserdata(Any::class))
+        TestCase.assertEquals(false, stringstring.isuserdata(Any::class))
+        TestCase.assertEquals(false, stringint.isuserdata(Any::class))
+        TestCase.assertEquals(false, stringdouble.isuserdata(Any::class))
+        TestCase.assertEquals(false, thread.isuserdata(Any::class))
+        TestCase.assertEquals(false, table.isuserdata(Any::class))
+        TestCase.assertEquals(true, userdataobj.isuserdata(Any::class))
+        TestCase.assertEquals(true, userdatacls.isuserdata(Any::class))
+        TestCase.assertEquals(false, somefunc.isuserdata(Any::class))
+        TestCase.assertEquals(false, someclosure.isuserdata(Any::class))
     }
 
     fun testIsUserdataMyData() {
-        TestCase.assertEquals(false, somenil.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, sometrue.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, somefalse.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, longdouble.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, doubledouble.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, stringstring.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, stringint.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, stringdouble.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, thread.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, table.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, userdataobj.isuserdata(MyData::class.java))
-        TestCase.assertEquals(true, userdatacls.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, somefunc.isuserdata(MyData::class.java))
-        TestCase.assertEquals(false, someclosure.isuserdata(MyData::class.java))
+        TestCase.assertEquals(false, somenil.isuserdata(MyData::class))
+        TestCase.assertEquals(false, sometrue.isuserdata(MyData::class))
+        TestCase.assertEquals(false, somefalse.isuserdata(MyData::class))
+        TestCase.assertEquals(false, longdouble.isuserdata(MyData::class))
+        TestCase.assertEquals(false, doubledouble.isuserdata(MyData::class))
+        TestCase.assertEquals(false, stringstring.isuserdata(MyData::class))
+        TestCase.assertEquals(false, stringint.isuserdata(MyData::class))
+        TestCase.assertEquals(false, stringdouble.isuserdata(MyData::class))
+        TestCase.assertEquals(false, thread.isuserdata(MyData::class))
+        TestCase.assertEquals(false, table.isuserdata(MyData::class))
+        TestCase.assertEquals(false, userdataobj.isuserdata(MyData::class))
+        TestCase.assertEquals(true, userdatacls.isuserdata(MyData::class))
+        TestCase.assertEquals(false, somefunc.isuserdata(MyData::class))
+        TestCase.assertEquals(false, someclosure.isuserdata(MyData::class))
     }
 
 
@@ -824,9 +826,9 @@ class TypeTest : TestCase() {
         assertEquals(sampledata, userdatacls.optuserdata(null))
     }
 
-    private fun throwsErrorOptUserdataClass(obj: LuaValue, arg1: Class<*>?, arg2: Any?) {
+    private fun throwsErrorOptUserdataClass(obj: LuaValue, arg1: KClass<*>?, arg2: Any?) {
         try {
-            obj.javaClass.getMethod("optuserdata", Class::class.java, Any::class.java).invoke(obj, arg1, arg2)
+            obj.javaClass.getMethod("optuserdata", KClass::class.java, Any::class.java).invoke(obj, arg1, arg2)
         } catch (e: InvocationTargetException) {
             if (e.getTargetException() !is LuaError) fail("not a LuaError: " + e.getTargetException())
             return  // pass
@@ -837,34 +839,34 @@ class TypeTest : TestCase() {
     }
 
     fun testOptUserdataClass() {
-        assertEquals(sampledata, somenil.optuserdata(MyData::class.java, sampledata))
-        assertEquals(sampleobject, somenil.optuserdata(Any::class.java, sampleobject))
+        assertEquals(sampledata, somenil.optuserdata(MyData::class, sampledata))
+        assertEquals(sampleobject, somenil.optuserdata(Any::class, sampleobject))
         assertEquals(null, somenil.optuserdata(null))
-        throwsErrorOptUserdataClass(sometrue, Any::class.java, sampledata)
-        throwsErrorOptUserdataClass(zero, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(intint, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(longdouble, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(somefunc, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(someclosure, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(stringstring, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(stringint, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(stringlong, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(stringlong, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(stringdouble, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(table, MyData::class.java, sampledata)
-        throwsErrorOptUserdataClass(thread, MyData::class.java, sampledata)
-        assertEquals(sampleobject, userdataobj.optuserdata(Any::class.java, sampleobject))
+        throwsErrorOptUserdataClass(sometrue, Any::class, sampledata)
+        throwsErrorOptUserdataClass(zero, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(intint, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(longdouble, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(somefunc, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(someclosure, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(stringstring, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(stringint, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(stringlong, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(stringlong, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(stringdouble, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(table, MyData::class, sampledata)
+        throwsErrorOptUserdataClass(thread, MyData::class, sampledata)
+        assertEquals(sampleobject, userdataobj.optuserdata(Any::class, sampleobject))
         assertEquals(sampleobject, userdataobj.optuserdata(null))
-        assertEquals(sampledata, userdatacls.optuserdata(MyData::class.java, sampledata))
-        assertEquals(sampledata, userdatacls.optuserdata(Any::class.java, sampleobject))
+        assertEquals(sampledata, userdatacls.optuserdata(MyData::class, sampledata))
+        assertEquals(sampledata, userdatacls.optuserdata(Any::class, sampleobject))
         assertEquals(sampledata, userdatacls.optuserdata(null))
         // should fail due to wrong class
         try {
-            val o: Any? = userdataobj.optuserdata(MyData::class.java, sampledata)
+            val o: Any? = userdataobj.optuserdata(MyData::class, sampledata)
             fail("did not throw bad type error")
             assertTrue(o is MyData)
         } catch (le: LuaError) {
-            TestCase.assertEquals("net.blueva.luak.TypeTest\$MyData expected, got userdata", le.message)
+            TestCase.assertEquals("net.blueva.luak.TypeTest.MyData expected, got userdata", le.message)
         }
     }
 
@@ -1168,9 +1170,9 @@ class TypeTest : TestCase() {
         assertEquals(sampledata, userdatacls.checkuserdata())
     }
 
-    private fun throwsErrorReqCheckUserdataClass(obj: LuaValue, arg: Class<*>?) {
+    private fun throwsErrorReqCheckUserdataClass(obj: LuaValue, arg: KClass<*>?) {
         try {
-            obj.javaClass.getMethod("checkuserdata", Class::class.java).invoke(obj, arg)
+            obj.javaClass.getMethod("checkuserdata", KClass::class.java).invoke(obj, arg)
         } catch (e: InvocationTargetException) {
             if (e.getTargetException() !is LuaError) fail("not a LuaError: " + e.getTargetException())
             return  // pass
@@ -1181,33 +1183,33 @@ class TypeTest : TestCase() {
     }
 
     fun testCheckUserdataClass() {
-        throwsErrorReqCheckUserdataClass(somenil, Any::class.java)
-        throwsErrorReqCheckUserdataClass(somenil, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(sometrue, Any::class.java)
-        throwsErrorReqCheckUserdataClass(zero, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(intint, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(longdouble, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(somefunc, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(someclosure, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(stringstring, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(stringint, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(stringlong, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(stringlong, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(stringdouble, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(table, MyData::class.java)
-        throwsErrorReqCheckUserdataClass(thread, MyData::class.java)
-        assertEquals(sampleobject, userdataobj.checkuserdata(Any::class.java))
+        throwsErrorReqCheckUserdataClass(somenil, Any::class)
+        throwsErrorReqCheckUserdataClass(somenil, MyData::class)
+        throwsErrorReqCheckUserdataClass(sometrue, Any::class)
+        throwsErrorReqCheckUserdataClass(zero, MyData::class)
+        throwsErrorReqCheckUserdataClass(intint, MyData::class)
+        throwsErrorReqCheckUserdataClass(longdouble, MyData::class)
+        throwsErrorReqCheckUserdataClass(somefunc, MyData::class)
+        throwsErrorReqCheckUserdataClass(someclosure, MyData::class)
+        throwsErrorReqCheckUserdataClass(stringstring, MyData::class)
+        throwsErrorReqCheckUserdataClass(stringint, MyData::class)
+        throwsErrorReqCheckUserdataClass(stringlong, MyData::class)
+        throwsErrorReqCheckUserdataClass(stringlong, MyData::class)
+        throwsErrorReqCheckUserdataClass(stringdouble, MyData::class)
+        throwsErrorReqCheckUserdataClass(table, MyData::class)
+        throwsErrorReqCheckUserdataClass(thread, MyData::class)
+        assertEquals(sampleobject, userdataobj.checkuserdata(Any::class))
         assertEquals(sampleobject, userdataobj.checkuserdata())
-        assertEquals(sampledata, userdatacls.checkuserdata(MyData::class.java))
-        assertEquals(sampledata, userdatacls.checkuserdata(Any::class.java))
+        assertEquals(sampledata, userdatacls.checkuserdata(MyData::class))
+        assertEquals(sampledata, userdatacls.checkuserdata(Any::class))
         assertEquals(sampledata, userdatacls.checkuserdata())
         // should fail due to wrong class
         try {
-            val o: Any? = userdataobj.checkuserdata(MyData::class.java)
+            val o: Any? = userdataobj.checkuserdata(MyData::class)
             fail("did not throw bad type error")
             assertTrue(o is MyData)
         } catch (le: LuaError) {
-            TestCase.assertEquals("net.blueva.luak.TypeTest\$MyData expected, got userdata", le.message)
+            TestCase.assertEquals("net.blueva.luak.TypeTest.MyData expected, got userdata", le.message)
         }
     }
 

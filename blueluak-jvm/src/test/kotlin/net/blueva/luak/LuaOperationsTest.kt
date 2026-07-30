@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -15,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import junit.framework.TestCase
 import net.blueva.luak.lib.ZeroArgFunction
 import net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals
@@ -124,7 +126,7 @@ class LuaOperationsTest : TestCase() {
         try {
             val globals = standardGlobals()
             val reader: Reader = StringReader(script)
-            return globals.compilePrototype(reader, name)
+            return globals.compilePrototype(reader.asLuaReader(), name)
         } catch (e: Exception) {
             // TODO Auto-generated catch block
             e.printStackTrace()

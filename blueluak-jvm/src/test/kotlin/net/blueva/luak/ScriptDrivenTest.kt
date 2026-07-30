@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -69,7 +70,7 @@ class ScriptDrivenTest protected constructor(private val platform: PlatformType,
     }
 
     private fun findInPlainFileAsResource(prefix: String?, filename: String?): InputStream? {
-        return javaClass.getResourceAsStream(prefix + subdir + filename)
+        return javaClass.getResourceAsStream(prefix + zipdir + subdir + filename)
     }
 
     private fun findInPlainFile(filename: String?): InputStream? {
@@ -104,8 +105,7 @@ class ScriptDrivenTest protected constructor(private val platform: PlatformType,
 
 
     private fun findInZipFileAsResource(prefix: String?, filename: String?): InputStream? {
-        var zip: URL? = null
-        zip = javaClass.getResource(zipfile)
+        val zip: URL? = javaClass.getResource("/" + zipdir + zipfile)
         if (zip != null) try {
             val path = "jar:" + zip.toExternalForm() + "!/" + subdir + filename
             val url = URL(path)

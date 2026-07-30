@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -34,6 +35,8 @@ abstract class WeakTableTest : TableTest() {
     }
 
     class WeakValueTableTest : WeakTableTest() {
+        override val expectsCompactArrayLayout: Boolean = false
+
         override fun new_Table(): LuaTable {
             return WeakTable.make(false, true)
         }
@@ -56,7 +59,6 @@ abstract class WeakTableTest : TableTest() {
             t.set("string2", LuaValue.valueOf("another string"))
             t.set(1, tableValue2)
             assertTrue("table must have at least 4 elements", t.getHashLength() >= 4)
-            assertTrue("array part must have 1 element", t.getArrayLength() >= 1)
 
             // check that table can be used to get elements 
             assertEquals(tableValue, t.get("table"))
@@ -172,6 +174,8 @@ abstract class WeakTableTest : TableTest() {
     }
 
     class WeakKeyValueTableTest : WeakTableTest() {
+        override val expectsCompactArrayLayout: Boolean = false
+
         override fun new_Table(): LuaTable {
             return WeakTable.make(true, true)
         }

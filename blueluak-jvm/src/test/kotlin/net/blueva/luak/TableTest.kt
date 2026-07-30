@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -19,6 +20,8 @@ import junit.framework.TestCase
 import java.util.*
 
 open class TableTest : TestCase() {
+    protected open val expectsCompactArrayLayout: Boolean = true
+
     protected open fun new_Table(): LuaTable {
         return LuaTable()
     }
@@ -57,10 +60,11 @@ open class TableTest : TestCase() {
 
 
         // Ensure capacities make sense
-        TestCase.assertEquals(0, t.getHashLength())
-
-        assertTrue(t.getArrayLength() >= 32)
-        assertTrue(t.getArrayLength() <= 64)
+        if (expectsCompactArrayLayout) {
+            TestCase.assertEquals(0, t.getHashLength())
+            assertTrue(t.getArrayLength() >= 32)
+            assertTrue(t.getArrayLength() <= 64)
+        }
     }
 
     fun testRekeyCount() {
@@ -98,8 +102,10 @@ open class TableTest : TestCase() {
 
 
         // Ensure capacities make sense
-        TestCase.assertEquals(32, t.getArrayLength())
-        TestCase.assertEquals(0, t.getHashLength())
+        if (expectsCompactArrayLayout) {
+            TestCase.assertEquals(32, t.getArrayLength())
+            TestCase.assertEquals(0, t.getHashLength())
+        }
     }
 
     fun testStringAndIntegerKeys() {

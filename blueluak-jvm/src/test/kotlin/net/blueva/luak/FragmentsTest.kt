@@ -2,7 +2,8 @@
  *  ____  _            _                _  __
  * | __ )| |_   _  ___| |   _   _  __ _| |/ /
  * |  _ \| | | | |/ _ \ |  | | | |/ _` | ' /
- * | |_) | | |_| |  __/ |__| |_| | (_| | .  * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
+ * | |_) | | |_| |  __/ |__| |_| | (_| | . \
+ * |____/|_|\__,_|\___|_____\__,_|\__,_|_|\_\
  *
  *  BlueLuaK
  *  https://github.com/BluevaDevelopment/BlueLuaK
@@ -15,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.jvm.asLuaReader
 import junit.framework.TestCase
 import junit.framework.TestSuite
 import net.blueva.luak.lib.jvm.JvmPlatform.debugGlobals
@@ -50,11 +52,11 @@ object FragmentsTest : TestSuite() {
                 when (TEST_TYPE) {
                     TEST_TYPE_LUAJC -> {
                         install(globals)
-                        chunk = globals.load(reader, name)!!
+                        chunk = globals.load(reader.asLuaReader(), name)!!
                     }
 
                     else -> {
-                        val p = globals.compilePrototype(reader, name)
+                        val p = globals.compilePrototype(reader.asLuaReader(), name)
                         chunk = LuaClosure(p!!, globals)
                         Print.print(p)
                     }
