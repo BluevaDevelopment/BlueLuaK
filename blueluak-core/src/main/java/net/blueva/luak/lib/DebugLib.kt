@@ -562,7 +562,7 @@ class DebugLib : TwoArgFunction() {
         fun auxgetinfo(what: String, f: LuaFunction?, ci: CallFrame?): DebugInfo {
             val ar: DebugInfo = net.blueva.luak.lib.DebugLib.DebugInfo()
             var i = 0
-            val n: Int = what.length()
+            val n: Int = what.length
             while (i < n) {
                 when (what[i]) {
                     'S' -> ar.funcinfo((f)!!)

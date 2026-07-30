@@ -258,7 +258,7 @@ class PackageLib : TwoArgFunction() {
 
             // check the path elements
             var e = -1
-            val n: Int = path.length()
+            val n: Int = path.length
             var sb: StringBuffer? = null
             name = name.replace(sep[0], rep[0])
             while (e < n) {
@@ -266,7 +266,7 @@ class PackageLib : TwoArgFunction() {
 
                 val b = e + 1
                 e = path.indexOf(';', b)
-                if (e < 0) e = path.length()
+                if (e < 0) e = path.length
                 val template: String = path.substring(b, e)
 
 
@@ -347,7 +347,7 @@ class PackageLib : TwoArgFunction() {
 
         /** Convert lua filename to valid class name  */
         fun toClassname(filename: String): String? {
-            val n: Int = filename.length()
+            val n: Int = filename.length
             var j = n
             if (filename.endsWith(".lua")) j -= 4
             for (k in 0..<j) {

@@ -354,11 +354,11 @@ class StringLib
                     'o'.code -> radix = 8
                     else -> radix = 10
                 }
-                digits = Long.toString(number, radix)
+                digits = java.lang.Long.toString(number, radix)
                 if (conversion == 'X'.code) digits = digits.toUpperCase()
             }
 
-            var minwidth: Int = digits.length()
+            var minwidth: Int = digits.length
             var ndigits = minwidth
             val nzeros: Int
 

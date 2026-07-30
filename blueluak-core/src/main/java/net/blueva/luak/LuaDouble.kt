@@ -349,10 +349,10 @@ class LuaDouble
 		}
 		*/
         val l = v.toLong()
-        if (l.toDouble() == v) return Long.toString(l)
+        if (l.toDouble() == v) return java.lang.Long.toString(l)
         if ((v).isNaN()) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
         if ((v).isInfinite()) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
-        return Float.toString(v.toFloat())
+        return java.lang.Float.toString(v.toFloat())
     }
 
     override fun strvalue(): LuaString {

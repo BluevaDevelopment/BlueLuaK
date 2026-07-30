@@ -613,7 +613,7 @@ class IoLib : TwoArgFunction() {
 
     @kotlin.Throws(IOException::class)
     private fun rawopenfile(filetype: Int, filename: String?, mode: String): File? {
-        var len: Int = mode.length()
+        var len: Int = mode.length
         var i = 0
         while (i < len) {
             // [rwa][+]?b*
@@ -829,7 +829,7 @@ class IoLib : TwoArgFunction() {
             // freadchars(f,"+-",baos);
             //freadchars(f,"0123456789",baos);
             val s = baos.toString()
-            return if (s.length() > 0) valueOf((s).toDouble()) else NIL
+            return if (s.length > 0) valueOf((s).toDouble()) else NIL
         }
 
         @kotlin.Throws(IOException::class)

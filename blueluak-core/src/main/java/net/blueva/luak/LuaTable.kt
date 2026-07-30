@@ -779,7 +779,7 @@ open class LuaTable : LuaValue, Metatable {
             if ((n.arg1().also { k = it })!!.isnil()) break
             l.add(k)
         }
-        val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(l.size())
+        val a: Array<LuaValue?> = arrayOfNulls<LuaValue>(l.size)
         l.copyInto(a)
         return a
     }
