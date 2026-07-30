@@ -84,7 +84,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
 
     @kotlin.Throws(IOException::class)
     override fun load(prototype: Prototype?, chunkname: String?, env: LuaValue?): LuaFunction? {
-        return LuaClosure(prototype, env)
+        return LuaClosure((prototype)!!, env)
     }
 
     @Deprecated(
@@ -123,7 +123,7 @@ class LuaC protected constructor() : Constants(), Globals.Compiler, Globals.Load
 
         // look up and keep at most one copy of each string
         fun newTString(s: String?): LuaString? {
-            return cachedLuaString(LuaString.valueOf(s))
+            return cachedLuaString(LuaString.valueOf((s)!!))
         }
 
         // look up and keep at most one copy of each string

@@ -91,7 +91,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
     fun dumpString(s: LuaString) {
         val len: Int = s.len().toint()
         dumpInt(len + 1)
-        s.write(writer, 0, len)
+        s.write((writer)!!, 0, len)
         writer!!.write(0)
     }
 
@@ -166,7 +166,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpFunction(f.p[i])
+            dumpFunction((f.p[i])!!)
             i++
         }
     }
@@ -186,7 +186,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         var i: Int
         var n: Int
         if (strip) dumpInt(0)
-        else dumpString(f.source)
+        else dumpString((f.source)!!)
         n = if (strip) 0 else f.lineinfo!!.size
         dumpInt(n)
         i = 0
@@ -199,7 +199,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         i = 0
         while (i < n) {
             val lvi: LocVars = f.locvars[i]
-            dumpString(lvi.varname)
+            dumpString((lvi.varname)!!)
             dumpInt(lvi.startpc)
             dumpInt(lvi.endpc)
             i++
@@ -208,7 +208,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpString(f.upvalues!![i]!!.name)
+            dumpString((f.upvalues!![i]!!.name)!!)
             i++
         }
     }

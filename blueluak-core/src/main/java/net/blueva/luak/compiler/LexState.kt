@@ -152,7 +152,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     fun newstring(chars: CharArray?, offset: Int, len: Int): LuaString {
-        return L!!.newTString(String(chars, offset, len))
+        return L!!.newTString(String((chars)!!, offset, len))
     }
 
     fun inclinenumber() {
@@ -804,13 +804,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val fs: FuncState = this.fs
         if (FuncState.singlevaraux(
                 fs,
-                varname,
+                (varname)!!,
                 `var`,
                 1
             ) === net.blueva.luak.compiler.LexState.Companion.VVOID
         ) { /* global name? */
             val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-            FuncState.singlevaraux(fs, this.envn, `var`, 1) /* get environment variable */
+            FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1) /* get environment variable */
             _assert(`var`.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL || `var`.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL)
             this.codestring(key, varname) /* key is variable name */
             fs.indexed(`var`, key) /* env[varname] */
@@ -970,7 +970,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         fs.bl = null
         fs.f!!.source = this.source
         fs.f!!.maxstacksize = 2 /* registers 0/1 are always valid */
-        fs.enterblock(bl, false)
+        fs.enterblock((bl)!!, false)
     }
 
     fun close_func() {
@@ -995,10 +995,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         /* fieldsel -> ['.' | ':'] NAME */
         val fs: FuncState = this.fs
         val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        fs.exp2anyregup(v)
+        fs.exp2anyregup((v)!!)
         this.next() /* skip the dot or colon */
         this.checkname(key)
-        fs.indexed(v, key)
+        fs.indexed((v)!!, key)
     }
 
     internal fun yindex(v: expdesc) {
@@ -1092,7 +1092,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         } while (this.testnext(','.code) || this.testnext(';'.code))
         this.check_match('}'.code, '{'.code, line)
         fs.lastlistfield(cc)
-        val i: InstructionPtr = InstructionPtr(fs.f!!.code, pc)
+        val i: InstructionPtr = InstructionPtr((fs.f!!.code)!!, pc)
         SETARG_B(i, net.blueva.luak.compiler.LexState.Companion.luaO_int2fb(cc.na)) /* set initial array size */
         SETARG_C(i, net.blueva.luak.compiler.LexState.Companion.luaO_int2fb(cc.nh)) /* set initial table size */
     }
@@ -1566,7 +1566,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun labelstat(label: LuaString?, line: Int) {
         /* label -> '::' NAME '::' */
         val l: Int /* index of new label being created */
-        fs!!.checkrepeated(dyd.label, dyd.n_label, label) /* check for repeated labels */
+        fs!!.checkrepeated(dyd.label, dyd.n_label, (label)!!) /* check for repeated labels */
         checknext(net.blueva.luak.compiler.LexState.Companion.TK_DBCOLON) /* skip double colon */
         /* create new entry for this label */
         l = newlabelentry(
@@ -1688,7 +1688,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         this.exp1() /* limit */
         if (this.testnext(','.code)) this.exp1() /* optional step */
         else { /* default step = 1 */
-            fs.codeK(fs.freereg, fs.numberK(LuaInteger.valueOf(1)))
+            fs.codeK(fs.freereg, fs.numberK((LuaInteger.valueOf(1))!!))
             fs.reserveregs(1)
         }
         this.forbody(base, line, 1, true)
@@ -1771,7 +1771,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         statlist() /* `then' part */
         fs!!.leaveblock()
         if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSE || t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSEIF) fs!!.concat(
-            escapelist,
+            (escapelist)!!,
             fs!!.jump()
         ) /* must jump over it */
         fs!!.patchtohere(jf)
@@ -1858,7 +1858,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             assignment(v, 1)
         } else {  /* stat -> func */
             check_condition(v.v.k == net.blueva.luak.compiler.LexState.Companion.VCALL, "syntax error")
-            SETARG_C(fs.getcodePtr(v.v), 1) /* call statement uses no results */
+            SETARG_C((fs.getcodePtr(v.v))!!, 1) /* call statement uses no results */
         }
     }
 
@@ -1876,7 +1876,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             if (hasmultret(e.k)) {
                 fs.setmultret(e)
                 if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1) { /* tail call? */
-                    SET_OPCODE(fs.getcodePtr(e), Lua.OP_TAILCALL)
+                    SET_OPCODE((fs.getcodePtr(e))!!, Lua.OP_TAILCALL)
                     _assert(Lua.GETARG_A(fs.getcode(e)) == fs.nactvar)
                 }
                 first = fs.nactvar

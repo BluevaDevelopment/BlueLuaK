@@ -58,7 +58,7 @@ internal class FuncState internal constructor() : Constants() {
     // from lcode.h
     // =============================================================
     fun getcodePtr(e: expdesc): InstructionPtr? {
-        return InstructionPtr(f!!.code, e.u.info)
+        return InstructionPtr((f!!.code)!!, e.u.info)
     }
 
     fun getcode(e: expdesc): Int {
@@ -278,7 +278,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun fixjump(pc: Int, dest: Int) {
-        val jmp: InstructionPtr = InstructionPtr(this.f!!.code, pc)
+        val jmp: InstructionPtr = InstructionPtr((this.f!!.code)!!, pc)
         val offset = dest - (pc + 1)
         _assert(dest != LexState.NO_JUMP)
         if (Math.abs(offset) > MAXARG_sBx) ls!!.syntaxerror("control structure too long")
@@ -307,7 +307,7 @@ internal class FuncState internal constructor() : Constants() {
 
 
     fun getjumpcontrol(pc: Int): InstructionPtr {
-        val pi: InstructionPtr = InstructionPtr(this.f!!.code, pc)
+        val pi: InstructionPtr = InstructionPtr((this.f!!.code)!!, pc)
         if (pc >= 1 && testTMode(GET_OPCODE(pi.code[pi.idx - 1]))) return InstructionPtr(pi.code, pi.idx - 1)
         else return pi
     }
@@ -388,7 +388,7 @@ internal class FuncState internal constructor() : Constants() {
 
     fun patchtohere(list: Int) {
         this.getlabel()
-        this.concat(this.jpc, list)
+        this.concat((this.jpc)!!, list)
     }
 
     fun concat(l1: IntPtr, l2: Int) {
@@ -465,10 +465,10 @@ internal class FuncState internal constructor() : Constants() {
 
     fun setreturns(e: expdesc, nresults: Int) {
         if (e.k === LexState.VCALL) { /* expression is an open function call? */
-            SETARG_C(this.getcodePtr(e), nresults + 1)
+            SETARG_C((this.getcodePtr(e))!!, nresults + 1)
         } else if (e.k === LexState.VVARARG) {
-            SETARG_B(this.getcodePtr(e), nresults + 1)
-            SETARG_A(this.getcodePtr(e), this.freereg)
+            SETARG_B((this.getcodePtr(e))!!, nresults + 1)
+            SETARG_A((this.getcodePtr(e))!!, this.freereg)
             this.reserveregs(1)
         }
     }
@@ -478,7 +478,7 @@ internal class FuncState internal constructor() : Constants() {
             e.k = LexState.VNONRELOC
             e.u.info = GETARG_A(this.getcode(e))
         } else if (e.k === LexState.VVARARG) {
-            SETARG_B(this.getcodePtr(e), 2)
+            SETARG_B((this.getcodePtr(e))!!, 2)
             e.k = LexState.VRELOCABLE /* can relocate its simple result */
         }
     }
@@ -537,12 +537,12 @@ internal class FuncState internal constructor() : Constants() {
             }
 
             LexState.VKNUM -> {
-                this.codeK(reg, this.numberK(e.u.nval()))
+                this.codeK(reg, this.numberK((e.u.nval())!!))
             }
 
             LexState.VRELOCABLE -> {
                 val pc: InstructionPtr? = this.getcodePtr(e)
-                SETARG_A(pc, reg)
+                SETARG_A((pc)!!, reg)
             }
 
             LexState.VNONRELOC -> {
@@ -634,7 +634,7 @@ internal class FuncState internal constructor() : Constants() {
 
             LexState.VKNUM -> {
                 run {
-                    e.u.info = this.numberK(e.u.nval())
+                    e.u.info = this.numberK((e.u.nval())!!)
                     e.k = LexState.VK
                 }
                 run {
@@ -950,7 +950,7 @@ internal class FuncState internal constructor() : Constants() {
                 ) {
                     _assert(e1.u.info === GETARG_B(this.getcode(e2)) - 1)
                     this.freeexp(e1)
-                    SETARG_B(this.getcodePtr(e2), e1.u.info)
+                    SETARG_B((this.getcodePtr(e2))!!, e1.u.info)
                     e1.k = LexState.VRELOCABLE
                     e1.u.info = e2.u.info
                 } else {
