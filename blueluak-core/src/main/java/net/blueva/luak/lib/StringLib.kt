@@ -1187,30 +1187,30 @@ class StringLib
                             (if (c < ' ' || c.code == 0x7F) net.blueva.luak.lib.StringLib.Companion.MASK_CONTROL else 0).toInt()).toByte()
                 if ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') || (c >= '0' && c <= '9')) {
                     net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i] =
-                        net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_HEXDIGIT.toInt().toByte()
+                        (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_HEXDIGIT.toInt()).toByte()
                 }
                 if ((c >= '!' && c <= '/') || (c >= ':' && c <= '@') || (c >= '[' && c <= '`') || (c >= '{' && c <= '~')) {
                     net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i] =
-                        net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_PUNCT.toInt().toByte()
+                        (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_PUNCT.toInt()).toByte()
                 }
                 if ((net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() and (net.blueva.luak.lib.StringLib.Companion.MASK_LOWERCASE.toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_UPPERCASE.toInt())) != 0) {
                     net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i] =
-                        net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_ALPHA.toInt().toByte()
+                        (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[i].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_ALPHA.toInt()).toByte()
                 }
             }
 
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[' '.code] =
                 net.blueva.luak.lib.StringLib.Companion.MASK_SPACE
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\r'.code] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\r'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt().toByte()
+                (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\r'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()).toByte()
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\n'.code] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\n'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt().toByte()
+                (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\n'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()).toByte()
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\t'.code] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\t'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt().toByte()
+                (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\t'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()).toByte()
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[0x0B /* '\v' */] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[0x0B].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt().toByte()
+                (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE[0x0B].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()).toByte()
             net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\u000C'.code] =
-                net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\u000C'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt().toByte()
+                (net.blueva.luak.lib.StringLib.Companion.CHAR_TABLE['\u000C'.code].toInt() or net.blueva.luak.lib.StringLib.Companion.MASK_SPACE.toInt()).toByte()
         }
     }
 }
