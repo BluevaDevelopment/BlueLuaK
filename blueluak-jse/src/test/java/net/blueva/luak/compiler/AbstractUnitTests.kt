@@ -107,7 +107,7 @@ abstract class AbstractUnitTests(zipdir: String?, zipfile: String, dir: String) 
         val baos = ByteArrayOutputStream()
         val ps = PrintStream(baos)
         Print.ps = ps
-        Print().printFunction(p, true)
+        Print.printFunction(p, true)
         return baos.toString()
     }
 }

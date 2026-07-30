@@ -97,7 +97,7 @@ class DumpLoadEndianIntTest : TestCase() {
             // double check script result before dumping
             var f: LuaFunction = LuaClosure(p!!, globals)
             var r = f.call()
-            var actual: String? = r.tojstring()
+            var actual: String? = r!!.tojstring()
             TestCase.assertEquals(expectedPriorDump, actual)
 
 
@@ -117,7 +117,7 @@ class DumpLoadEndianIntTest : TestCase() {
             val `is`: InputStream = ByteArrayInputStream(dumped)
             f = globals!!.load(`is`, "dumped", "b", globals)!!.checkfunction()!!
             r = f.call()
-            actual = r.tojstring()
+            actual = r!!.tojstring()
             TestCase.assertEquals(expectedPostDump, actual)
 
             // write test chunk
