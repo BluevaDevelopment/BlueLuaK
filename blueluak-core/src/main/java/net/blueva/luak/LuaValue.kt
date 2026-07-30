@@ -3768,64 +3768,84 @@ open class LuaValue : Varargs() {
         val NOVALS: Array<LuaValue?> = arrayOf<LuaValue?>()
 
         /** The variable name of the environment.  */
-        var ENV: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("_ENV")
+        val ENV: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("_ENV")
 
         /** LuaString constant with value "__index" for use as metatag  */
-        val INDEX: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__index")
+        val INDEX: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__index")
 
         /** LuaString constant with value "__newindex" for use as metatag  */
-        val NEWINDEX: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__newindex")
+        val NEWINDEX: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__newindex")
 
         /** LuaString constant with value "__call" for use as metatag  */
-        val CALL: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__call")
+        val CALL: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__call")
 
         /** LuaString constant with value "__mode" for use as metatag  */
-        val MODE: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__mode")
+        val MODE: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__mode")
 
         /** LuaString constant with value "__metatable" for use as metatag  */
-        val METATABLE: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__metatable")
+        val METATABLE: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__metatable")
 
         /** LuaString constant with value "__add" for use as metatag  */
-        val ADD: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__add")
+        val ADD: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__add")
 
         /** LuaString constant with value "__sub" for use as metatag  */
-        val SUB: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__sub")
+        val SUB: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__sub")
 
         /** LuaString constant with value "__div" for use as metatag  */
-        val DIV: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__div")
+        val DIV: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__div")
 
         /** LuaString constant with value "__mul" for use as metatag  */
-        val MUL: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__mul")
+        val MUL: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__mul")
 
         /** LuaString constant with value "__pow" for use as metatag  */
-        val POW: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__pow")
+        val POW: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__pow")
 
         /** LuaString constant with value "__mod" for use as metatag  */
-        val MOD: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__mod")
+        val MOD: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__mod")
 
         /** LuaString constant with value "__unm" for use as metatag  */
-        val UNM: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__unm")
+        val UNM: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__unm")
 
         /** LuaString constant with value "__len" for use as metatag  */
-        val LEN: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__len")
+        val LEN: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__len")
 
         /** LuaString constant with value "__eq" for use as metatag  */
-        val EQ: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__eq")
+        val EQ: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__eq")
 
         /** LuaString constant with value "__lt" for use as metatag  */
-        val LT: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__lt")
+        val LT: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__lt")
 
         /** LuaString constant with value "__le" for use as metatag  */
-        val LE: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__le")
+        val LE: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__le")
 
         /** LuaString constant with value "__tostring" for use as metatag  */
-        val TOSTRING: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__tostring")
+        val TOSTRING: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__tostring")
 
         /** LuaString constant with value "__concat" for use as metatag  */
-        val CONCAT: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("__concat")
+        val CONCAT: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__concat")
 
         /** LuaString constant with value ""  */
-        val EMPTYSTRING: LuaString = net.blueva.luak.LuaValue.Companion.valueOf("")
+        val EMPTYSTRING: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("")
 
         /** Limit on lua stack size  */
         private const val MAXSTACK = 250
