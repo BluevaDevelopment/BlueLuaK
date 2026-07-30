@@ -739,7 +739,7 @@ class DebugLib : TwoArgFunction() {
             if (!frame.f!!.isclosure()) return net.blueva.luak.lib.DebugLib.NameWhat(frame.f!!.classnamestub(), "Java")
             val p: Prototype = frame.f!!.checkclosure()!!.p
             val pc = frame.pc
-            val i: Int = p.code[pc] /* calling instruction */
+            val i: Int = p.code!![pc] /* calling instruction */
             val tm: LuaString
             when (Lua.GET_OPCODE(i)) {
                 Lua.OP_CALL, Lua.OP_TAILCALL -> return net.blueva.luak.lib.DebugLib.Companion.getobjname(
@@ -778,7 +778,7 @@ class DebugLib : TwoArgFunction() {
             /* else try symbolic execution */
             pc = net.blueva.luak.lib.DebugLib.Companion.findsetreg(p, lastpc, reg)
             if (pc != -1) { /* could find instruction? */
-                val i: Int = p.code[pc]
+                val i: Int = p.code!![pc]
                 when (Lua.GET_OPCODE(i)) {
                     Lua.OP_MOVE -> {
                         val a: Int = Lua.GETARG_A(i)
@@ -818,9 +818,9 @@ class DebugLib : TwoArgFunction() {
                         val b: Int = if (Lua.GET_OPCODE(i) === Lua.OP_LOADK)
                             Lua.GETARG_Bx(i)
                         else
-                            Lua.GETARG_Ax(p.code[pc + 1])
-                        if (p.k[b]!!.isstring()) {
-                            name = p.k[b]!!.strvalue()
+                            Lua.GETARG_Ax(p.code!![pc + 1])
+                        if (p.k!![b]!!.isstring()) {
+                            name = p.k!![b]!!.strvalue()
                             return net.blueva.luak.lib.DebugLib.NameWhat(name!!.tojstring(), "constant")
                         }
                     }
@@ -839,7 +839,7 @@ class DebugLib : TwoArgFunction() {
 
         fun kname(p: Prototype, pc: Int, c: Int): String {
             if (Lua.ISK(c)) {  /* is 'c' a constant? */
-                val k: LuaValue = p.k[Lua.INDEXK(c)]
+                val k: LuaValue = p.k!![Lua.INDEXK(c)]
                 if (k.isstring()) {  /* literal constant? */
                     return k.tojstring() /* it is its own name */
                 } /* else no reasonable name found */
@@ -861,7 +861,7 @@ class DebugLib : TwoArgFunction() {
             var setreg = -1 /* keep last instruction that changed 'reg' */
             pc = 0
             while (pc < lastpc) {
-                val i: Int = p.code[pc]
+                val i: Int = p.code!![pc]
                 val op: Int = Lua.GET_OPCODE(i)
                 val a: Int = Lua.GETARG_A(i)
                 when (op) {
