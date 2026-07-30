@@ -156,7 +156,7 @@ class Globals : LuaTable() {
     }
 
     /** Check that this object is a Globals object, and return it, otherwise throw an error.  */
-    fun checkglobals(): Globals {
+    override fun checkglobals(): Globals {
         return this
     }
 
@@ -182,7 +182,8 @@ class Globals : LuaTable() {
      */
     fun loadfile(filename: String?): LuaValue? {
         try {
-            return load(finder.findResource(filename), "@" + filename, "bt", this)
+            val stream = finder?.findResource(filename) ?: throw LuaError("load $filename: no resource")
+            return load(stream, "@" + filename, "bt", this)
         } catch (e: Exception) {
             return error("load " + filename + ": " + e)
         }
@@ -311,9 +312,9 @@ class Globals : LuaTable() {
      * @return Values supplied as arguments to the resume() call that reactivates this thread.
      */
     fun yield(args: Varargs?): Varargs {
-        if (running == null || running.isMainThread()) throw LuaError("cannot yield main thread")
+        if (running == null || running.isMainThread) throw LuaError("cannot yield main thread")
         val s: LuaThread.State = running.state
-        return s.lua_yield(args)
+        return s.lua_yield(args) ?: LuaValue.NONE
     }
 
     /** Reader implementation to read chars from a String in JME or JSE.  */
@@ -322,24 +323,24 @@ class Globals : LuaTable() {
         val n: Int
 
         init {
-            n = s.length()
+            n = s.length
         }
 
         @kotlin.Throws(IOException::class)
-        fun close() {
+        override fun close() {
             i = n
         }
 
         @kotlin.Throws(IOException::class)
-        fun read(): Int {
-            return if (i < n) s.charAt(i++) else -1
+        override fun read(): Int {
+            return if (i < n) s[i++].code else -1
         }
 
         @kotlin.Throws(IOException::class)
-        fun read(cbuf: CharArray, off: Int, len: Int): Int {
+        override fun read(cbuf: CharArray, off: Int, len: Int): Int {
             var j = 0
             while (j < len && i < n) {
-                cbuf[off + j] = s.charAt(i)
+                cbuf[off + j] = s[i]
                 ++j
                 ++i
             }
@@ -363,18 +364,18 @@ class Globals : LuaTable() {
         protected abstract fun avail(): Int
 
         @kotlin.Throws(IOException::class)
-        fun read(): Int {
+        override fun read(): Int {
             val a = avail()
             return (if (a <= 0) -1 else 0xff and b[i++].toInt())
         }
 
         @kotlin.Throws(IOException::class)
-        fun read(b: ByteArray): Int {
+        override fun read(b: ByteArray): Int {
             return read(b, 0, b.size)
         }
 
         @kotlin.Throws(IOException::class)
-        fun read(b: ByteArray?, i0: Int, n: Int): Int {
+        override fun read(b: ByteArray?, i0: Int, n: Int): Int {
             val a = avail()
             if (a <= 0) return -1
             val n_read: Int = Math.min(a, n)
@@ -384,14 +385,14 @@ class Globals : LuaTable() {
         }
 
         @kotlin.Throws(IOException::class)
-        fun skip(n: Long): Long {
-            val k: Long = Math.min(n, j - i)
+        override fun skip(n: Long): Long {
+            val k: Long = Math.min(n, (j - i).toLong())
             i += k.toInt()
             return k
         }
 
         @kotlin.Throws(IOException::class)
-        fun available(): Int {
+        override fun available(): Int {
             return j - i
         }
     }
@@ -424,7 +425,7 @@ class Globals : LuaTable() {
         }
 
         @kotlin.Throws(IOException::class)
-        fun close() {
+        override fun close() {
             r.close()
         }
     }
@@ -465,12 +466,12 @@ class Globals : LuaTable() {
         }
 
         @kotlin.Throws(IOException::class)
-        fun close() {
+        override fun close() {
             s.close()
         }
 
         @kotlin.jvm.Synchronized
-        fun mark(n: Int) {
+        override fun mark(n: Int) {
             if (i > 0 || n > b.size) {
                 val dest = if (n > b.size) ByteArray(n) else b
                 System.arraycopy(b, i, dest, 0, j - i)
@@ -480,13 +481,13 @@ class Globals : LuaTable() {
             }
         }
 
-        fun markSupported(): Boolean {
+        override fun markSupported(): Boolean {
             return true
         }
 
         @kotlin.jvm.Synchronized
         @kotlin.Throws(IOException::class)
-        fun reset() {
+        override fun reset() {
             i = 0
         }
     }

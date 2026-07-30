@@ -165,7 +165,7 @@ class LoadState private constructor(
     @kotlin.Throws(IOException::class)
     fun loadNumber(): LuaValue {
         if (luacNumberFormat == net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_INTS_ONLY) {
-            return LuaInteger.valueOf(loadInt())
+            return LuaInteger.valueOf(loadInt())!!
         } else {
             return net.blueva.luak.LoadState.Companion.longBitsToLuaNumber(loadInt64())
         }
@@ -182,12 +182,12 @@ class LoadState private constructor(
         val values: Array<LuaValue?> =
             if (n > 0) arrayOfNulls<LuaValue>(n) else net.blueva.luak.LoadState.Companion.NOVALUES
         for (i in 0..<n) {
-            when (`is`.readByte()) {
+            when (`is`.readByte().toInt()) {
                 net.blueva.luak.LoadState.Companion.LUA_TNIL -> values[i] = LuaValue.NIL
                 net.blueva.luak.LoadState.Companion.LUA_TBOOLEAN -> values[i] =
                     (if (0 != `is`.readUnsignedByte()) LuaValue.TRUE else LuaValue.FALSE)
 
-                net.blueva.luak.LoadState.Companion.LUA_TINT -> values[i] = LuaInteger.valueOf(loadInt())
+                net.blueva.luak.LoadState.Companion.LUA_TINT -> values[i] = LuaInteger.valueOf(loadInt())!!
                 net.blueva.luak.LoadState.Companion.LUA_TNUMBER -> values[i] = loadNumber()
                 net.blueva.luak.LoadState.Companion.LUA_TSTRING -> values[i] = loadString()
                 else -> throw IllegalStateException("bad constant")
@@ -208,9 +208,9 @@ class LoadState private constructor(
         val n = loadInt()
         f.upvalues = if (n > 0) arrayOfNulls<Upvaldesc>(n) else net.blueva.luak.LoadState.Companion.NOUPVALDESCS
         for (i in 0..<n) {
-            val instack = `is`.readByte() !== 0
-            val idx = (`is`.readByte() as Int) and 0xff
-            f.upvalues[i] = Upvaldesc(null, instack, idx)
+            val instack = `is`.readByte().toInt() != 0
+            val idx = (`is`.readByte().toInt()) and 0xff
+            f.upvalues!![i] = Upvaldesc(null, instack, idx)
         }
     }
 
@@ -233,7 +233,7 @@ class LoadState private constructor(
         }
 
         n = loadInt()
-        for (i in 0..<n) f.upvalues[i].name = loadString()
+        for (i in 0..<n) f.upvalues!![i].name = loadString()
     }
 
     /**
@@ -274,15 +274,15 @@ class LoadState private constructor(
      */
     @kotlin.Throws(IOException::class)
     fun loadHeader() {
-        luacVersion = `is`.readByte()
-        luacFormat = `is`.readByte()
+        luacVersion = `is`.readByte().toInt()
+        luacFormat = `is`.readByte().toInt()
         luacLittleEndian = (0 != `is`.readByte())
-        luacSizeofInt = `is`.readByte()
-        luacSizeofSizeT = `is`.readByte()
-        luacSizeofInstruction = `is`.readByte()
-        luacSizeofLuaNumber = `is`.readByte()
-        luacNumberFormat = `is`.readByte()
-        for (i in net.blueva.luak.LoadState.Companion.LUAC_TAIL.indices) if (`is`.readByte() !== net.blueva.luak.LoadState.Companion.LUAC_TAIL[i]) throw LuaError(
+        luacSizeofInt = `is`.readByte().toInt()
+        luacSizeofSizeT = `is`.readByte().toInt()
+        luacSizeofInstruction = `is`.readByte().toInt()
+        luacSizeofLuaNumber = `is`.readByte().toInt()
+        luacNumberFormat = `is`.readByte().toInt()
+        for (i in net.blueva.luak.LoadState.Companion.LUAC_TAIL.indices) if (`is`.readByte().toInt() != net.blueva.luak.LoadState.Companion.LUAC_TAIL[i].toInt()) throw LuaError(
             "Unexpeted byte in luac tail of header, index=" + i
         )
     }
@@ -294,8 +294,8 @@ class LoadState private constructor(
 
     private class GlobalsUndumper : Globals.Undumper {
         @kotlin.Throws(IOException::class)
-        fun undump(stream: InputStream, chunkname: String): Prototype? {
-            return net.blueva.luak.LoadState.Companion.undump(stream, chunkname)
+        override fun undump(stream: InputStream?, chunkname: String?): Prototype? {
+            return net.blueva.luak.LoadState.Companion.undump(stream!!, chunkname!!)
         }
     }
 
@@ -375,7 +375,7 @@ class LoadState private constructor(
          */
         fun longBitsToLuaNumber(bits: Long): LuaValue {
             if ((bits and ((1L shl 63) - 1)) == 0L) {
-                return LuaValue.ZERO
+                return LuaValue.ZERO!!
             }
 
             val e = ((bits shr 52) and 0x7ffL).toInt() - 1023
@@ -386,11 +386,11 @@ class LoadState private constructor(
                 val intPrecMask = (1L shl shift) - 1
                 if ((f and intPrecMask) == 0L) {
                     val intValue = (f shr shift).toInt() or (1 shl e)
-                    return LuaInteger.valueOf(if ((bits shr 63) != 0L) -intValue else intValue)
+                    return LuaInteger.valueOf(if ((bits shr 63) != 0L) -intValue else intValue)!!
                 }
             }
 
-            return LuaValue.valueOf(Double.longBitsToDouble(bits))
+            return LuaValue.valueOf(Double.fromBits(bits))
         }
 
         /**
@@ -403,7 +403,7 @@ class LoadState private constructor(
         @kotlin.Throws(IOException::class)
         fun undump(stream: InputStream, chunkname: String): Prototype? {
             // check rest of signature
-            if (stream.read() !== net.blueva.luak.LoadState.Companion.LUA_SIGNATURE[0] || stream.read() !== net.blueva.luak.LoadState.Companion.LUA_SIGNATURE[1] || stream.read() !== net.blueva.luak.LoadState.Companion.LUA_SIGNATURE[2] || stream.read() !== net.blueva.luak.LoadState.Companion.LUA_SIGNATURE[3]) return null
+            if (stream.read() != LUA_SIGNATURE[0].toInt() || stream.read() != LUA_SIGNATURE[1].toInt() || stream.read() != LUA_SIGNATURE[2].toInt() || stream.read() != LUA_SIGNATURE[3].toInt()) return null
 
 
             // load file as a compiled chunk
@@ -416,7 +416,7 @@ class LoadState private constructor(
                 net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES, net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_INTS_ONLY, net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_NUM_PATCH_INT32 -> {}
                 else -> throw LuaError("unsupported int size")
             }
-            return s.loadFunction(LuaString.valueOf(sname))
+            return s.loadFunction(LuaString.valueOf(sname!!))
         }
 
         /**

@@ -38,7 +38,7 @@ class UpValue(stack: Array<LuaValue?>, index: Int) {
         this.index = index
     }
 
-    fun toString(): String {
+    override fun toString(): String {
         return index.toString() + "/" + array.size + " " + array[index]
     }
 
@@ -48,15 +48,16 @@ class UpValue(stack: Array<LuaValue?>, index: Int) {
      * @see LuaValue.tojstring
      */
     fun tojstring(): String {
-        return array[index].tojstring()
+        return array[index]!!.tojstring()
     }
 
-    val value: LuaValue?
-        /**
-         * Get the value of the upvalue
-         * @return the [LuaValue] for this upvalue
-         */
-        get() = array[index]
+    /**
+     * Get the value of the upvalue
+     * @return the [LuaValue] for this upvalue
+     */
+    fun getValue(): LuaValue? {
+        return array[index]
+    }
 
     /**
      * Set the value of the upvalue

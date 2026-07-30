@@ -54,13 +54,13 @@ class TailcallVarargs : Varargs {
         this.args = LuaValue.varargsOf(`object`, args)
     }
 
-    val isTailcall: Boolean
+    override val isTailcall: Boolean
         get() = true
 
-    fun eval(): Varargs? {
+    override fun eval(): Varargs {
         while (result == null) {
-            val r: Varargs = func.onInvoke(args)
-            if (r.isTailcall()) {
+            val r: Varargs = func!!.onInvoke(args!!)!!
+            if (r.isTailcall) {
                 val t = r as TailcallVarargs
                 func = t.func
                 args = t.args
@@ -70,26 +70,26 @@ class TailcallVarargs : Varargs {
                 args = null
             }
         }
-        return result
+        return result!!
     }
 
-    fun arg(i: Int): LuaValue {
+    override fun arg(i: Int): LuaValue? {
         if (result == null) eval()
-        return result.arg(i)
+        return result!!.arg(i)
     }
 
-    fun arg1(): LuaValue {
+    override fun arg1(): LuaValue? {
         if (result == null) eval()
-        return result.arg1()
+        return result!!.arg1()
     }
 
-    fun narg(): Int {
+    override fun narg(): Int {
         if (result == null) eval()
-        return result.narg()
+        return result!!.narg()
     }
 
-    fun subargs(start: Int): Varargs {
+    override fun subargs(start: Int): Varargs? {
         if (result == null) eval()
-        return result.subargs(start)
+        return result!!.subargs(start)
     }
 }

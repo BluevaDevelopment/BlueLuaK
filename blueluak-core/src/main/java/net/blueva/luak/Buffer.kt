@@ -107,14 +107,14 @@ class Buffer {
      * @return the value as a Java String
      */
     fun tojstring(): String {
-        return value().tojstring()
+        return value()?.tojstring() ?: ""
     }
 
     /**
      * Convert the buffer to a Java String
      * @return the value as a Java String
      */
-    fun toString(): String {
+    override fun toString(): String {
         return tojstring()
     }
 
@@ -133,7 +133,7 @@ class Buffer {
      * @return `this` to allow call chaining
      */
     fun append(`val`: LuaValue): Buffer {
-        append(`val`.strvalue())
+        append(`val`.strvalue()!!)
         return this
     }
 
@@ -169,7 +169,7 @@ class Buffer {
      * @return [Buffer] for use in call chaining.
      */
     fun concatTo(lhs: LuaValue): Buffer {
-        return setvalue(lhs.concat(value()))
+        return setvalue(lhs.concat(value()!!))
     }
 
     /** Concatenate this buffer onto a [LuaString]
@@ -177,18 +177,20 @@ class Buffer {
      * @return [Buffer] for use in call chaining.
      */
     fun concatTo(lhs: LuaString): Buffer {
-        return if (value != null && !value.isstring()) setvalue(lhs.concat(value)) else prepend(lhs)
+        val v = value
+        return if (v != null && !v.isstring()) setvalue(lhs.concat(v)) else prepend(lhs)
     }
 
     /** Concatenate this buffer onto a [LuaNumber]
-     * 
-     * 
+     *
+     *
      * The [LuaNumber] will be converted to a string before concatenating.
      * @param lhs the left-hand-side value onto which we are concatenating `this`
      * @return [Buffer] for use in call chaining.
      */
     fun concatTo(lhs: LuaNumber): Buffer {
-        return if (value != null && !value.isstring()) setvalue(lhs.concat(value)) else prepend(lhs.strvalue())
+        val v = value
+        return if (v != null && !v.isstring()) setvalue(lhs.concat(v)) else prepend(lhs.strvalue()!!)
     }
 
     /** Concatenate bytes from a [LuaString] onto the front of this buffer
@@ -210,8 +212,9 @@ class Buffer {
      * @param nafter number of unused bytes which must follow the data after this completes
      */
     fun makeroom(nbefore: Int, nafter: Int) {
-        if (value != null) {
-            val s: LuaString = value.strvalue()
+        val v = value
+        if (v != null) {
+            val s: LuaString = v.strvalue()!!
             value = null
             length = s.m_length
             offset = nbefore

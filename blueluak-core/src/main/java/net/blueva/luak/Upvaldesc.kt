@@ -32,7 +32,7 @@ class Upvaldesc(name: LuaString?, instack: Boolean, idx: Int) {
         this.idx = idx.toShort()
     }
 
-    fun toString(): String? {
-        return idx.toString() + (if (instack) " instack " else " closed ") + String.valueOf(name)
+    override fun toString(): String {
+        return idx.toString() + (if (instack) " instack " else " closed ") + (name ?: "null")
     }
 }

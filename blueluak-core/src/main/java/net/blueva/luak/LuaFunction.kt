@@ -34,35 +34,35 @@ package net.blueva.luak
  */
 abstract
 class LuaFunction : LuaValue() {
-    fun type(): Int {
+    override fun type(): Int {
         return TFUNCTION
     }
 
-    fun typename(): String? {
+    override fun typename(): String? {
         return "function"
     }
 
-    fun isfunction(): Boolean {
+    override fun isfunction(): Boolean {
         return true
     }
 
-    fun checkfunction(): LuaFunction {
+    override fun checkfunction(): LuaFunction? {
         return this
     }
 
-    fun optfunction(defval: LuaFunction?): LuaFunction {
+    override fun optfunction(defval: LuaFunction?): LuaFunction? {
         return this
     }
 
-    fun getmetatable(): LuaValue? {
+    override fun getmetatable(): LuaValue? {
         return net.blueva.luak.LuaFunction.Companion.s_metatable
     }
 
-    fun tojstring(): String? {
+    override fun tojstring(): String {
         return "function: " + classnamestub()
     }
 
-    fun strvalue(): LuaString {
+    override fun strvalue(): LuaString? {
         return valueOf(tojstring())
     }
 
@@ -71,9 +71,9 @@ class LuaFunction : LuaValue() {
      * If the first character is '_', it is skipped.
      */
     fun classnamestub(): String {
-        val s: String = getClass().getName()
-        var offset: Int = Math.max(s.lastIndexOf('.'), s.lastIndexOf('$')) + 1
-        if (s.charAt(offset) === '_') offset++
+        val s: String = javaClass.name
+        var offset: Int = maxOf(s.lastIndexOf('.'), s.lastIndexOf('$')) + 1
+        if (s[offset] == '_') offset++
         return s.substring(offset)
     }
 
@@ -81,7 +81,7 @@ class LuaFunction : LuaValue() {
      * Is overridden by LuaClosure to return the source file and line, and by LibFunctions to return the name.
      * @return common name for this function.
      */
-    fun name(): String {
+    override fun name(): String {
         return classnamestub()
     }
 

@@ -123,9 +123,10 @@ class Print : Lua() {
         }
 
         fun printConstant(ps: PrintStream, f: Prototype, i: Int) {
+            val constants = f.k
             net.blueva.luak.Print.Companion.printValue(
                 ps,
-                if (i < f.k.length) f.k[i] else LuaValue.valueOf("UNKNOWN_CONST_" + i)
+                if (constants != null && i < constants.size) constants[i] else LuaValue.valueOf("UNKNOWN_CONST_" + i)
             )
         }
 
@@ -139,10 +140,9 @@ class Print : Lua() {
          * @param f the [Prototype]
          */
         fun printCode(f: Prototype) {
-            val code: IntArray = f.code
-            var pc: Int
+            val code: IntArray = f.code ?: return
+            var pc = 0
             val n = code.size
-            pc = 0
             while (pc < n) {
                 pc = net.blueva.luak.Print.Companion.printOpCode(f, pc)
                 net.blueva.luak.Print.Companion.ps.println()
@@ -169,7 +169,7 @@ class Print : Lua() {
          */
         fun printOpCode(ps: PrintStream, f: Prototype, pc: Int): Int {
             var pc = pc
-            val code: IntArray = f.code
+            val code: IntArray = f.code ?: return pc
             val i = code[pc]
             val o: Int = GET_OPCODE(i)
             val a: Int = GETARG_A(i)
@@ -178,6 +178,8 @@ class Print : Lua() {
             val bx: Int = GETARG_Bx(i)
             val sbx: Int = GETARG_sBx(i)
             val line: Int = net.blueva.luak.Print.Companion.getline(f, pc)
+            val upvalues = f.upvalues
+            val protos = f.p
             ps.print("  " + (pc + 1) + "  ")
             if (line > 0) ps.print("[" + line + "]  ")
             else ps.print("[-]  ")
@@ -209,8 +211,8 @@ class Print : Lua() {
 
                     OP_GETUPVAL, OP_SETUPVAL -> {
                         ps.print("  ; ")
-                        if (b < f.upvalues.length) {
-                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[b])
+                        if (upvalues != null && b < upvalues.size) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, upvalues[b]!!)
                         } else {
                             ps.print("UNKNOWN_UPVALUE_" + b)
                         }
@@ -218,8 +220,8 @@ class Print : Lua() {
 
                     OP_GETTABUP -> {
                         ps.print("  ; ")
-                        if (b < f.upvalues.length) {
-                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[b])
+                        if (upvalues != null && b < upvalues.size) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, upvalues[b]!!)
                         } else {
                             ps.print("UNKNOWN_UPVALUE_" + b)
                         }
@@ -230,8 +232,8 @@ class Print : Lua() {
 
                     OP_SETTABUP -> {
                         ps.print("  ; ")
-                        if (a < f.upvalues.length) {
-                            net.blueva.luak.Print.Companion.printUpvalue(ps, f.upvalues[a])
+                        if (upvalues != null && a < upvalues.size) {
+                            net.blueva.luak.Print.Companion.printUpvalue(ps, upvalues[a]!!)
                         } else {
                             ps.print("UNKNOWN_UPVALUE_" + a)
                         }
@@ -258,8 +260,8 @@ class Print : Lua() {
                     }
 
                     OP_JMP, OP_FORLOOP, OP_FORPREP -> ps.print("  ; to " + (sbx + pc + 2))
-                    OP_CLOSURE -> if (bx < f.p.length) {
-                        ps.print("  ; " + f.p[bx].getClass().getName())
+                    OP_CLOSURE -> if (protos != null && bx < protos.size) {
+                        ps.print("  ; " + protos[bx].javaClass.name)
                     } else {
                         ps.print("  ; UNKNOWN_PROTYPE_" + bx)
                     }
@@ -275,61 +277,65 @@ class Print : Lua() {
         }
 
         private fun getline(f: Prototype, pc: Int): Int {
-            return if (pc > 0 && f.lineinfo != null && pc < f.lineinfo.length) f.lineinfo[pc] else -1
+            val lineinfo = f.lineinfo
+            return if (pc > 0 && lineinfo != null && pc < lineinfo.size) lineinfo[pc] else -1
         }
 
         fun printHeader(f: Prototype) {
-            var s: String = String.valueOf(f.source)
+            var s: String = f.source?.toString() ?: "null"
             if (s.startsWith("@") || s.startsWith("=")) s = s.substring(1)
-            else if ("\u001bLua".equals(s)) s = "(bstring)"
+            else if ("\u001bLua" == s) s = "(bstring)"
             else s = "(string)"
-            val a = if (f.linedefined === 0) "main" else "function"
+            val a = if (f.linedefined == 0) "main" else "function"
+            val code = f.code
+            val codeLen = code?.size ?: 0
             net.blueva.luak.Print.Companion.ps.print(
                 ("\n%" + a + " <" + s + ":" + f.linedefined + ","
-                        + f.lastlinedefined + "> (" + f.code.length + " instructions, "
-                        + f.code.length * 4 + " bytes at " + net.blueva.luak.Print.Companion.id(f) + ")\n")
+                        + f.lastlinedefined + "> (" + codeLen + " instructions, "
+                        + codeLen * 4 + " bytes at " + net.blueva.luak.Print.Companion.id(f) + ")\n")
             )
             net.blueva.luak.Print.Companion.ps.print(
                 (f.numparams + " param, " + f.maxstacksize + " slot, "
-                        + f.upvalues.length + " upvalue, ")
+                        + (f.upvalues?.size ?: 0) + " upvalue, ")
             )
             net.blueva.luak.Print.Companion.ps.print(
-                (f.locvars.length + " local, " + f.k.length
-                        + " constant, " + f.p.length + " function\n")
+                ((f.locvars?.size ?: 0) + " local, " + (f.k?.size ?: 0)
+                        + " constant, " + (f.p?.size ?: 0) + " function\n")
             )
         }
 
         fun printConstants(f: Prototype) {
-            var i: Int
-            val n: Int = f.k.length
+            val k = f.k ?: return
+            val n: Int = k.size
             net.blueva.luak.Print.Companion.ps.print("constants (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
-            i = 0
+            var i = 0
             while (i < n) {
                 net.blueva.luak.Print.Companion.ps.print("  " + (i + 1) + "  ")
-                net.blueva.luak.Print.Companion.printValue(net.blueva.luak.Print.Companion.ps, f.k[i])
+                net.blueva.luak.Print.Companion.printValue(net.blueva.luak.Print.Companion.ps, k[i])
                 net.blueva.luak.Print.Companion.ps.print("\n")
                 i++
             }
         }
 
         fun printLocals(f: Prototype) {
-            var i: Int
-            val n: Int = f.locvars.length
+            val locvars = f.locvars ?: return
+            val n: Int = locvars.size
             net.blueva.luak.Print.Companion.ps.print("locals (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
-            i = 0
+            var i = 0
             while (i < n) {
-                net.blueva.luak.Print.Companion.ps.println("  " + i + "  " + f.locvars[i].varname + " " + (f.locvars[i].startpc + 1) + " " + (f.locvars[i].endpc + 1))
+                val lv = locvars[i]
+                net.blueva.luak.Print.Companion.ps.println("  " + i + "  " + lv?.varname + " " + ((lv?.startpc ?: 0) + 1) + " " + ((lv?.endpc ?: 0) + 1))
                 i++
             }
         }
 
         fun printUpValues(f: Prototype) {
-            var i: Int
-            val n: Int = f.upvalues.length
+            val upvalues = f.upvalues ?: return
+            val n: Int = upvalues.size
             net.blueva.luak.Print.Companion.ps.print("upvalues (" + n + ") for " + net.blueva.luak.Print.Companion.id(f) + ":\n")
-            i = 0
+            var i = 0
             while (i < n) {
-                net.blueva.luak.Print.Companion.ps.print("  " + i + "  " + f.upvalues[i] + "\n")
+                net.blueva.luak.Print.Companion.ps.print("  " + i + "  " + upvalues[i] + "\n")
                 i++
             }
         }
@@ -348,8 +354,8 @@ class Print : Lua() {
          * @param full true to print all fields, false to print short form.
          */
         fun printFunction(prototype: Prototype, full: Boolean) {
-            var i: Int
-            val n: Int = prototype.p.length
+            val protos = prototype.p ?: return
+            val n: Int = protos.size
             net.blueva.luak.Print.Companion.printHeader(prototype)
             net.blueva.luak.Print.Companion.printCode(prototype)
             if (full) {
@@ -357,15 +363,15 @@ class Print : Lua() {
                 net.blueva.luak.Print.Companion.printLocals(prototype)
                 net.blueva.luak.Print.Companion.printUpValues(prototype)
             }
-            i = 0
+            var i = 0
             while (i < n) {
-                net.blueva.luak.Print.Companion.printFunction(prototype.p[i], full)
+                net.blueva.luak.Print.Companion.printFunction(protos[i]!!, full)
                 i++
             }
         }
 
         private fun format(s: String, maxcols: Int) {
-            val n: Int = s.length()
+            val n: Int = s.length
             if (n > maxcols) net.blueva.luak.Print.Companion.ps.print(s.substring(0, maxcols))
             else {
                 net.blueva.luak.Print.Companion.ps.print(s)
