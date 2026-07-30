@@ -194,7 +194,7 @@ class LuaDouble
     }
 
     override fun pow(rhs: Int): LuaValue {
-        return MathLib.dpow(v, rhs)
+        return MathLib.dpow(v, (rhs).toDouble())
     }
 
     override fun powWith(lhs: Double): LuaValue {
@@ -202,7 +202,7 @@ class LuaDouble
     }
 
     override fun powWith(lhs: Int): LuaValue {
-        return MathLib.dpow(lhs, v)
+        return MathLib.dpow((lhs).toDouble(), v)
     }
 
     override fun div(rhs: LuaValue): LuaValue {

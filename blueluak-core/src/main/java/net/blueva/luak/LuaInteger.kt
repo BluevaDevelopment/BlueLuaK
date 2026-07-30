@@ -190,7 +190,7 @@ class LuaInteger
     }
 
     override fun sub(rhs: Int): LuaValue {
-        return (LuaDouble.valueOf(v - rhs))!!
+        return (LuaDouble.valueOf((v - rhs).toDouble()))!!
     }
 
     override fun subFrom(lhs: Double): LuaValue {
@@ -218,51 +218,51 @@ class LuaInteger
     }
 
     override fun pow(rhs: Double): LuaValue {
-        return MathLib.dpow(v, rhs)
+        return MathLib.dpow((v).toDouble(), rhs)
     }
 
     override fun pow(rhs: Int): LuaValue {
-        return MathLib.dpow(v, rhs)
+        return MathLib.dpow((v).toDouble(), (rhs).toDouble())
     }
 
     override fun powWith(lhs: Double): LuaValue {
-        return MathLib.dpow(lhs, v)
+        return MathLib.dpow(lhs, (v).toDouble())
     }
 
     override fun powWith(lhs: Int): LuaValue {
-        return MathLib.dpow(lhs, v)
+        return MathLib.dpow((lhs).toDouble(), (v).toDouble())
     }
 
     override fun div(rhs: LuaValue): LuaValue {
-        return rhs.divInto(v)
+        return rhs.divInto((v).toDouble())
     }
 
     override fun div(rhs: Double): LuaValue {
-        return (LuaDouble.ddiv(v, rhs))!!
+        return (LuaDouble.ddiv((v).toDouble(), rhs))!!
     }
 
     override fun div(rhs: Int): LuaValue {
-        return (LuaDouble.ddiv(v, rhs))!!
+        return (LuaDouble.ddiv((v).toDouble(), (rhs).toDouble()))!!
     }
 
     override fun divInto(lhs: Double): LuaValue {
-        return (LuaDouble.ddiv(lhs, v))!!
+        return (LuaDouble.ddiv(lhs, (v).toDouble()))!!
     }
 
     override fun mod(rhs: LuaValue): LuaValue {
-        return rhs.modFrom(v)
+        return rhs.modFrom((v).toDouble())
     }
 
     override fun mod(rhs: Double): LuaValue {
-        return (LuaDouble.dmod(v, rhs))!!
+        return (LuaDouble.dmod((v).toDouble(), rhs))!!
     }
 
     override fun mod(rhs: Int): LuaValue {
-        return (LuaDouble.dmod(v, rhs))!!
+        return (LuaDouble.dmod((v).toDouble(), (rhs).toDouble()))!!
     }
 
     override fun modFrom(lhs: Double): LuaValue {
-        return (LuaDouble.dmod(lhs, v))!!
+        return (LuaDouble.dmod(lhs, (v).toDouble()))!!
     }
 
     // relational operators
@@ -411,7 +411,7 @@ class LuaInteger
             val i = l.toInt()
             return if (l == i.toLong()) (if (i <= 255 && i >= -256) net.blueva.luak.LuaInteger.Companion.intValues[i + 256] else net.blueva.luak.LuaInteger(
                 i
-            ) as LuaNumber) else LuaDouble.valueOf(l) as LuaNumber?
+            ) as LuaNumber) else LuaDouble.valueOf((l).toDouble()) as LuaNumber?
         }
 
         fun hashCode(x: Int): Int {

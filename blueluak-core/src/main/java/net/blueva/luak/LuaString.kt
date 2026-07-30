@@ -178,7 +178,7 @@ class LuaString private constructor(
     }
 
     override fun pow(rhs: Int): LuaValue {
-        return MathLib.dpow(checkarith(), rhs)
+        return MathLib.dpow(checkarith(), (rhs).toDouble())
     }
 
     override fun powWith(lhs: Double): LuaValue {
@@ -186,7 +186,7 @@ class LuaString private constructor(
     }
 
     override fun powWith(lhs: Int): LuaValue {
-        return MathLib.dpow(lhs, checkarith())
+        return MathLib.dpow((lhs).toDouble(), checkarith())
     }
 
     override fun div(rhs: LuaValue): LuaValue {
@@ -199,7 +199,7 @@ class LuaString private constructor(
     }
 
     override fun div(rhs: Int): LuaValue {
-        return (LuaDouble.ddiv(checkarith(), rhs))!!
+        return (LuaDouble.ddiv(checkarith(), (rhs).toDouble()))!!
     }
 
     override fun divInto(lhs: Double): LuaValue {
@@ -216,7 +216,7 @@ class LuaString private constructor(
     }
 
     override fun mod(rhs: Int): LuaValue {
-        return (LuaDouble.dmod(checkarith(), rhs))!!
+        return (LuaDouble.dmod(checkarith(), (rhs).toDouble()))!!
     }
 
     override fun modFrom(lhs: Double): LuaValue {

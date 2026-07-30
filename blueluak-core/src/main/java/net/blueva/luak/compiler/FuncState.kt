@@ -468,7 +468,7 @@ internal class FuncState internal constructor() : Constants() {
             SETARG_C((this.getcodePtr(e))!!, nresults + 1)
         } else if (e.k === LexState.VVARARG) {
             SETARG_B((this.getcodePtr(e))!!, nresults + 1)
-            SETARG_A((this.getcodePtr(e))!!, this.freereg)
+            SETARG_A((this.getcodePtr(e))!!, (this.freereg).toInt())
             this.reserveregs(1)
         }
     }
@@ -496,12 +496,12 @@ internal class FuncState internal constructor() : Constants() {
 
             LexState.VINDEXED -> {
                 var op: Int = OP_GETTABUP /* assume 't' is in an upvalue */
-                this.freereg(e.u.ind_idx)
+                this.freereg((e.u.ind_idx).toInt())
                 if (e.u.ind_vt == LexState.VLOCAL) {  /* 't' is in a register? */
-                    this.freereg(e.u.ind_t)
+                    this.freereg((e.u.ind_t).toInt())
                     op = OP_GETTABLE
                 }
-                e.u.info = this.codeABC(op, 0, e.u.ind_t, e.u.ind_idx)
+                e.u.info = this.codeABC(op, 0, (e.u.ind_t).toInt(), (e.u.ind_idx).toInt())
                 e.k = LexState.VRELOCABLE
             }
 
@@ -672,7 +672,7 @@ internal class FuncState internal constructor() : Constants() {
             LexState.VINDEXED -> {
                 val op: Int = if (`var`.u.ind_vt == LexState.VLOCAL) OP_SETTABLE else OP_SETTABUP
                 val e = this.exp2RK(ex)
-                this.codeABC(op, `var`.u.ind_t, `var`.u.ind_idx, e)
+                this.codeABC(op, (`var`.u.ind_t).toInt(), (`var`.u.ind_idx).toInt(), e)
             }
 
             else -> {

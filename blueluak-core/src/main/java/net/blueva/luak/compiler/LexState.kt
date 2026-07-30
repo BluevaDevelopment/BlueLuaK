@@ -239,7 +239,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             if (neg1) exp1 = -exp1
             e += exp1
         }
-        return LuaValue.valueOf(sgn * m * MathLib.dpow_d(2.0, e))
+        return LuaValue.valueOf(sgn * m * MathLib.dpow_d(2.0, (e).toDouble()))
     }
 
     internal fun str2d(str: String, seminfo: SemInfo): Boolean {
@@ -796,7 +796,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun removevars(tolevel: Int) {
         val fs: FuncState = this.fs
-        while (fs.nactvar > tolevel) fs.getlocvar(--fs.nactvar).endpc = fs.pc
+        while (fs.nactvar > tolevel) fs.getlocvar(--(fs.nactvar).toInt()).endpc = fs.pc
     }
 
     internal fun singlevar(`var`: expdesc) {
@@ -855,7 +855,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val gt = gl[g]
         _assert(gt.name!!.eq_b(label.name))
         if (gt.nactvar < label.nactvar) {
-            val vname: LuaString = fs.getlocvar(gt.nactvar).varname
+            val vname: LuaString = fs.getlocvar((gt.nactvar).toInt()).varname
             val msg: String? = L!!.pushfstring(
                 ("<goto " + gt.name + "> at line "
                         + gt.line + " jumps into the scope of local '"
@@ -884,7 +884,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             if (lb.name!!.eq_b(gt.name)) {  /* correct label? */
                 if (gt.nactvar > lb.nactvar &&
                     (bl.upval || dyd.n_label > bl.firstlabel)
-                ) fs!!.patchclose(gt.pc, lb.nactvar)
+                ) fs!!.patchclose(gt.pc, (lb.nactvar).toInt())
                 closegoto(g, lb) /* close it */
                 return true
             }
@@ -982,8 +982,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         f.lineinfo = realloc(f.lineinfo, fs.pc)
         f.k = realloc(f.k, fs.nk)
         f.p = realloc(f.p, fs.np)
-        f.locvars = realloc(f.locvars, fs.nlocvars)
-        f.upvalues = realloc(f.upvalues, fs.nups)
+        f.locvars = realloc(f.locvars, (fs.nlocvars).toInt())
+        f.upvalues = realloc(f.upvalues, (fs.nups).toInt())
         _assert(fs.bl == null)
         this.fs = fs.prev
         // last token read was anchored in defunct function; must reanchor it
@@ -1125,7 +1125,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
         this.adjustlocalvars(nparams)
         f.numparams = fs.nactvar
-        fs.reserveregs(fs.nactvar) /* reserve register for parameters */
+        fs.reserveregs((fs.nactvar).toInt()) /* reserve register for parameters */
     }
 
 
@@ -1495,7 +1495,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             /* copy upvalue/local value to a temporary (in position 'extra') */
             val op: Int =
                 if (v.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL) Lua.OP_MOVE else Lua.OP_GETUPVAL
-            fs.codeABC(op, extra, v.u.info, 0)
+            fs.codeABC(op, (extra).toInt(), v.u.info, 0)
             fs.reserveregs(1)
         }
     }
@@ -1625,7 +1625,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         )
         condexit = this.cond() /* read condition (inside scope block) */
         if (bl2.upval) { /* upvalues? */
-            fs.patchclose(condexit, bl2.nactvar)
+            fs.patchclose(condexit, (bl2.nactvar).toInt())
         }
         fs.leaveblock() /* finish scope */
         fs.patchlist(condexit, repeat_init) /* close the loop */
@@ -1688,7 +1688,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         this.exp1() /* limit */
         if (this.testnext(','.code)) this.exp1() /* optional step */
         else { /* default step = 1 */
-            fs.codeK(fs.freereg, fs.numberK((LuaInteger.valueOf(1))!!))
+            fs.codeK((fs.freereg).toInt(), fs.numberK((LuaInteger.valueOf(1))!!))
             fs.reserveregs(1)
         }
         this.forbody(base, line, 1, true)

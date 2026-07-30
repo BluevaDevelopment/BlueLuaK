@@ -177,7 +177,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         for (i in 0..<n) {
             writer!!.writeByte(if (f.upvalues!![i]!!.instack) 1 else 0)
-            writer!!.writeByte(f.upvalues!![i]!!.idx)
+            writer!!.writeByte((f.upvalues!![i]!!.idx).toInt())
         }
     }
 
