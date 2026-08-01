@@ -17,6 +17,25 @@
 package net.blueva.luak
 
 import kotlin.reflect.KClass
+
+/** Run [block], and if it throws a [LuaError] whose message has no argument
+ * index yet (e.g. from a bare `LuaValue.argerror(expected)`/`typerror(expected)`
+ * call that doesn't know its own position), stamp it with argument index [i]
+ * so it reads like real Lua's "bad argument #N: ...".
+ * The interpreter may further enrich it with the calling function's name.
+ */
+private inline fun <T> withArgIndex(i: Int, block: () -> T): T {
+    try {
+        return block()
+    } catch (e: LuaError) {
+        val m = e.message
+        if (m != null && !m.startsWith("bad argument #")) {
+            e.argMessageOverride = "bad argument #" + i + ": " + m.removePrefix("bad argument: ")
+        }
+        throw e
+    }
+}
+
 /**
  * Class to encapsulate varargs values, either as part of a variable argument list, or multiple return values.
  * 
@@ -206,7 +225,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua boolean
      */
     fun optboolean(i: Int, defval: Boolean): Boolean {
-        return arg(i)!!.optboolean(defval)
+        return withArgIndex(i) { arg(i)!!.optboolean(defval) }
     }
 
     /** Return argument i as a closure, `defval` if nil, or throw a LuaError if any other type.
@@ -215,7 +234,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua closure
      */
     fun optclosure(i: Int, defval: LuaClosure?): LuaClosure? {
-        return arg(i)!!.optclosure(defval)
+        return withArgIndex(i) { arg(i)!!.optclosure(defval) }
     }
 
     /** Return argument i as a double, `defval` if nil, or throw a LuaError if it cannot be converted to one.
@@ -224,7 +243,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun optdouble(i: Int, defval: Double): Double {
-        return arg(i)!!.optdouble(defval)
+        return withArgIndex(i) { arg(i)!!.optdouble(defval) }
     }
 
     /** Return argument i as a function, `defval` if nil, or throw a LuaError  if an incompatible type.
@@ -233,7 +252,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua function or closure
      */
     fun optfunction(i: Int, defval: LuaFunction?): LuaFunction? {
-        return arg(i)!!.optfunction(defval)
+        return withArgIndex(i) { arg(i)!!.optfunction(defval) }
     }
 
     /** Return argument i as a java int value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -242,7 +261,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun optint(i: Int, defval: Int): Int {
-        return arg(i)!!.optint(defval)
+        return withArgIndex(i) { arg(i)!!.optint(defval) }
     }
 
     /** Return argument i as a java int value, `defval` if nil, or throw a LuaError  if not a number or is not representable by a java int.
@@ -251,7 +270,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java int value
      */
     fun optinteger(i: Int, defval: LuaInteger?): LuaInteger? {
-        return arg(i)!!.optinteger(defval)
+        return withArgIndex(i) { arg(i)!!.optinteger(defval) }
     }
 
     /** Return argument i as a java long value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -260,7 +279,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun optlong(i: Int, defval: Long): Long {
-        return arg(i)!!.optlong(defval)
+        return withArgIndex(i) { arg(i)!!.optlong(defval) }
     }
 
     /** Return argument i as a LuaNumber, `defval` if nil, or throw a LuaError  if not a number or string that can be converted to a number.
@@ -269,7 +288,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun optnumber(i: Int, defval: LuaNumber?): LuaNumber? {
-        return arg(i)!!.optnumber(defval)
+        return withArgIndex(i) { arg(i)!!.optnumber(defval) }
     }
 
     /** Return argument i as a java String if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -278,7 +297,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun optjstring(i: Int, defval: String?): String? {
-        return arg(i)!!.optjstring(defval)
+        return withArgIndex(i) { arg(i)!!.optjstring(defval) }
     }
 
     /** Return argument i as a LuaString if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -287,7 +306,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun optstring(i: Int, defval: LuaString?): LuaString? {
-        return arg(i)!!.optstring(defval)
+        return withArgIndex(i) { arg(i)!!.optstring(defval) }
     }
 
     /** Return argument i as a LuaTable if a lua table, `defval` if nil, or throw a LuaError  if any other type.
@@ -296,7 +315,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua table
      */
     fun opttable(i: Int, defval: LuaTable?): LuaTable? {
-        return arg(i)!!.opttable(defval)
+        return withArgIndex(i) { arg(i)!!.opttable(defval) }
     }
 
     /** Return argument i as a LuaThread if a lua thread, `defval` if nil, or throw a LuaError  if any other type.
@@ -305,7 +324,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua thread
      */
     fun optthread(i: Int, defval: LuaThread?): LuaThread? {
-        return arg(i)!!.optthread(defval)
+        return withArgIndex(i) { arg(i)!!.optthread(defval) }
     }
 
     /** Return argument i as a java Any if a userdata, `defval` if nil, or throw a LuaError  if any other type.
@@ -314,7 +333,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata
      */
     fun optuserdata(i: Int, defval: Any?): Any? {
-        return arg(i)!!.optuserdata(defval)
+        return withArgIndex(i) { arg(i)!!.optuserdata(defval) }
     }
 
     /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass,
@@ -325,7 +344,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun optuserdata(i: Int, c: KClass<*>?, defval: Any?): Any? {
-        return arg(i)!!.optuserdata(c!!, defval)
+        return withArgIndex(i) { arg(i)!!.optuserdata(c!!, defval) }
     }
 
     /** Return argument i as a LuaValue if it exists, or `defval`.
@@ -343,7 +362,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua boolean
      */
     fun checkboolean(i: Int): Boolean {
-        return arg(i)!!.checkboolean()
+        return withArgIndex(i) { arg(i)!!.checkboolean() }
     }
 
     /** Return argument i as a closure, or throw an error if any other type.
@@ -352,7 +371,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua closure
      */
     fun checkclosure(i: Int): LuaClosure {
-        return (arg(i)!!.checkclosure())!!
+        return withArgIndex(i) { (arg(i)!!.checkclosure())!! }
     }
 
     /** Return argument i as a double, or throw an error if it cannot be converted to one.
@@ -361,7 +380,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun checkdouble(i: Int): Double {
-        return arg(i)!!.checkdouble()
+        return withArgIndex(i) { arg(i)!!.checkdouble() }
     }
 
     /** Return argument i as a function, or throw an error if an incompatible type.
@@ -370,7 +389,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua function or closure
      */
     fun checkfunction(i: Int): LuaFunction {
-        return (arg(i)!!.checkfunction())!!
+        return withArgIndex(i) { (arg(i)!!.checkfunction())!! }
     }
 
     /** Return argument i as a java int value, or throw an error if it cannot be converted to one.
@@ -379,7 +398,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java int value
      */
     fun checkint(i: Int): Int {
-        return arg(i)!!.checkint()
+        return withArgIndex(i) { arg(i)!!.checkint() }
     }
 
     /** Return argument i as a java int value, or throw an error if not a number or is not representable by a java int.
@@ -388,7 +407,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java int value
      */
     fun checkinteger(i: Int): LuaInteger {
-        return (arg(i)!!.checkinteger())!!
+        return withArgIndex(i) { (arg(i)!!.checkinteger())!! }
     }
 
     /** Return argument i as a java long value, or throw an error if it cannot be converted to one.
@@ -397,7 +416,7 @@ abstract class Varargs {
      * @exception LuaError if the argument cannot be represented by a java long value
      */
     fun checklong(i: Int): Long {
-        return arg(i)!!.checklong()
+        return withArgIndex(i) { arg(i)!!.checklong() }
     }
 
     /** Return argument i as a LuaNumber, or throw an error if not a number or string that can be converted to a number.
@@ -406,7 +425,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a number
      */
     fun checknumber(i: Int): LuaNumber {
-        return (arg(i)!!.checknumber())!!
+        return withArgIndex(i) { (arg(i)!!.checknumber())!! }
     }
 
     /** Return argument i as a java String if a string or number, or throw an error if any other type
@@ -415,7 +434,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun checkjstring(i: Int): String {
-        return (arg(i)!!.checkjstring())!!
+        return withArgIndex(i) { (arg(i)!!.checkjstring())!! }
     }
 
     /** Return argument i as a LuaString if a string or number, or throw an error if any other type
@@ -424,7 +443,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a string or number
      */
     fun checkstring(i: Int): LuaString {
-        return (arg(i)!!.checkstring())!!
+        return withArgIndex(i) { (arg(i)!!.checkstring())!! }
     }
 
     /** Return argument i as a LuaTable if a lua table, or throw an error if any other type.
@@ -433,7 +452,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua table
      */
     fun checktable(i: Int): LuaTable {
-        return (arg(i)!!.checktable())!!
+        return withArgIndex(i) { (arg(i)!!.checktable())!! }
     }
 
     /** Return argument i as a LuaThread if a lua thread, or throw an error if any other type.
@@ -442,7 +461,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a lua thread
      */
     fun checkthread(i: Int): LuaThread {
-        return (arg(i)!!.checkthread())!!
+        return withArgIndex(i) { (arg(i)!!.checkthread())!! }
     }
 
     /** Return argument i as a java Any if a userdata, or throw an error if any other type.
@@ -451,7 +470,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata
      */
     fun checkuserdata(i: Int): Any {
-        return (arg(i)!!.checkuserdata())!!
+        return withArgIndex(i) { (arg(i)!!.checkuserdata())!! }
     }
 
     /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass,
@@ -462,7 +481,7 @@ abstract class Varargs {
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
     fun checkuserdata(i: Int, c: KClass<*>?): Any {
-        return (arg(i)!!.checkuserdata(c))!!
+        return withArgIndex(i) { (arg(i)!!.checkuserdata(c))!! }
     }
 
     /** Return argument i as a LuaValue if it exists, or throw an error.
@@ -480,7 +499,7 @@ abstract class Varargs {
      * @exception LuaError if the argument doesn't exist or evaluates to nil.
      */
     fun checknotnil(i: Int): LuaValue {
-        return arg(i)!!.checknotnil()
+        return withArgIndex(i) { arg(i)!!.checknotnil() }
     }
 
     /** Performs test on argument i as a LuaValue when a user-supplied assertion passes, or throw an error.

@@ -715,7 +715,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 ++pc
             }
         } catch (le: LuaError) {
-            if (le.traceback == null) processErrorHooks(le, p, pc)
+            if (le.traceback == null) {
+                enrichArgError(le, p, pc)
+                processErrorHooks(le, p, pc)
+            }
             throw le
         } catch (e: Exception) {
             val le: LuaError = LuaError(e)
@@ -751,6 +754,37 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         } finally {
             r.errorfunc = e
         }
+    }
+
+    /**
+     * Enrich a raw "bad argument #N: detail" message (stamped by [Varargs]'
+     * argument checkers, which don't know the calling function's name) with
+     * that name, matching real Lua's "bad argument #N to 'name' (detail)".
+     * Mirrors real Lua's `luaL_argerror`/`getobjname`: [pc] is still the
+     * CALL/TAILCALL instruction that invoked the failing callee, since the
+     * throw unwound before the loop's `++pc`.
+     */
+    private fun enrichArgError(le: LuaError, p: Prototype, pc: Int) {
+        val m = le.message ?: return
+        val match = Regex("^bad argument #(\\d+): ([\\s\\S]*)$").find(m) ?: return
+        val code = p.code ?: return
+        if (pc < 0 || pc >= code.size) return
+        val instr = code[pc]
+        val opcode = Lua.GET_OPCODE(instr)
+        if (opcode != Lua.OP_CALL && opcode != Lua.OP_TAILCALL) return
+        var argIndex = match.groupValues[1].toIntOrNull() ?: return
+        val detail = match.groupValues[2]
+        val a = Lua.GETARG_A(instr)
+        val nw = net.blueva.luak.lib.DebugLib.getobjname(p, pc, a)
+        if (nw != null && nw.namewhat == "method") {
+            argIndex--
+            if (argIndex == 0) {
+                le.argMessageOverride = "calling '" + nw.name + "' on bad self (" + detail + ")"
+                return
+            }
+        }
+        val funcname = nw?.name ?: "?"
+        le.argMessageOverride = "bad argument #" + argIndex + " to '" + funcname + "' (" + detail + ")"
     }
 
     private fun processErrorHooks(le: LuaError, p: Prototype, pc: Int) {

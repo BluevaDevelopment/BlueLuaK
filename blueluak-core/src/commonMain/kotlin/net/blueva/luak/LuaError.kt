@@ -51,13 +51,22 @@ class LuaError : RuntimeException {
 
     private var `object`: LuaValue? = null
 
+    /**
+     * Set by the interpreter when it can enrich a raw "bad argument" message
+     * with the argument index and/or calling function name, e.g. turning
+     * "bad argument: string expected, got boolean" into
+     * "bad argument #1 to 'tonumber' (string expected, got boolean)".
+     * Takes precedence over the constructor-supplied message, but not over [traceback].
+     */
+    internal var argMessageOverride: String? = null
+
     override val message: String?
         /** Get the string message if it was supplied, or a string
          * representation of the message object if that was supplied.
          */
         get() {
             if (traceback != null) return traceback
-            val m: String? = super.message
+            val m: String? = argMessageOverride ?: super.message
             if (m == null) return null
             if (fileline != null) return fileline.toString() + " " + m
             return m
