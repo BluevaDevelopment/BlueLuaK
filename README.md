@@ -83,7 +83,7 @@ repositories {
 }
 
 dependencies {
-    implementation("net.blueva:blueluak-jvm:26.1")
+    implementation("net.blueva:blueluak-jvm:26.2")
 }
 ```
 
@@ -100,7 +100,7 @@ dependencies {
 <dependency>
   <groupId>net.blueva</groupId>
   <artifactId>blueluak-jvm</artifactId>
-  <version>26.1</version>
+  <version>26.2</version>
 </dependency>
 ```
 
@@ -113,7 +113,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation("net.blueva:blueluak-core:26.1")
+                implementation("net.blueva:blueluak-core:26.2")
             }
         }
     }
