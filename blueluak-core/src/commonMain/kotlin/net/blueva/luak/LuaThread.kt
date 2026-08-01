@@ -183,6 +183,11 @@ class LuaThread : LuaValue {
             try {
                 globals.running = new_thread
                 this.args = args
+                // Mark the resuming thread NORMAL before blocking on the resumed
+                // thread, not after: the wait only returns once the resumed
+                // thread yields or completes, by which point it's too late for
+                // coroutine.status() calls made *during* that run to see it.
+                previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
                 if (this.status == net.blueva.luak.LuaThread.Companion.STATUS_INITIAL) {
                     this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
                     runner.startAndWait("Coroutine-" + (++net.blueva.luak.LuaThread.Companion.coroutine_count))
@@ -190,7 +195,6 @@ class LuaThread : LuaValue {
                     this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
                     runner.resumeAndWait()
                 }
-                previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
                 return (if (this.error != null) LuaValue.varargsOf(
                     LuaValue.FALSE,
                     LuaValue.valueOf(this.error)
