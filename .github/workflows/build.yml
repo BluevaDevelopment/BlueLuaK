@@ -53,6 +53,8 @@ jobs:
             task: jsNodeTest
           - target: Wasm
             task: wasmJsNodeTest
+          - target: WasmWasi
+            task: wasmWasiNodeTest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
