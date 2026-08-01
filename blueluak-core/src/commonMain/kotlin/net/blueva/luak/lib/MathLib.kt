@@ -195,7 +195,7 @@ open class MathLib : TwoArgFunction() {
 
     internal class fmod : TwoArgFunction() {
         override fun call(xv: LuaValue?, yv: LuaValue?): LuaValue? {
-            if (xv!!.islong() && yv!!.islong()) {
+            if (xv!!.islong() && yv!!.islong() && yv!!.tolong() != 0L) {
                 return valueOf((xv!!.tolong() % yv!!.tolong()).toDouble())
             }
             return valueOf(xv!!.checkdouble() % yv!!.checkdouble())
@@ -229,11 +229,11 @@ open class MathLib : TwoArgFunction() {
 
     internal class max : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            var m: LuaValue = args.checkvalue(1)!!
+            var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
             while (i <= n) {
-                val v: LuaValue = args.checkvalue(i)!!
+                val v: LuaValue = args.checknumber(i)
                 if (m.lt_b(v)) m = v
                 ++i
             }
@@ -243,15 +243,15 @@ open class MathLib : TwoArgFunction() {
 
     internal class min : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            var m: LuaValue? = args.checkvalue(1)
+            var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
             while (i <= n) {
-                val v: LuaValue = args.checkvalue(i)!!
-                if (v.lt_b((m)!!)) m = v
+                val v: LuaValue = args.checknumber(i)
+                if (v.lt_b(m)) m = v
                 ++i
             }
-            return (m)!!
+            return m
         }
     }
 
