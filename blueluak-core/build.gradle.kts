@@ -53,6 +53,9 @@ kotlin {
     wasmJs {
         nodejs()
     }
+    wasmWasi {
+        nodejs()
+    }
     linuxX64()
     mingwX64()
     macosX64()
@@ -62,11 +65,36 @@ kotlin {
     withSourcesJar(publish = true)
 
     sourceSets {
+        // I/O stream classes with zero platform dependency (no JS interop, no
+        // WASI syscalls) - shared by every non-JVM, non-Native target,
+        // including WASI.
+        jsMain {
+            kotlin.srcDir("src/portableIoMain/kotlin")
+        }
+        wasmJsMain {
+            kotlin.srcDir("src/portableIoMain/kotlin")
+        }
+        wasmWasiMain {
+            kotlin.srcDir("src/portableIoMain/kotlin")
+        }
+        // Platform-neutral actuals specific to a JS-hosted engine's process
+        // model (still no JS interop themselves, but only ever used by the
+        // two JS-hosted targets) - not shared with wasmWasiMain, which has
+        // its own Platform.wasmWasi.kt/WeakReference.wasmWasi.kt.
         jsMain {
             kotlin.srcDir("src/nonJvmMain/kotlin")
         }
         wasmJsMain {
             kotlin.srcDir("src/nonJvmMain/kotlin")
+        }
+        // JS-engine-specific actuals (process/console/node:fs) - only for the
+        // two targets that actually run inside a JS host. Never wired into
+        // wasmWasiMain: a WASI host has none of that.
+        jsMain {
+            kotlin.srcDir("src/jsHostMain/kotlin")
+        }
+        wasmJsMain {
+            kotlin.srcDir("src/jsHostMain/kotlin")
         }
         commonMain {
             kotlin.srcDir(generatedBuildInfo)

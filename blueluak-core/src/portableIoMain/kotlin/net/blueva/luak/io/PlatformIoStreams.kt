@@ -14,12 +14,12 @@
  ******************************************************************************/
 package net.blueva.luak.io
 
-import kotlin.JsFun
-import kotlin.js.ExperimentalWasmJsInterop
-import kotlin.js.JsArray
-import kotlin.js.JsNumber
-import kotlin.js.length
-import kotlin.js.toInt
+// The stream/buffer classes below are plain Kotlin with no platform-specific
+// dependency at all (no JS interop, no WASI syscalls), so this one file is
+// shared by every non-JVM, non-Native target: Kotlin/JS, Kotlin/Wasm-JS, and
+// Kotlin/Wasm-WASI. Each target still supplies its own `standardOutput()` /
+// `standardError()` / `platformResource()`, since those genuinely differ per
+// host (JS console/node:fs vs raw WASI fd_write/path_open).
 
 actual open class IOException : Exception {
     actual constructor() : super()
@@ -202,58 +202,3 @@ actual class PrintStream actual constructor(private val output: OutputStream) : 
     actual fun println(value: Any?) = emit(value.toString() + "\n")
     actual fun println(value: String?) = emit((value ?: "null") + "\n")
 }
-
-private class JavaScriptOutputStream(
-    private val error: Boolean,
-) : OutputStream() {
-    override fun write(byte: Int) {
-        writeJavaScriptConsole(byteArrayOf(byte.toByte()).decodeToString(), error)
-    }
-
-    override fun write(bytes: ByteArray, offset: Int, length: Int) {
-        if (length == 0) return
-        writeJavaScriptConsole(bytes.decodeToString(offset, offset + length), error)
-    }
-}
-
-private val javaScriptStandardOutput = PrintStream(JavaScriptOutputStream(error = false))
-private val javaScriptStandardError = PrintStream(JavaScriptOutputStream(error = true))
-
-actual fun standardOutput(): PrintStream = javaScriptStandardOutput
-actual fun standardError(): PrintStream = javaScriptStandardError
-
-@OptIn(ExperimentalWasmJsInterop::class)
-actual fun platformResource(name: String): InputStream? {
-    val source = readNodeResource(name) ?: return null
-    val bytes = ByteArray(source.length) { index -> source[index]!!.toInt().toByte() }
-    return ByteArrayInputStream(bytes)
-}
-
-@OptIn(ExperimentalWasmJsInterop::class)
-@JsFun(
-    """
-    (text, error) => {
-        if (typeof process !== "undefined" && process.stdout && process.stderr) {
-            (error ? process.stderr : process.stdout).write(text);
-        } else {
-            (error ? console.error : console.log)(text);
-        }
-    }
-    """
-)
-private external fun writeJavaScriptConsole(text: String, error: Boolean)
-
-@OptIn(ExperimentalWasmJsInterop::class)
-@JsFun(
-    """
-    (path) => {
-        try {
-            if (typeof require === "undefined") return null;
-            return Array.from(require("node:fs").readFileSync(path));
-        } catch (_) {
-            return null;
-        }
-    }
-    """
-)
-private external fun readNodeResource(path: String): JsArray<JsNumber>?
