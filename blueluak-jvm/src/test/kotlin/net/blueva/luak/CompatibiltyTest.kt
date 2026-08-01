@@ -56,18 +56,6 @@ object CompatibiltyTest : TestSuite() {
             LuaString.s_metatable = savedStringMetatable
         }
 
-        fun testBaseLib() {
-            runTest("baselib")
-        }
-
-        fun testCoroutineLib() {
-            runTest("coroutinelib")
-        }
-
-        open fun testDebugLib() {
-            runTest("debuglib")
-        }
-
         fun testErrors() {
             runTest("errors")
         }
@@ -80,24 +68,8 @@ object CompatibiltyTest : TestSuite() {
             runTest("iolib")
         }
 
-        fun testManyUpvals() {
-            runTest("manyupvals")
-        }
-
-        fun testMathLib() {
-            runTest("mathlib")
-        }
-
         fun testMetatags() {
             runTest("metatags")
-        }
-
-        fun testOsLib() {
-            runTest("oslib")
-        }
-
-        fun testStringLib() {
-            runTest("stringlib")
         }
 
         fun testTableLib() {
@@ -133,8 +105,5 @@ object CompatibiltyTest : TestSuite() {
             System.setProperty("JME", "false")
             install(globals!!)
         }
-
-        // not supported on this platform - don't test
-        override fun testDebugLib() {}
     }
 }

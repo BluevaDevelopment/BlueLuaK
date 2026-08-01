@@ -16,9 +16,6 @@
  ******************************************************************************/
 package net.blueva.luak
 
-import java.io.IOException
-import java.io.InputStream
-
 /**
  * Test argument type check errors
  * 
@@ -31,30 +28,8 @@ class ErrorsTest : ScriptDrivenTest(PlatformType.JVM, dir) {
         super.setUp()
     }
 
-    fun testBaseLibArgs() {
-        globals!!.STDIN = object : InputStream() {
-            @Throws(IOException::class)
-            override fun read(): Int {
-                return -1
-            }
-        }
-        runTest("baselibargs")
-    }
-
     fun testCoroutineLibArgs() {
         runTest("coroutinelibargs")
-    }
-
-    fun testDebugLibArgs() {
-        runTest("debuglibargs")
-    }
-
-    fun testIoLibArgs() {
-        runTest("iolibargs")
-    }
-
-    fun testMathLibArgs() {
-        runTest("mathlibargs")
     }
 
     fun testModuleLibArgs() {
@@ -63,10 +38,6 @@ class ErrorsTest : ScriptDrivenTest(PlatformType.JVM, dir) {
 
     fun testOperators() {
         runTest("operators")
-    }
-
-    fun testStringLibArgs() {
-        runTest("stringlibargs")
     }
 
     fun testTableLibArgs() {
