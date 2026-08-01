@@ -357,7 +357,12 @@ class LuaDouble
         if (l.toDouble() == v) return l.toString()
         if ((v).isNaN()) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
         if ((v).isInfinite()) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
-        return v.toFloat().toString()
+        val f = v.toFloat()
+        // v is finite but exceeds Float range: narrowing to Float would wrongly
+        // produce "Infinity". Fall back to full double precision instead of
+        // reporting a finite number as infinite.
+        if (f.isInfinite()) return v.toString()
+        return f.toString()
     }
 
     override fun strvalue(): LuaString {
