@@ -45,7 +45,13 @@ jobs:
           BUILD=$((BUILD + 1))
           REVISION="$YEAR.$BUILD"
           printf 'year=%s\nbuild=%s\n' "$YEAR" "$BUILD" > build.properties
-          sed -i "s|version-[^-]*-blue|version-$REVISION-blue|" README.md
+          # Badge, Gradle dependency coordinates, and the Maven <version> tag.
+          sed -i \
+            -e "s|version-[^-]*-blue|version-$REVISION-blue|" \
+            -e "s|net.blueva:blueluak-jvm:[^\"]*|net.blueva:blueluak-jvm:$REVISION|" \
+            -e "s|net.blueva:blueluak-core:[^\"]*|net.blueva:blueluak-core:$REVISION|" \
+            -e "s|<version>[^<]*</version>|<version>$REVISION</version>|" \
+            README.md
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "Releasing BlueLuaK $REVISION"
 
