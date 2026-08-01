@@ -97,6 +97,12 @@ abstract class Varargs {
         return this
     }
 
+    /** Suspending counterpart to [.eval]; see [LuaValue.callSuspend] for why
+     * this exists. Only [TailcallVarargs] overrides it for real. */
+    open suspend fun evalSuspend(): Varargs {
+        return this
+    }
+
     open val isTailcall: Boolean
         /**
          * Return true if this is a TailcallVarargs

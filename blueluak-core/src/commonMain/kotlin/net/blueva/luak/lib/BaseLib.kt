@@ -250,6 +250,26 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }
+
+        // Real Lua 5.2 lets a coroutine yield across a pcall boundary; route
+        // the protected call through invokeSuspend() (instead of the plain
+        // invoke() above) so a nested coroutine.yield() propagates correctly
+        // instead of hitting the C-call boundary error.
+        override suspend fun invokeSuspend(args: Varargs): Varargs {
+            val func: LuaValue = args.checkvalue(1)!!
+            if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
+            try {
+                return (varargsOf(TRUE, (func.invokeSuspend((args.subargs(2))!!))!!))!!
+            } catch (le: LuaError) {
+                val m: LuaValue? = le.messageObject
+                return (varargsOf(FALSE, if (m != null) m else NIL))!!
+            } catch (e: Exception) {
+                val m: String? = e.message
+                return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+            } finally {
+                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
+            }
+        }
     }
 
     // "print", // (...) -> void
@@ -395,6 +415,34 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                         // the message handler hasn't run yet. Run it here exactly once,
                         // matching real Lua's xpcall: if the handler itself fails or isn't
                         // callable, substitute the standard "error in error handling".
+                        return (varargsOf(FALSE, runMessageHandler(t, le.messageObject ?: NIL)))!!
+                    }
+                    val m: LuaValue? = le.messageObject
+                    return (varargsOf(FALSE, if (m != null) m else NIL))!!
+                } catch (e: Exception) {
+                    val m: String? = e.message
+                    return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+                } finally {
+                    if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
+                }
+            } finally {
+                t.errorfunc = preverror
+            }
+        }
+
+        // See BaseLib.pcall.invokeSuspend(): lets a yield inside the protected
+        // function propagate across this xpcall boundary instead of hitting
+        // the C-call boundary error, matching real Lua 5.2.
+        override suspend fun invokeSuspend(args: Varargs): Varargs {
+            val t: LuaThread = globals!!.running
+            val preverror: LuaValue? = t.errorfunc
+            t.errorfunc = args.checkvalue(2)
+            try {
+                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
+                try {
+                    return (varargsOf(TRUE, (args.arg1()!!.invokeSuspend((args.subargs(3))!!))!!))!!
+                } catch (le: LuaError) {
+                    if (le.traceback == null) {
                         return (varargsOf(FALSE, runMessageHandler(t, le.messageObject ?: NIL)))!!
                     }
                     val m: LuaValue? = le.messageObject

@@ -17,6 +17,22 @@
 package net.blueva.luak
 
 import net.blueva.luak.lib.DebugLib.CallFrame
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
+/** Drives a suspend computation that is not expected to actually suspend here
+ * (no active, yield-propagating coroutine chain reaches this call) to
+ * completion synchronously. If it tries to suspend anyway - e.g. Lua code
+ * called from a library function like `table.sort`'s comparator calls
+ * `coroutine.yield()` - that correctly surfaces as a boundary error, exactly
+ * like real Lua's C-call boundary restriction. */
+internal fun <T> runLuaSync(block: suspend () -> T): T {
+    var outcome: Result<T>? = null
+    block.startCoroutine(Continuation(EmptyCoroutineContext) { outcome = it })
+    val result = outcome ?: throw LuaError("attempt to yield across metamethod/C-call boundary")
+    return result.getOrThrow()
+}
 
 /**
  * Extension of [LuaFunction] which executes lua bytecode.
@@ -126,74 +142,91 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             return stack
         }
 
-    override fun call(): LuaValue {
+    // Note: execute() may return a TailcallVarargs; must resolve it via
+    // evalSuspend() (not the plain, non-suspend arg1()/eval()) so a tail
+    // call ending in coroutine.yield() still propagates suspension.
+    private suspend fun call0(): LuaValue {
         val stack: Array<LuaValue> = this.newStack
-        return (execute(stack, (NONE)!!)!!.arg1())!!
+        return (execute(stack, (NONE)!!)!!.evalSuspend().arg1())
     }
 
-    override fun call(arg: LuaValue?): LuaValue {
+    private suspend fun call1(arg: LuaValue?): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
-            0 -> return (execute(stack, arg!!)!!.arg1())!!
+            0 -> return (execute(stack, arg!!)!!.evalSuspend().arg1())
             else -> {
                 stack[0] = arg!!
-                return (execute(stack, (NONE)!!)!!.arg1())!!
+                return (execute(stack, (NONE)!!)!!.evalSuspend().arg1())
             }
         }
     }
 
-    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+    private suspend fun call2(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             1 -> {
                 stack[0] = arg1!!
-                return (execute(stack, arg2!!)!!.arg1())!!
+                return (execute(stack, arg2!!)!!.evalSuspend().arg1())
             }
 
-            0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2!!) else NONE)!!)!!.arg1())!!
+            0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2!!) else NONE)!!)!!.evalSuspend().arg1())
             else -> {
                 stack[0] = arg1!!
                 stack[1] = arg2!!
-                return (execute(stack, (NONE)!!)!!.arg1())!!
+                return (execute(stack, (NONE)!!)!!.evalSuspend().arg1())
             }
         }
     }
 
-    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
+    private suspend fun call3(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue {
         val stack: Array<LuaValue> = this.newStack
         when (p.numparams) {
             2 -> {
                 stack[0] = arg1!!
                 stack[1] = arg2!!
-                return (execute(stack, arg3!!)!!.arg1())!!
+                return (execute(stack, arg3!!)!!.evalSuspend().arg1())
             }
 
             1 -> {
                 stack[0] = arg1!!
-                return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg2, arg3!!) else NONE)!!)!!.arg1())!!
+                return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg2, arg3!!) else NONE)!!)!!.evalSuspend().arg1())
             }
 
-            0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2, arg3!!) else NONE)!!)!!.arg1())!!
+            0 -> return (execute(stack, (if (p.is_vararg !== 0) varargsOf(arg1, arg2, arg3!!) else NONE)!!)!!.evalSuspend().arg1())
             else -> {
                 stack[0] = arg1!!
                 stack[1] = arg2!!
                 stack[2] = arg3!!
-                return (execute(stack, (NONE)!!)!!.arg1())!!
+                return (execute(stack, (NONE)!!)!!.evalSuspend().arg1())
             }
         }
     }
 
-    override fun invoke(varargs: Varargs): Varargs {
-        return onInvoke(varargs)!!.eval()
-    }
-
-    override fun onInvoke(varargs: Varargs): Varargs? {
+    private suspend fun onInvokeImpl(varargs: Varargs): Varargs? {
         val stack: Array<LuaValue> = this.newStack
         for (i in 0..<p.numparams) stack[i] = varargs.arg(i + 1)
         return execute(stack, (if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)!!)
     }
 
-    protected fun execute(stack: Array<LuaValue>, varargs: Varargs): Varargs? {
+    override fun call(): LuaValue = runLuaSync { call0() }
+    override fun call(arg: LuaValue?): LuaValue = runLuaSync { call1(arg) }
+    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue = runLuaSync { call2(arg1, arg2) }
+    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue =
+        runLuaSync { call3(arg1, arg2, arg3) }
+
+    override fun invoke(varargs: Varargs): Varargs = runLuaSync { onInvokeImpl(varargs)!!.evalSuspend() }
+    override fun onInvoke(varargs: Varargs): Varargs? = runLuaSync { onInvokeImpl(varargs) }
+
+    override suspend fun callSuspend(): LuaValue? = call0()
+    override suspend fun callSuspend(arg: LuaValue?): LuaValue? = call1(arg)
+    override suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?): LuaValue? = call2(arg1, arg2)
+    override suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? =
+        call3(arg1, arg2, arg3)
+
+    override suspend fun invokeSuspend(args: Varargs): Varargs = onInvokeImpl(args)!!.evalSuspend()
+    override suspend fun onInvokeSuspend(args: Varargs): Varargs? = onInvokeImpl(args)
+
+    protected suspend fun execute(stack: Array<LuaValue>, varargs: Varargs): Varargs? {
         // loop through instructions
         var i: Int
         var a: Int
@@ -488,63 +521,63 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_CALL -> when (i and (Lua.MASK_B or Lua.MASK_C)) {
                         (1 shl Lua.POS_B) or (0 shl Lua.POS_C) -> {
-                            v = stack[a].invoke((NONE)!!)
+                            v = stack[a].invokeSuspend((NONE)!!)
                             top = a + v.narg()
                             ++pc
                             continue
                         }
 
                         (2 shl Lua.POS_B) or (0 shl Lua.POS_C) -> {
-                            v = stack[a].invoke(stack[a + 1])
+                            v = stack[a].invokeSuspend(stack[a + 1])
                             top = a + v.narg()
                             ++pc
                             continue
                         }
 
                         (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].call()
+                            stack[a].callSuspend()
                             ++pc
                             continue
                         }
 
                         (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].call(stack[a + 1])
+                            stack[a].callSuspend(stack[a + 1])
                             ++pc
                             continue
                         }
 
                         (3 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].call(stack[a + 1], stack[a + 2])
+                            stack[a].callSuspend(stack[a + 1], stack[a + 2])
                             ++pc
                             continue
                         }
 
                         (4 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].call(stack[a + 1], stack[a + 2], stack[a + 3])
+                            stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])
                             ++pc
                             continue
                         }
 
                         (1 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].call()!!
+                            stack[a] = stack[a].callSuspend()!!
                             ++pc
                             continue
                         }
 
                         (2 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].call(stack[a + 1])!!
+                            stack[a] = stack[a].callSuspend(stack[a + 1])!!
                             ++pc
                             continue
                         }
 
                         (3 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].call(stack[a + 1], stack[a + 2])!!
+                            stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2])!!
                             ++pc
                             continue
                         }
 
                         (4 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].call(stack[a + 1], stack[a + 2], stack[a + 3])!!
+                            stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])!!
                             ++pc
                             continue
                         }
@@ -552,7 +585,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         else -> {
                             b = i ushr 23
                             c = (i shr 14) and 0x1ff
-                            v = stack[a].invoke(
+                            v = stack[a].invokeSuspend(
                                 if (b > 0) varargsOf(stack, a + 1, b - 1) else  // exact arg count
                                     varargsOf(stack, a + 1, top - v.narg() - (a + 1), v)
                             ) // from prev top
@@ -625,7 +658,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_TFORCALL -> {
-                        v = stack[a].invoke((varargsOf(stack[a + 1], stack[a + 2]))!!)
+                        v = stack[a].invokeSuspend((varargsOf(stack[a + 1], stack[a + 2]))!!)
                         c = (i shr 14) and 0x1ff
                         while (--c >= 0) stack[a + 3 + c] = v.arg(c + 1)
                         v = NONE

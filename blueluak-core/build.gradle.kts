@@ -80,12 +80,6 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
-        jvmTest {
-            kotlin.srcDir("src/threadedTest/kotlin")
-        }
-        nativeTest {
-            kotlin.srcDir("src/threadedTest/kotlin")
-        }
     }
 }
 

@@ -18,55 +18,58 @@ package net.blueva.luak
 
 
 import net.blueva.luak.WeakReference
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.startCoroutine
+import kotlin.coroutines.suspendCoroutine
 
 /**
- * Subclass of [LuaValue] that implements
- * a lua coroutine thread using Java Threads.
- * 
- * 
+ * Subclass of [LuaValue] that implements a lua coroutine thread.
+ *
+ *
  * A LuaThread is typically created in response to a scripted call to
  * `coroutine.create()`
- * 
- * 
+ *
+ *
  * The threads must be initialized with the globals, so that
  * the global environment may be passed along according to rules of lua.
  * This is done via the constructor arguments [.LuaThread] or
  * [.LuaThread].
- * 
- * 
+ *
+ *
  * The utility classes [net.blueva.luak.lib.jvm.JvmPlatform] and
  * [net.blueva.luak.lib.jme.JmePlatform]
  * see to it that this [Globals] are initialized properly.
- * 
- * 
- * The behavior of coroutine threads matches closely the behavior
- * of C coroutine library.  However, because of the use of Java threads
- * to manage call state, it is possible to yield from anywhere in luaj.
- * 
- * 
- * Each Java thread wakes up at regular intervals and checks a weak reference
- * to determine if it can ever be resumed.  If not, it throws
- * [OrphanedThread] which is an [java.lang.Error].
- * Applications should not catch [OrphanedThread], because it can break
- * the thread safety of luaj.  The value controlling the polling interval
- * is [.thread_orphan_check_interval] and may be set by the user.
- * 
- * 
- * There are two main ways to abandon a coroutine.  The first is to call
- * `yield()` from lua, or equivalently [Globals.yield],
- * and arrange to have it never resumed possibly by values passed to yield.
- * The second is to throw [OrphanedThread], which should put the thread
- * in a dead state.   In either case all references to the thread must be
- * dropped, and the garbage collector must run for the thread to be
- * garbage collected.
- * 
- * 
+ *
+ *
+ * Resume/yield are implemented with Kotlin's own `suspend`/[kotlin.coroutines.Continuation]
+ * machinery rather than a native thread or worker per coroutine, so this
+ * works identically - and without blocking anything - on every KMP target,
+ * including JS and Wasm where there is no thread to block. `yield()` only
+ * suspends when called from Lua-to-Lua calls or from a function explicitly
+ * written to propagate suspension (currently: `coroutine.yield` itself and
+ * `pcall`/`xpcall`, matching real Lua 5.2's yieldable pcall). Calling it from
+ * inside any other library function's own callback (e.g. `table.sort`'s
+ * comparator) correctly raises "attempt to yield across metamethod/C-call
+ * boundary", matching real Lua's C-call boundary restriction - unlike the
+ * old Java-Threads-based implementation, which could yield from anywhere at
+ * the cost of not being portable to JS/Wasm at all.
+ *
+ *
+ * A suspended coroutine holds no more than a captured [kotlin.coroutines.Continuation]
+ * and whatever it closed over; abandoning it (dropping all references without
+ * ever resuming it again) is just ordinary garbage, collected normally,
+ * with no orphan-thread bookkeeping required.
+ *
+ *
  * @see LuaValue
- * 
+ *
  * @see net.blueva.luak.lib.jvm.JvmPlatform
- * 
+ *
  * @see net.blueva.luak.lib.jme.JmePlatform
- * 
+ *
  * @see net.blueva.luak.lib.CoroutineLib
  */
 class LuaThread : LuaValue {
@@ -157,7 +160,31 @@ class LuaThread : LuaValue {
         var bytecodes: Int = 0
 
         var status: Int = net.blueva.luak.LuaThread.Companion.STATUS_INITIAL
-        private val runner = CoroutineRunner { run() }
+
+        /** Continuation captured at this coroutine's most recent yield point, or
+         * null if it has never yielded (not yet started, or already resumed
+         * back to running). Resuming it continues Lua execution from exactly
+         * where `coroutine.yield()` left off, with the resume() arguments
+         * becoming yield()'s return values. */
+        private var yieldContinuation: Continuation<Varargs>? = null
+
+        /** Values passed to the most recent `coroutine.yield(...)` call, read by
+         * lua_resume() once the resumed execution pauses there. */
+        private var pendingYieldValues: Varargs? = null
+
+        /** Set true exactly when the coroutine body has truly finished (returned
+         * or thrown), as opposed to merely yielding. */
+        private var finished = false
+        private var finalResult: Result<Varargs>? = null
+
+        private val completion = object : Continuation<Varargs> {
+            override val context = EmptyCoroutineContext
+            override fun resumeWith(result: Result<Varargs>) {
+                finished = true
+                finalResult = result
+                status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
+            }
+        }
 
         init {
             this.globals = globals
@@ -165,65 +192,48 @@ class LuaThread : LuaValue {
             this.function = function
         }
 
-        private fun run() {
-            try {
-                val a: Varargs? = this.args
-                this.args = LuaValue.NONE
-                this.result = function!!.invoke((a)!!)
-            } catch (t: Throwable) {
-                this.error = t.message
-            } finally {
-                this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
-                runner.complete()
-            }
-        }
-
-                fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
+        fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
             val previous_thread: LuaThread = globals.running
             try {
                 globals.running = new_thread
-                this.args = args
-                // Mark the resuming thread NORMAL before blocking on the resumed
-                // thread, not after: the wait only returns once the resumed
-                // thread yields or completes, by which point it's too late for
-                // coroutine.status() calls made *during* that run to see it.
+                // Mark the resuming thread NORMAL before running the resumed
+                // thread, not after: the resumed thread may make its own
+                // coroutine.status() calls on the resumer before yielding back.
                 previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
-                if (this.status == net.blueva.luak.LuaThread.Companion.STATUS_INITIAL) {
-                    this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
-                    runner.startAndWait("Coroutine-" + (++net.blueva.luak.LuaThread.Companion.coroutine_count))
+                status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+                finished = false
+                pendingYieldValues = null
+                val contToResume = yieldContinuation
+                yieldContinuation = null
+                if (contToResume == null) {
+                    val a: Varargs = args ?: LuaValue.NONE!!
+                    val body: suspend () -> Varargs = { function!!.invokeSuspend(a) }
+                    body.startCoroutine(completion)
                 } else {
-                    this.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
-                    runner.resumeAndWait()
+                    contToResume.resume(args ?: LuaValue.NONE!!)
                 }
-                return (if (this.error != null) LuaValue.varargsOf(
-                    LuaValue.FALSE,
-                    LuaValue.valueOf(this.error)
-                )!! else LuaValue.varargsOf(LuaValue.TRUE, (this.result)!!))!!
+                return if (finished) {
+                    val r = finalResult!!
+                    val err = r.exceptionOrNull()
+                    if (err != null) LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(err.message))!!
+                    else LuaValue.varargsOf(LuaValue.TRUE, r.getOrThrow())!!
+                } else {
+                    status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
+                    LuaValue.varargsOf(LuaValue.TRUE, pendingYieldValues ?: LuaValue.NONE!!)!!
+                }
             } finally {
-                this.args = LuaValue.NONE
-                this.result = LuaValue.NONE
-                this.error = null
+                finalResult = null
+                pendingYieldValues = null
                 globals.running = previous_thread
                 globals.running.state.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
             }
         }
 
-                fun lua_yield(args: Varargs?): Varargs? {
-            try {
-                this.result = args
-                this.status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
-                runner.yieldAndWait(net.blueva.luak.LuaThread.Companion.thread_orphan_check_interval) {
-                    if (this.lua_thread.get() == null) {
-                        this.status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
-                        throw OrphanedThread()
-                    }
-                    this.status == net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
-                }
-                return this.args
-            } finally {
-                this.args = LuaValue.NONE
-                this.result = LuaValue.NONE
-            }
+        suspend fun lua_yield(args: Varargs?): Varargs {
+            status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
+            pendingYieldValues = args ?: LuaValue.NONE
+            if (this.lua_thread.get() == null) throw OrphanedThread()
+            return suspendCoroutine { cont -> yieldContinuation = cont }
         }
     }
 
@@ -234,12 +244,12 @@ class LuaThread : LuaValue {
         /** The current number of coroutines.  Should not be set.  */
         var coroutine_count: Int = 0
 
-        /** Polling interval, in milliseconds, which each thread uses while waiting to
-         * return from a yielded state to check if the lua threads is no longer
-         * referenced and therefore should be garbage collected.
-         * A short polling interval for many threads will consume server resources.
-         * Orphaned threads cannot be detected and collected unless garbage
-         * collection is run.  This can be changed by Java startup code if desired.
+        /** Unused: kept only for source/binary compatibility with code written
+         * against the old Java-Threads-based coroutine implementation. Since
+         * resume/yield are now backed by suspend/Continuation rather than a
+         * blocked thread per coroutine, there is nothing left to poll - an
+         * abandoned suspended coroutine is just unreachable memory, collected
+         * the same way any other object is.
          */
         var thread_orphan_check_interval: Long = 5000
 

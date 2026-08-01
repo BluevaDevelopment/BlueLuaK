@@ -310,13 +310,25 @@ class Globals : LuaTable() {
     }
 
     /** Function which yields the current thread.
+     *
+     * Only usable from within the interpreter's suspend-aware call chain (see
+     * [LuaValue.callSuspend]); calling this directly from regular, non-suspend
+     * Kotlin code has nowhere to suspend to and always fails, matching real
+     * Lua's C-call boundary restriction. Use [yieldSuspend] instead when
+     * writing a library function that should support being yielded through.
      * @param args  Arguments to supply as return values in the resume function of the resuming thread.
      * @return Values supplied as arguments to the resume() call that reactivates this thread.
      */
     fun yield(args: Varargs?): Varargs {
-        if (running == null || running.isMainThread) throw LuaError("cannot yield main thread")
+        if (running.isMainThread) throw LuaError("cannot yield main thread")
+        return runLuaSync { yieldSuspend(args) }
+    }
+
+    /** Suspending counterpart to [yield]; see its doc for details. */
+    suspend fun yieldSuspend(args: Varargs?): Varargs {
+        if (running.isMainThread) throw LuaError("cannot yield main thread")
         val s: LuaThread.State = running.state
-        return (s.lua_yield(args) ?: LuaValue.NONE)!!
+        return s.lua_yield(args)
     }
 
     /** Reader implementation to read chars from a String in JME or JVM.  */

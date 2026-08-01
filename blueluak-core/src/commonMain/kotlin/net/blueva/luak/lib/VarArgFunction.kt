@@ -64,6 +64,26 @@ abstract class VarArgFunction : LibFunction() {
         return (invoke(varargsOf(arg1, arg2, (arg3)!!)).arg1())!!
     }
 
+    // Mirror the call()->invoke() delegation above for the suspend path too.
+    // The base LuaValue.callSuspend() default routes through the *synchronous*
+    // call()/invoke(), which would silently bypass a subclass's invokeSuspend()
+    // override (e.g. coroutine.yield); route through invokeSuspend() instead.
+    override suspend fun callSuspend(): LuaValue? {
+        return (invokeSuspend(NONE!!).arg1())!!
+    }
+
+    override suspend fun callSuspend(arg: LuaValue?): LuaValue? {
+        return (invokeSuspend(arg!!).arg1())!!
+    }
+
+    override suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+        return (invokeSuspend(varargsOf(arg1, (arg2)!!)).arg1())!!
+    }
+
+    override suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+        return (invokeSuspend(varargsOf(arg1, arg2, (arg3)!!)).arg1())!!
+    }
+
     /**
      * Subclass responsibility.
      * May not have expected behavior for tail calls.

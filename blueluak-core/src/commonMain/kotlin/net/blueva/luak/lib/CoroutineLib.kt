@@ -17,6 +17,7 @@
 package net.blueva.luak.lib
 
 import net.blueva.luak.Globals
+import net.blueva.luak.LuaError
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaThread
 import net.blueva.luak.LuaValue
@@ -104,8 +105,15 @@ class CoroutineLib : TwoArgFunction() {
     }
 
     internal inner class YieldFunction : VarArgFunction() {
+        // Reached only when yield() is called from outside the suspend-aware
+        // interpreter dispatch (e.g. from a library function's own callback,
+        // like table.sort's comparator) - there's nowhere to suspend to.
         override fun invoke(args: Varargs): Varargs {
-            return globals!!.yield(args)
+            throw LuaError("attempt to yield across metamethod/C-call boundary")
+        }
+
+        override suspend fun invokeSuspend(args: Varargs): Varargs {
+            return globals!!.yieldSuspend(args)
         }
     }
 

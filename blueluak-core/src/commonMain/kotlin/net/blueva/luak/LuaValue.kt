@@ -1608,6 +1608,37 @@ open class LuaValue : Varargs() {
         return (callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1())!!
     }
 
+    /** Suspending counterpart to the `call`/`invoke`/`onInvoke` family, used by
+     * the interpreter so a Lua-level `coroutine.yield()` can suspend all the
+     * way back to `LuaThread.resume()` without blocking a thread.
+     *
+     * The default implementations here just delegate to the regular
+     * (non-suspending) methods, so ordinary library functions need no changes
+     * at all: calling them from a suspend context works, they simply never
+     * suspend. Only [LuaClosure] (pure Lua-to-Lua calls) and functions that
+     * are explicitly yield-aware (e.g. `coroutine.yield` itself) override
+     * these to propagate suspension for real. Calling `coroutine.yield()`
+     * from anything else correctly surfaces as "attempt to yield across
+     * metamethod/C-call boundary", matching real Lua.
+     * @see .call
+     * @see .invoke
+     */
+    open suspend fun callSuspend(): LuaValue? {
+        return call()
+    }
+
+    open suspend fun callSuspend(arg: LuaValue?): LuaValue? {
+        return call(arg)
+    }
+
+    open suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
+        return call(arg1, arg2)
+    }
+
+    open suspend fun callSuspend(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
+        return call(arg1, arg2, arg3)
+    }
+
     /** Call named method on `this` with 0 arguments, including metatag processing,
      * and return only the first return value.
      * 
@@ -1851,6 +1882,12 @@ open class LuaValue : Varargs() {
      */
     open fun invoke(args: Varargs): Varargs {
         return callmt().invoke(this, args)
+    }
+
+    /** Suspending counterpart to [.invoke]; see [.callSuspend] for why this
+     * exists and when it actually suspends versus just delegating. */
+    open suspend fun invokeSuspend(args: Varargs): Varargs {
+        return invoke(args)
     }
 
     /** Call `this` with variable arguments, including metatag processing,
@@ -3624,6 +3661,12 @@ open class LuaValue : Varargs() {
      */
     open fun onInvoke(args: Varargs): Varargs? {
         return invoke(args)
+    }
+
+    /** Suspending counterpart to [.onInvoke], used by [TailcallVarargs.evalSuspend]
+     * to trampoline tail calls without losing yield propagation. */
+    open suspend fun onInvokeSuspend(args: Varargs): Varargs? {
+        return invokeSuspend(args)
     }
 
     /** Hook for implementations such as LuaJC to load the environment of the main chunk
