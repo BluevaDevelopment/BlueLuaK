@@ -60,6 +60,84 @@ Gradle modules:
 
 Platform-dependent functionality is exposed through `expect`/`actual` implementations. Code intended to run on every target belongs in `commonMain`; Java and JVM APIs remain confined to JVM source sets and `blueluak-jvm`.
 
+## Installation
+
+Releases publish to GitHub Packages. The Maven registry there requires authentication even for public packages, so every build needs a GitHub account and a [personal access token](https://github.com/settings/tokens) with `read:packages` scope, regardless of build tool.
+
+### JVM projects
+
+Two artifacts are available. Pick one:
+
+| Artifact | Contains | Use it when |
+|---|---|---|
+| `blueluak-jvm` | The multiplatform core (as a compile dependency) plus `JvmPlatform.standardGlobals()`, `luajava`, the `luajc` JIT compiler, CLI tooling, and `javax.script` integration | You want a ready-to-use Lua runtime — the common case |
+| `blueluak-core-jvm` | Just the shared runtime, compiler, AST, parser, and standard libraries on the JVM target, with no JVM-specific globals helper | You're assembling your own `Globals` from individual library classes, or want the smallest possible footprint |
+
+`blueluak-jvm` pulls in `blueluak-core-jvm` transitively, so depending on it alone is enough for most projects.
+
+**Gradle (Kotlin DSL)**
+
+```kotlin
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
+            password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+dependencies {
+    implementation("net.blueva:blueluak-jvm:26.1")
+}
+```
+
+**Maven**
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK</url>
+  </repository>
+</repositories>
+
+<dependency>
+  <groupId>net.blueva</groupId>
+  <artifactId>blueluak-jvm</artifactId>
+  <version>26.1</version>
+</dependency>
+```
+
+Maven authenticates against GitHub Packages through `~/.m2/settings.xml`, not the POM:
+
+```xml
+<servers>
+  <server>
+    <id>github</id>
+    <username>YOUR_GITHUB_USERNAME</username>
+    <password>YOUR_PERSONAL_ACCESS_TOKEN</password>
+  </server>
+</servers>
+```
+
+### Other Kotlin Multiplatform targets
+
+From a `commonMain`/`jsMain`/`wasmJsMain`/`wasmWasiMain`/`nativeMain` source set, depend on the shared core coordinates and let Gradle select the matching per-target variant automatically:
+
+```kotlin
+kotlin {
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation("net.blueva:blueluak-core:26.1")
+            }
+        }
+    }
+}
+```
+
 ## Building
 
 Build every target and module from a clean checkout:
