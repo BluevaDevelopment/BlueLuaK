@@ -106,13 +106,34 @@ dependencies {
 
 ### Other Kotlin Multiplatform targets
 
-Add the same `repo.blueva.net/releases` repository shown above, then from a `commonMain`/`jsMain`/`wasmJsMain`/`wasmWasiMain`/`nativeMain` source set depend on the shared core coordinates and let Gradle select the matching per-target variant automatically:
+`blueluak-core` is only distributed as a Kotlin Multiplatform library: every non-JVM target is a Kotlin `.klib`, consumable from another Kotlin Multiplatform Gradle project — not a raw JS/npm package, and not a C-callable Native library. There's no `JvmPlatform`-equivalent convenience on these targets yet; build your own `Globals` from the individual library classes in `net.blueva.luak.lib` (`BaseLib`, `PackageLib`, `StringLib`, `TableLib`, `MathLib`, `CoroutineLib`, `OsLib`, `IoLib`, `Bit32Lib`).
+
+Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.2` coordinates from each target's own source set — Gradle resolves the matching platform artifact automatically, so you never reference the suffixed artifacts (`blueluak-core-js`, `-wasm-js`, `-wasm-wasi`, `-linuxx64`, ...) directly:
+
+| Target | Gradle target function | Source set | Tested on |
+|---|---|---|---|
+| JavaScript IR | `js { nodejs() }` | `jsMain` | Node.js |
+| WebAssembly | `wasmJs { nodejs() }` | `wasmJsMain` | Node.js |
+| WebAssembly (WASI) | `wasmWasi { nodejs() }` | `wasmWasiMain` | Node.js's experimental `node:wasi` (raw `wasi_snapshot_preview1` syscalls — no host-specific APIs, so wasmtime/wasmer should work too, though only Node has been verified so far) |
+| Kotlin/Native | `linuxX64()`, `mingwX64()`, `macosX64()`, `macosArm64()` | `linuxX64Main`, `mingwX64Main`, `macosX64Main`, `macosArm64Main` | Matching GitHub Actions runners in CI |
 
 ```kotlin
+repositories {
+    maven("https://repo.blueva.net/releases")
+}
+
 kotlin {
+    js { nodejs() }
+    wasmJs { nodejs() }
+    wasmWasi { nodejs() }
+    linuxX64()
+    macosArm64()
+
     sourceSets {
         commonMain {
             dependencies {
+                // Resolves to blueluak-core-js, -wasm-js, -wasm-wasi, -linuxx64,
+                // -macosarm64, etc. automatically for each target above.
                 implementation("net.blueva:blueluak-core:26.2")
             }
         }
