@@ -1,11 +1,11 @@
 plugins {
-    java
+    `java-library`
     kotlin("jvm")
     `maven-publish`
 }
 
 dependencies {
-    implementation(project(":blueluak-core"))
+    api(project(":blueluak-core"))
     implementation("org.apache.bcel:bcel:5.2")
 
     testImplementation("junit:junit:4.13.2")
