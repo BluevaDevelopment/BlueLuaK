@@ -214,8 +214,8 @@ abstract class Varargs {
      * @return LuaClosure if argument i is a closure, or defval if not supplied or nil
      * @exception LuaError if the argument is not a lua closure
      */
-    fun optclosure(i: Int, defval: LuaClosure?): LuaClosure {
-        return (arg(i)!!.optclosure(defval))!!
+    fun optclosure(i: Int, defval: LuaClosure?): LuaClosure? {
+        return arg(i)!!.optclosure(defval)
     }
 
     /** Return argument i as a double, `defval` if nil, or throw a LuaError if it cannot be converted to one.
@@ -232,8 +232,8 @@ abstract class Varargs {
      * @return LuaValue that can be called if argument i is lua function or closure, or defval if not supplied or nil
      * @exception LuaError if the argument is not a lua function or closure
      */
-    fun optfunction(i: Int, defval: LuaFunction?): LuaFunction {
-        return (arg(i)!!.optfunction(defval))!!
+    fun optfunction(i: Int, defval: LuaFunction?): LuaFunction? {
+        return arg(i)!!.optfunction(defval)
     }
 
     /** Return argument i as a java int value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -250,8 +250,8 @@ abstract class Varargs {
      * @return LuaInteger value that fits in a java int without rounding, or defval if not supplied or nil
      * @exception LuaError if the argument cannot be represented by a java int value
      */
-    fun optinteger(i: Int, defval: LuaInteger?): LuaInteger {
-        return (arg(i)!!.optinteger(defval))!!
+    fun optinteger(i: Int, defval: LuaInteger?): LuaInteger? {
+        return arg(i)!!.optinteger(defval)
     }
 
     /** Return argument i as a java long value, discarding any fractional part, `defval` if nil, or throw a LuaError  if not a number.
@@ -268,8 +268,8 @@ abstract class Varargs {
      * @return LuaNumber if argument i is number or can be converted to a number
      * @exception LuaError if the argument is not a number
      */
-    fun optnumber(i: Int, defval: LuaNumber?): LuaNumber {
-        return (arg(i)!!.optnumber(defval))!!
+    fun optnumber(i: Int, defval: LuaNumber?): LuaNumber? {
+        return arg(i)!!.optnumber(defval)
     }
 
     /** Return argument i as a java String if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -277,8 +277,8 @@ abstract class Varargs {
      * @return String value if argument i is a string or number, or defval if not supplied or nil
      * @exception LuaError if the argument is not a string or number
      */
-    fun optjstring(i: Int, defval: String?): String {
-        return (arg(i)!!.optjstring(defval))!!
+    fun optjstring(i: Int, defval: String?): String? {
+        return arg(i)!!.optjstring(defval)
     }
 
     /** Return argument i as a LuaString if a string or number, `defval` if nil, or throw a LuaError  if any other type
@@ -286,8 +286,8 @@ abstract class Varargs {
      * @return LuaString value if argument i is a string or number, or defval if not supplied or nil
      * @exception LuaError if the argument is not a string or number
      */
-    fun optstring(i: Int, defval: LuaString?): LuaString {
-        return (arg(i)!!.optstring(defval))!!
+    fun optstring(i: Int, defval: LuaString?): LuaString? {
+        return arg(i)!!.optstring(defval)
     }
 
     /** Return argument i as a LuaTable if a lua table, `defval` if nil, or throw a LuaError  if any other type.
@@ -295,8 +295,8 @@ abstract class Varargs {
      * @return LuaTable value if a table, or defval if not supplied or nil
      * @exception LuaError if the argument is not a lua table
      */
-    fun opttable(i: Int, defval: LuaTable?): LuaTable {
-        return (arg(i)!!.opttable(defval))!!
+    fun opttable(i: Int, defval: LuaTable?): LuaTable? {
+        return arg(i)!!.opttable(defval)
     }
 
     /** Return argument i as a LuaThread if a lua thread, `defval` if nil, or throw a LuaError  if any other type.
@@ -304,8 +304,8 @@ abstract class Varargs {
      * @return LuaThread value if a thread, or defval if not supplied or nil
      * @exception LuaError if the argument is not a lua thread
      */
-    fun optthread(i: Int, defval: LuaThread?): LuaThread {
-        return (arg(i)!!.optthread(defval))!!
+    fun optthread(i: Int, defval: LuaThread?): LuaThread? {
+        return arg(i)!!.optthread(defval)
     }
 
     /** Return argument i as a java Any if a userdata, `defval` if nil, or throw a LuaError  if any other type.
@@ -313,8 +313,8 @@ abstract class Varargs {
      * @return java Any value if argument i is a userdata, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata
      */
-    fun optuserdata(i: Int, defval: Any?): Any {
-        return (arg(i)!!.optuserdata(defval))!!
+    fun optuserdata(i: Int, defval: Any?): Any? {
+        return arg(i)!!.optuserdata(defval)
     }
 
     /** Return argument i as a java Any if it is a userdata whose instance Class c or a subclass,
@@ -324,8 +324,8 @@ abstract class Varargs {
      * @return java Any value if argument i is a userdata whose instance Class c or a subclass, or defval if not supplied or nil
      * @exception LuaError if the argument is not a userdata or from whose instance c is not assignable
      */
-    fun optuserdata(i: Int, c: KClass<*>?, defval: Any?): Any {
-        return (arg(i)!!.optuserdata((c)!!, defval))!!
+    fun optuserdata(i: Int, c: KClass<*>?, defval: Any?): Any? {
+        return arg(i)!!.optuserdata(c!!, defval)
     }
 
     /** Return argument i as a LuaValue if it exists, or `defval`.

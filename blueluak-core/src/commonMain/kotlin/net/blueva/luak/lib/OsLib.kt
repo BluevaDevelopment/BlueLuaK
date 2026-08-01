@@ -115,7 +115,7 @@ open class OsLib
                 when (opcode) {
                     net.blueva.luak.lib.OsLib.Companion.CLOCK -> return valueOf(clock())
                     net.blueva.luak.lib.OsLib.Companion.DATE -> {
-                        val s: String = args.optjstring(1, "%c")
+                        val s: String = args.optjstring(1, "%c")!!
                         val t = if (args.isnumber(2)) args.todouble(2) else time(null)
                         if (s == "*t") {
                             val d = dateParts(t.toLong())

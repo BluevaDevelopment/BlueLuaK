@@ -302,7 +302,7 @@ class IoLib : TwoArgFunction() {
 
                     net.blueva.luak.lib.IoLib.Companion.IO_OPEN -> return iolib!!._io_open(
                         args.checkjstring(1),
-                        args.optjstring(2, "r")
+                        args.optjstring(2, "r")!!
                     )!!
 
                     net.blueva.luak.lib.IoLib.Companion.IO_LINES -> return (iolib!!._io_lines(args))!!

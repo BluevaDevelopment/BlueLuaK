@@ -255,8 +255,8 @@ class PackageLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var name: String = args.checkjstring(1)
             val path: String = args.checkjstring(2)
-            val sep: String = args.optjstring(3, ".")
-            val rep: String = args.optjstring(4, net.blueva.luak.lib.PackageLib.Companion.FILE_SEP)
+            val sep: String = args.optjstring(3, ".")!!
+            val rep: String = args.optjstring(4, net.blueva.luak.lib.PackageLib.Companion.FILE_SEP)!!
 
 
             // check the path elements

@@ -131,7 +131,7 @@ class DebugLib : TwoArgFunction() {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             var func: LuaValue? = args.arg(a++)
-            val what: String = args.optjstring(a++, "flnStu")
+            val what: String = args.optjstring(a++, "flnStu")!!
             val callstack = callstack(thread)
 
             // find the stack info
@@ -248,7 +248,7 @@ class DebugLib : TwoArgFunction() {
             var a = 1
             val t: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             val func: LuaValue? = args.optfunction(a++, null)
-            val str: String = args.optjstring(a++, "")
+            val str: String = args.optjstring(a++, "")!!
             val count: Int = args.optint(a++, 0)
             var call = false
             var line = false
