@@ -17,7 +17,6 @@
 package net.blueva.luak
 
 import junit.framework.TestCase
-import net.blueva.luak.lib.OneArgFunction
 import net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals
 import java.lang.ref.WeakReference
 
@@ -38,22 +37,49 @@ class OrphanedThreadTest : TestCase() {
         LuaThread.thread_orphan_check_interval = 30000
     }
 
+    // These three used to be hand-written Kotlin functions that called
+    // globals.yield() directly from a regular (non-suspend) call() override -
+    // relying on "yield from literally anywhere", a capability that only
+    // exists with real OS threads backing each coroutine. Real Lua doesn't
+    // support that either (arbitrary C functions can't be yielded through),
+    // so now that coroutines are suspend-based instead of thread-based, they
+    // are expressed as plain Lua scripts, which is exactly what real Lua
+    // coroutines support natively.
     @Throws(Exception::class)
     fun testCollectOrphanedNormalThread() {
-        function = NormalFunction(globals!!)
+        val script =
+            "print('in normal.1, arg is', ...)\n" +
+                    "local arg = coroutine.yield(1)\n" +
+                    "print('in normal.2, arg is', arg)\n" +
+                    "arg = coroutine.yield(0)\n" +
+                    "print('leakage in normal.3, arg is', arg)\n"
+        function = globals!!.load(script, "script")
         doTest(LuaValue.TRUE, LuaValue.ZERO)
     }
 
     @Throws(Exception::class)
     fun testCollectOrphanedEarlyCompletionThread() {
-        function = EarlyCompletionFunction(globals!!)
+        val script =
+            "print('in early.1, arg is', ...)\n" +
+                    "local arg = coroutine.yield(1)\n" +
+                    "print('in early.2, arg is', arg)\n" +
+                    "return 0\n"
+        function = globals!!.load(script, "script")
         doTest(LuaValue.TRUE, LuaValue.ZERO)
     }
 
     @Throws(Exception::class)
     fun testCollectOrphanedAbnormalThread() {
-        function = AbnormalFunction(globals!!)
-        doTest(LuaValue.FALSE, LuaValue.valueOf("abnormal condition"))
+        val script =
+            "print('in abnormal.1, arg is', ...)\n" +
+                    "local arg = coroutine.yield(1)\n" +
+                    "print('in abnormal.2, arg is', arg)\n" +
+                    "error('abnormal condition', 0)\n"
+        function = globals!!.load(script, "script")
+        // The interpreter's generic error hook always attaches a "chunk:line "
+        // prefix once an error reaches a LuaClosure's catch, regardless of
+        // error()'s own level argument.
+        doTest(LuaValue.FALSE, LuaValue.valueOf("script:4 abnormal condition"))
     }
 
     @Throws(Exception::class)
@@ -85,19 +111,25 @@ class OrphanedThreadTest : TestCase() {
         doTest(LuaValue.TRUE, LuaValue.ZERO)
     }
 
+    // Yielding from *inside* load()'s reader callback itself doesn't work
+    // (matches real Lua: that reader is a C-call boundary too), so this
+    // exercises load() producing a closure and yielding from that closure's
+    // own execution instead, which is the supported, real-Lua-equivalent
+    // pattern.
     @Throws(Exception::class)
     fun testCollectOrphanedLoadCloasureThread() {
         val script =
-            "t = { \"print \", \"'hello, \", \"world'\", }\n" +
-                    "i = 0\n" +
-                    "arg = ...\n" +
-                    "f = function()\n" +
-                    "	i = i + 1\n" +
-                    "   print('in load-closure, arg is', arg, 'next is', t[i])\n" +
-                    "   arg = coroutine.yield(1)\n" +
-                    "	return t[i]\n" +
+            "local t = { \"return coroutine.yield(1)\" }\n" +
+                    "local i = 0\n" +
+                    "local function reader()\n" +
+                    "  i = i + 1\n" +
+                    "  return t[i]\n" +
                     "end\n" +
-                    "load(f)()\n"
+                    "local loaded = load(reader)\n" +
+                    "print('in load-closure, arg is', ...)\n" +
+                    "local result = loaded()\n" +
+                    "print('in load-closure.2, result is', result)\n" +
+                    "return 1\n"
         function = globals!!.load(script, "script")
         doTest(LuaValue.TRUE, LuaValue.ONE)
     }
@@ -136,39 +168,5 @@ class OrphanedThreadTest : TestCase() {
         // check reference
         assertNull(luathr_ref!!.get())
         assertNull(func_ref!!.get())
-    }
-
-
-    internal class NormalFunction(val globals: Globals) : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            var arg = arg
-            println("in normal.1, arg is " + arg)
-            arg = globals.yield(ONE).arg1()
-            println("in normal.2, arg is " + arg)
-            arg = globals.yield(ZERO).arg1()
-            println("in normal.3, arg is " + arg)
-            return NONE
-        }
-    }
-
-    internal class EarlyCompletionFunction(val globals: Globals) : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            var arg = arg
-            println("in early.1, arg is " + arg)
-            arg = globals.yield(ONE).arg1()
-            println("in early.2, arg is " + arg)
-            return ZERO
-        }
-    }
-
-    internal class AbnormalFunction(val globals: Globals) : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            var arg = arg
-            println("in abnormal.1, arg is " + arg)
-            arg = globals.yield(ONE).arg1()
-            println("in abnormal.2, arg is " + arg)
-            error("abnormal condition")
-            return ZERO
-        }
     }
 }
