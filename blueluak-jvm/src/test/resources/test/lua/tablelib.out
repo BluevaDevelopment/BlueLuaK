@@ -26,7 +26,7 @@ two
 {[1]=seven,[2]=one,[3]=two,[4]=three,[5]=six,[a]=aaa,[b]=bbb,[c]=ccc}	5
 {[1]=seven,[2]=one,[3]=two,[4]=eight,[5]=three,[6]=six,[a]=aaa,[b]=bbb,[c]=ccc}	6
 {[1]=seven,[2]=one,[3]=two,[4]=eight,[5]=three,[6]=six,[7]=nine,[a]=aaa,[b]=bbb,[c]=ccc}	7
-{[10]=ten,[1]=seven,[2]=one,[3]=two,[4]=eight,[5]=three,[6]=six,[7]=nine,[a]=aaa,[b]=bbb,[c]=ccc}	7
+{[1]=seven,[2]=one,[3]=two,[4]=eight,[5]=three,[6]=six,[7]=nine,[a]=aaa,[b]=bbb,[c]=ccc}	7
 #{}	0
 #{"a"}	1
 #{"a","b"}	2

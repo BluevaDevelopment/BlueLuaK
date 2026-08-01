@@ -670,7 +670,7 @@ open class LuaValue : Varargs() {
      * @see .TSTRING
      */
     open fun optjstring(defval: String?): String? {
-        argerror("String")
+        argerror("string")
         return null
     }
 
