@@ -389,6 +389,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
+                    if (le.traceback == null) {
+                        // Error raised directly from native/library code (e.g. calling a
+                        // non-function) never passed through a LuaClosure's error hook, so
+                        // the message handler hasn't run yet. Run it here exactly once,
+                        // matching real Lua's xpcall: if the handler itself fails or isn't
+                        // callable, substitute the standard "error in error handling".
+                        return (varargsOf(FALSE, runMessageHandler(t, le.messageObject ?: NIL)))!!
+                    }
                     val m: LuaValue? = le.messageObject
                     return (varargsOf(FALSE, if (m != null) m else NIL))!!
                 } catch (e: Exception) {
@@ -399,6 +407,18 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 }
             } finally {
                 t.errorfunc = preverror
+            }
+        }
+
+        private fun runMessageHandler(t: LuaThread, errval: LuaValue): LuaValue {
+            val handler = t.errorfunc ?: return errval
+            t.errorfunc = null
+            try {
+                return handler.call(errval) ?: NIL
+            } catch (ignored: Throwable) {
+                return valueOf("error in error handling")
+            } finally {
+                t.errorfunc = handler
             }
         }
     }
