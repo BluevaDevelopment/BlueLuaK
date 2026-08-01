@@ -62,7 +62,7 @@ Platform-dependent functionality is exposed through `expect`/`actual` implementa
 
 ## Installation
 
-Releases publish to GitHub Packages. The Maven registry there requires authentication even for public packages, so every build needs a GitHub account and a [personal access token](https://github.com/settings/tokens) with `read:packages` scope, regardless of build tool.
+Releases publish to [repo.blueva.net](https://repo.blueva.net/releases), a public Maven repository — no authentication needed to depend on BlueLuaK.
 
 ### JVM projects
 
@@ -79,13 +79,7 @@ Two artifacts are available. Pick one:
 
 ```kotlin
 repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK")
-        credentials {
-            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
-            password = providers.gradleProperty("gpr.token").orNull ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    maven("https://repo.blueva.net/releases")
 }
 
 dependencies {
@@ -98,8 +92,8 @@ dependencies {
 ```xml
 <repositories>
   <repository>
-    <id>github</id>
-    <url>https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK</url>
+    <id>blueva</id>
+    <url>https://repo.blueva.net/releases</url>
   </repository>
 </repositories>
 
@@ -110,21 +104,9 @@ dependencies {
 </dependency>
 ```
 
-Maven authenticates against GitHub Packages through `~/.m2/settings.xml`, not the POM:
-
-```xml
-<servers>
-  <server>
-    <id>github</id>
-    <username>YOUR_GITHUB_USERNAME</username>
-    <password>YOUR_PERSONAL_ACCESS_TOKEN</password>
-  </server>
-</servers>
-```
-
 ### Other Kotlin Multiplatform targets
 
-From a `commonMain`/`jsMain`/`wasmJsMain`/`wasmWasiMain`/`nativeMain` source set, depend on the shared core coordinates and let Gradle select the matching per-target variant automatically:
+Add the same `repo.blueva.net/releases` repository shown above, then from a `commonMain`/`jsMain`/`wasmJsMain`/`wasmWasiMain`/`nativeMain` source set depend on the shared core coordinates and let Gradle select the matching per-target variant automatically:
 
 ```kotlin
 kotlin {

@@ -148,11 +148,11 @@ publishing {
     }
     repositories {
         maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/BluevaDevelopment/BlueLuaK")
+            name = "BluevaRepo"
+            url = uri("https://repo.blueva.net/releases")
             credentials {
-                username = providers.environmentVariable("GITHUB_ACTOR").orNull
-                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+                username = providers.environmentVariable("BLUEVA_REPO_USERNAME").orNull
+                password = providers.environmentVariable("BLUEVA_REPO_SECRET").orNull
             }
         }
     }
