@@ -21,15 +21,8 @@ import kotlin.native.runtime.NativeRuntimeApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-// Native-specific: WeakTable (commonMain) relies on the expect/actual
-// WeakReference, which was a permanently-strong stub on Native until now.
-// These confirm real weak-table semantics work end to end under Kotlin/
-// Native's memory manager, using GC.collect() for a deterministic collection
-// instead of a JVM-style retry/sleep loop.
+// Confirms real weak-table semantics now that WeakReference is real on Native.
 class WeakTableNativeTest {
-    // Dropped entries must only ever be locals of a function that has already
-    // returned by the time GC.collect() runs - see WeakReferenceNativeTest
-    // for why keeping them in the @Test body itself is unreliable.
     private fun populateWithDroppableValue(t: LuaTable) {
         val value: LuaValue = LuaValue.userdataOf(Any())
         t.set("key", value)

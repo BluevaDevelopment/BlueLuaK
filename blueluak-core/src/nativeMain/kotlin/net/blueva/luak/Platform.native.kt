@@ -26,10 +26,7 @@ import platform.posix.getenv
 
 internal actual fun currentTimeMillis(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
-// `file.separator` is the one property callers rely on getting a correct,
-// OS-appropriate value regardless of environment (PackageLib's FILE_SEP);
-// everything else maps to a real environment variable lookup, covering both
-// os.getenv() and ad hoc flags like the "CALLS"/"TRACE" debug switches.
+// "file.separator" is OS-specific; everything else is a real env var lookup.
 @OptIn(ExperimentalForeignApi::class, kotlin.experimental.ExperimentalNativeApi::class)
 internal actual fun platformProperty(name: String): String? {
     if (name == "file.separator") {
@@ -46,11 +43,8 @@ internal actual fun platformCollectGarbage() {
     GC.collect()
 }
 
-// Reflects heap usage as of the last completed collection (0 until the first
-// one runs). Kotlin/Native has no "live now" heap snapshot API that doesn't
-// itself force a collection, and collectgarbage("count") forcing a full stop-
-// the-world GC on every call - unlike real Lua's incrementally tracked count
-// - would be a surprising performance cliff for callers polling it in a loop.
+// Usage as of the last collection (0 until one has run); doesn't force a
+// collection itself, unlike platformCollectGarbage.
 @OptIn(NativeRuntimeApi::class, ExperimentalStdlibApi::class)
 internal actual fun platformUsedMemory(): Long =
     GC.lastGCInfo?.memoryUsageAfter?.values?.sumOf { it.totalObjectsSizeBytes } ?: 0L

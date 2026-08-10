@@ -1,5 +1,6 @@
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import java.time.Duration
 
 plugins {
     kotlin("multiplatform")
@@ -113,6 +114,13 @@ kotlin {
 
 tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.configureEach {
     dependsOn(generateBuildInfo, generateKotlinGrammarSource)
+}
+
+// Bounds every test task so an unresumed coroutine continuation fails
+// deterministically instead of hanging CI; kotlin.test has no portable
+// per-test timeout, but Task.timeout works on every target uniformly.
+tasks.matching { it.name.endsWith("Test") }.configureEach {
+    timeout.set(Duration.ofMinutes(10))
 }
 
 tasks.matching { it.name.endsWith("SourcesJar", ignoreCase = true) }.configureEach {
