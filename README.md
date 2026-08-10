@@ -208,7 +208,7 @@ BlueLuaK has completed its initial Kotlin and KMP restructuring. It is functiona
 | JVM integrations | Available through `blueluak-jvm` |
 | Lua language version | Lua 5.2 |
 | Legacy regression suite | Green; no `ignoreFailures` exemptions |
-| Native platform services | Portable core available; filesystem resources and full coroutine semantics still need target-specific implementations |
+| Native platform services | Coroutines, file/resource I/O, environment variables, GC control, and weak references are implemented for real; broader stream/file/tempfile test coverage and non-macOS Native CI execution are still open |
 | Future Lua work | Migration path from Lua 5.2 toward modern Lua releases |
 
 ## Roadmap

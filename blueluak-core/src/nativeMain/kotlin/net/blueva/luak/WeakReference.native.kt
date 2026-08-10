@@ -14,6 +14,10 @@
  ******************************************************************************/
 package net.blueva.luak
 
-actual class WeakReference<T : Any> actual constructor(private val referent: T) {
-    actual fun get(): T? = referent
+import kotlin.experimental.ExperimentalNativeApi
+
+@OptIn(ExperimentalNativeApi::class)
+actual class WeakReference<T : Any> actual constructor(referent: T) {
+    private val delegate = kotlin.native.ref.WeakReference(referent)
+    actual fun get(): T? = delegate.get()
 }
