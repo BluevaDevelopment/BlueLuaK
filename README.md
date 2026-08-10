@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-26.2-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-26.3-blue">
   <img alt="Kotlin Multiplatform" src="https://img.shields.io/badge/Kotlin_Multiplatform-JVM_%7C_JS_%7C_Wasm_%7C_Native-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Gradle" src="https://img.shields.io/badge/Gradle-9.6.1-02303A?logo=gradle&logoColor=white">
@@ -83,7 +83,7 @@ repositories {
 }
 
 dependencies {
-    implementation("net.blueva:blueluak-jvm:26.2")
+    implementation("net.blueva:blueluak-jvm:26.3")
 }
 ```
 
@@ -100,7 +100,7 @@ dependencies {
 <dependency>
   <groupId>net.blueva</groupId>
   <artifactId>blueluak-jvm</artifactId>
-  <version>26.2</version>
+  <version>26.3</version>
 </dependency>
 ```
 
@@ -108,7 +108,7 @@ dependencies {
 
 `blueluak-core` is only distributed as a Kotlin Multiplatform library: every non-JVM target is a Kotlin `.klib`, consumable from another Kotlin Multiplatform Gradle project — not a raw JS/npm package, and not a C-callable Native library. There's no `JvmPlatform`-equivalent convenience on these targets yet; build your own `Globals` from the individual library classes in `net.blueva.luak.lib` (`BaseLib`, `PackageLib`, `StringLib`, `TableLib`, `MathLib`, `CoroutineLib`, `OsLib`, `IoLib`, `Bit32Lib`).
 
-Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.2` coordinates from each target's own source set — Gradle resolves the matching platform artifact automatically, so you never reference the suffixed artifacts (`blueluak-core-js`, `-wasm-js`, `-wasm-wasi`, `-linuxx64`, ...) directly:
+Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.3
 
 | Target | Gradle target function | Source set | Tested on |
 |---|---|---|---|
@@ -134,7 +134,7 @@ kotlin {
             dependencies {
                 // Resolves to blueluak-core-js, -wasm-js, -wasm-wasi, -linuxx64,
                 // -macosarm64, etc. automatically for each target above.
-                implementation("net.blueva:blueluak-core:26.2")
+                implementation("net.blueva:blueluak-core:26.3")
             }
         }
     }
