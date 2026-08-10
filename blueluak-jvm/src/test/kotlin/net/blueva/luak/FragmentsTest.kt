@@ -720,6 +720,24 @@ object FragmentsTest : TestSuite() {
             )
         }
 
+        fun testXpcallHandlerNotInvokedForInnerPcallError() {
+            runFragment(
+                LuaValue.varargsOf(
+                    kotlin.arrayOf<net.blueva.luak.LuaValue>(
+                        LuaValue.TRUE, LuaValue.FALSE, LuaValue.FALSE
+                    )
+                )!!,
+                "local handlerRan = false\n" +
+                        "local function handler(msg) handlerRan = true; return 'H:' .. tostring(msg) end\n" +
+                        "local function inner()\n" +
+                        "  local ok, err = pcall(function() return nil + 1 end)\n" +
+                        "  return ok, err\n" +
+                        "end\n" +
+                        "local ok2, a = xpcall(inner, handler)\n" +
+                        "return ok2, a, handlerRan\n"
+            )
+        }
+
         fun testBalancedMatchOnEmptyString() {
             runFragment(LuaValue.NIL, "return (\"\"):match(\"%b''\")\n")
         }

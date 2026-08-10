@@ -238,6 +238,16 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun invoke(args: Varargs): Varargs {
             val func: LuaValue = args.checkvalue(1)!!
             if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
+            // Shadow any outer xpcall's message handler while this pcall's own
+            // protected region is active: an error raised in here belongs to
+            // THIS pcall, not to an unrelated, further-out xpcall, matching
+            // real Lua's "nearest enclosing protected call" semantics. Without
+            // this, LuaClosure.errorHook() would still see the outer handler
+            // via LuaThread.errorfunc and wrongly invoke it for an error this
+            // pcall is about to catch itself.
+            val t: LuaThread? = globals?.running
+            val preverror: LuaValue? = t?.errorfunc
+            if (t != null) t.errorfunc = null
             try {
                 return (varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
@@ -247,6 +257,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
             } finally {
+                if (t != null) t.errorfunc = preverror
                 if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }
@@ -258,6 +269,10 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         override suspend fun invokeSuspend(args: Varargs): Varargs {
             val func: LuaValue = args.checkvalue(1)!!
             if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
+            // See the non-suspend invoke() above for why errorfunc is shadowed.
+            val t: LuaThread? = globals?.running
+            val preverror: LuaValue? = t?.errorfunc
+            if (t != null) t.errorfunc = null
             try {
                 return (varargsOf(TRUE, (func.invokeSuspend((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
@@ -267,6 +282,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
             } finally {
+                if (t != null) t.errorfunc = preverror
                 if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }

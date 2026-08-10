@@ -181,7 +181,7 @@ Run an individual target suite:
 ./gradlew :blueluak-core:macosArm64Test
 ```
 
-Native tests can only run on their matching host. Cross-platform Native compilation remains available from supported hosts. The full build also runs the inherited JVM regression suite. Some legacy LuaJ tests remain configured with `ignoreFailures` while their Kotlin migration issues are resolved; failures are reported without hiding compilation or KMP test failures.
+Native tests can only run on their matching host. Cross-platform Native compilation remains available from supported hosts. The full build also runs the inherited JVM regression suite; it is green with no `ignoreFailures` exemptions, so any real regression fails the build.
 
 ## Requirements
 
@@ -207,7 +207,7 @@ BlueLuaK has completed its initial Kotlin and KMP restructuring. It is functiona
 | Lua runtime and compiler | Shared in `commonMain`; tested on JVM, JavaScript, and Wasm |
 | JVM integrations | Available through `blueluak-jvm` |
 | Lua language version | Lua 5.2 |
-| Legacy regression suite | Compiles; remaining migrated-test failures are being addressed |
+| Legacy regression suite | Green; no `ignoreFailures` exemptions |
 | Native platform services | Portable core available; filesystem resources and full coroutine semantics still need target-specific implementations |
 | Future Lua work | Migration path from Lua 5.2 toward modern Lua releases |
 
@@ -215,10 +215,9 @@ BlueLuaK has completed its initial Kotlin and KMP restructuring. It is functiona
 
 Current priorities are:
 
-1. Resolve the remaining inherited JVM regression failures.
-2. Complete target-specific Native I/O, resources, and coroutine behavior.
-3. Modernize the Lua implementation beyond 5.2.
-4. Continue refining multiplatform APIs without restoring LuaJ compatibility constraints.
+1. Complete target-specific Native I/O, resources, and coroutine behavior.
+2. Modernize the Lua implementation beyond 5.2.
+3. Continue refining multiplatform APIs without restoring LuaJ compatibility constraints.
 
 ## License
 
