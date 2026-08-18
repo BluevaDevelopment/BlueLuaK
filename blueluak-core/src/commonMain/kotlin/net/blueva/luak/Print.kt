@@ -404,7 +404,7 @@ class Print : Lua() {
             net.blueva.luak.Print.Companion.ps.flush()
             net.blueva.luak.Print.Companion.ps.close()
             net.blueva.luak.Print.Companion.ps = previous
-            net.blueva.luak.Print.Companion.format(baos.toString(), 50)
+            net.blueva.luak.Print.Companion.format(baos.toByteArray().decodeToString(), 50)
             net.blueva.luak.Print.Companion.printStack(stack, top, varargs)
             net.blueva.luak.Print.Companion.ps.println()
         }

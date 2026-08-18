@@ -830,7 +830,9 @@ class IoLib : TwoArgFunction() {
             //freadchars(f,"eEfFgG",baos);
             // freadchars(f,"+-",baos);
             //freadchars(f,"0123456789",baos);
-            val s = baos.toString()
+            // decodeToString(), not toString(): only the JVM's
+            // ByteArrayOutputStream renders its own bytes as text.
+            val s: String = baos.toByteArray().decodeToString()
             return if (s.length > 0) valueOf((s).toDouble()) else NIL
         }
 
