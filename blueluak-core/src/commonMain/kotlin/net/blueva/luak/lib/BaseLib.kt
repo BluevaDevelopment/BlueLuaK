@@ -26,54 +26,61 @@ import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaThread
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
+import net.blueva.luak.io.ByteArrayInputStream
 import net.blueva.luak.io.IOException
 import net.blueva.luak.io.InputStream
+import net.blueva.luak.io.PlatformFileHandle
+import net.blueva.luak.io.PlatformFileMode
+import net.blueva.luak.io.platformFilesSupported
+import net.blueva.luak.io.platformOpenFile
 import net.blueva.luak.io.platformResource
+import net.blueva.luak.io.platformStandardInput
 
 /**
  * Subclass of [LibFunction] which implements the lua basic library functions.
- * 
- * 
- * This contains all library functions listed as "basic functions" in the lua documentation for JME.
- * The functions dofile and loadfile use the
- * [Globals.finder] instance to find resource files.
- * Since JME has no file system by default, [BaseLib] implements
- * [ResourceFinder] using [Class.getResource],
- * which is the closest equivalent on JME.
- * The default loader chain in [PackageLib] will use these as well.
- * 
- * 
- * To use basic library functions that include a [ResourceFinder] based on
- * directory lookup, use [net.blueva.luak.lib.jvm.JvmBaseLib] instead.
- * 
- * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
- * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
- * 
- * 
+ *
+ *
+ * This contains every function listed as a "basic function" in the Lua manual.
+ * `dofile` and `loadfile` resolve names through the [Globals.finder] instance;
+ * [BaseLib] is itself the default [ResourceFinder] and looks for an ordinary
+ * host file before falling back to the platform's resource namespace, so a
+ * plain relative script name works the same on every target. The default
+ * loader chain in [PackageLib] uses the same finder.
+ *
+ *
+ * Loading this library also wires [Globals.STDIN] to the host's standard
+ * input where it has one.
+ *
+ *
+ * Typically this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]:
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * globals.get("print").call(LuaValue.valueOf("hello, world"))
+ * ```
+ *
+ *
  * For special cases where the smallest possible footprint is desired,
- * a minimal set of libraries could be loaded
- * directly via [Globals.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.get("print").call(LuaValue.valueOf("hello, world")); ` </pre>
+ * a minimal set of libraries could be loaded directly via [Globals.load]:
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.get("print").call(LuaValue.valueOf("hello, world"))
+ * ```
  * Doing so will ensure the library is properly initialized
  * and loaded into the globals table.
- * 
- * 
+ *
+ *
  * This is a direct port of the corresponding library in C.
- * @see net.blueva.luak.lib.jvm.JvmBaseLib
- * 
+ *
  * @see ResourceFinder
- * 
+ *
  * @see Globals.finder
- * 
+ *
  * @see LibFunction
- * 
- * @see net.blueva.luak.lib.jvm.JvmPlatform
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
+ *
+ * @see net.blueva.luak.lib.LuaPlatform
+ *
  * @see [Lua 5.2 Base Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.1)
  */
 open class BaseLib : TwoArgFunction(), ResourceFinder {
@@ -89,6 +96,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         globals = env!!.checkglobals()
         globals!!.finder = this
         globals!!.baselib = this
+        if (globals!!.STDIN == null) globals!!.STDIN = platformStandardInput()
         env!!.set("_G", env)
         env!!.set("_VERSION", Lua._VERSION)
         env!!.set("assert", net.blueva.luak.lib.BaseLib._assert())
@@ -119,13 +127,37 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         return env
     }
 
-    /** ResourceFinder implementation
-     * 
-     * Tries to open the file as a resource, which can work for JVM and JME.
+    /**
+     * [ResourceFinder] implementation: an ordinary host file first, then the
+     * platform's own resource namespace (the classpath on the JVM, the working
+     * directory or a pre-opened directory elsewhere).
+     *
+     * Looking on the filesystem first is what makes `require`, `dofile`, and
+     * `loadfile` resolve a plain relative script name identically on every
+     * target rather than only where a classpath exists.
      */
     open override fun findResource(filename: String?): InputStream? {
-        filename ?: return null
-        return platformResource(if (filename.startsWith("/")) filename else "/" + filename)
+        val name: String = filename ?: return null
+        if (platformFilesSupported) {
+            try {
+                val handle: PlatformFileHandle = platformOpenFile(name, PlatformFileMode.READ)
+                try {
+                    val bytes = ByteArray(handle.size().toInt())
+                    var read = 0
+                    while (read < bytes.size) {
+                        val count: Int = handle.read(bytes, read, bytes.size - read)
+                        if (count < 0) break
+                        read += count
+                    }
+                    return ByteArrayInputStream(bytes, 0, read)
+                } finally {
+                    handle.close()
+                }
+            } catch (ignored: IOException) {
+                // Not a readable file; fall through to the resource namespace.
+            }
+        }
+        return platformResource(name)
     }
 
 

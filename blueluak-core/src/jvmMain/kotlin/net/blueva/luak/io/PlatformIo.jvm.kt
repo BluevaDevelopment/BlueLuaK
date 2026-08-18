@@ -31,5 +31,9 @@ actual typealias PrintStream = java.io.PrintStream
 
 actual fun standardOutput(): PrintStream = System.out
 actual fun standardError(): PrintStream = System.err
+// Callers pass plain resource names; the leading slash that makes a JVM
+// classpath lookup absolute is a JVM detail and is added here rather than by
+// the shared code, which also has to work on hosts where a name like
+// "/main.lua" would mean the filesystem root.
 actual fun platformResource(name: String): InputStream? =
-    object {}.javaClass.getResourceAsStream(name)
+    object {}.javaClass.getResourceAsStream(if (name.startsWith("/")) name else "/$name")
