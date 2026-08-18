@@ -35,10 +35,10 @@ import java.io.Reader
  * 
  * @see Launcher
  * 
- * @see LuajClassLoader
+ * @see LuaClassLoader
  * 
- * @see LuajClassLoader.NewLauncher
- * @see LuajClassLoader.NewLauncher
+ * @see LuaClassLoader.NewLauncher
+ * @see LuaClassLoader.NewLauncher
  * @since luaj 3.0.1
 </P> */
 class DefaultLauncher : Launcher {

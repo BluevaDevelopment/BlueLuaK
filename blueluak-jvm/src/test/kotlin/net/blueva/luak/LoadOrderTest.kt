@@ -19,7 +19,7 @@ package net.blueva.luak
 import junit.framework.TestCase
 import net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals
 import net.blueva.luak.server.Launcher
-import net.blueva.luak.server.LuajClassLoader
+import net.blueva.luak.server.LuaClassLoader
 import java.io.InputStream
 import java.io.Reader
 
@@ -56,7 +56,7 @@ class LoadOrderTest : TestCase() {
 
     @Throws(Exception::class)
     fun testClassLoadsStringFirst() {
-        val launcher = LuajClassLoader
+        val launcher = LuaClassLoader
             .NewLauncher(TestLauncherLoadStringFirst::class.java)
         val results = launcher.launch("foo", null)
         assertNotNull(results)

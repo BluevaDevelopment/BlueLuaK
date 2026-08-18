@@ -40,36 +40,43 @@ import net.blueva.luak.io.InputStream
  *  * `"package.searchers"` Lua table of functions that search for object to load.
  * 
  * 
- * <h3>Java Environment Variables</h3>
- * These Java environment variables affect the library behavior:
+ * <h3>Host Configuration</h3>
+ * These host properties affect the library behavior:
  * 
- *  * `"luaj.package.path"` Initial value for `"package.path"`.  Default value is `"?.lua"`
+ *  * `"blueluak.package.path"` Initial value for `"package.path"`.  Default value is `"?.lua"`
  * 
  * 
  * <h3>Loading</h3>
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("require").call"foo") ); ` </pre>
+ * Typically, this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("require").call("foo"))
+ * ```
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); System.out.println( globals.get("require").call("foo") ); ` </pre>
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * println(globals.get("require").call("foo"))
+ * ```
  * <h3>Limitations</h3>
  * This library has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * However, the default filesystem search semantics are different and delegated to the bas library
- * as outlined in the [BaseLib] and [net.blueva.luak.lib.jvm.JvmBaseLib] documentation.
+ * as outlined in the [BaseLib] documentation.
  * 
  * 
  * @see LibFunction
  * 
  * @see BaseLib
  * 
- * @see net.blueva.luak.lib.jvm.JvmBaseLib
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see [Lua 5.2 Package Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.3)
  */
@@ -314,15 +321,13 @@ class PackageLib : TwoArgFunction() {
     }
 
     companion object {
-        /** The default value to use for package.path.  This can be set with the system property
-         * `"luaj.package.path"`, and is `"?.lua"` by default.  */
-        val DEFAULT_LUA_PATH: String? = run {
-            var path: String? = platformProperty("luaj.package.path")
-            if (path == null) {
-                path = "?.lua"
-            }
-            path
-        }
+        /** The default value to use for package.path.  This can be set with the host
+         * property `"blueluak.package.path"`, and is `"?.lua"` by default.  The
+         * inherited `"luaj.package.path"` spelling is still honoured.  */
+        val DEFAULT_LUA_PATH: String =
+            platformProperty("blueluak.package.path")
+                ?: platformProperty("luaj.package.path")
+                ?: "?.lua"
 
         val _LOADED: LuaString? = valueOf("loaded")
         private val _LOADLIB: LuaString? = valueOf("loadlib")

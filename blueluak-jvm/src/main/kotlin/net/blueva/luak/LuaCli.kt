@@ -28,7 +28,7 @@ import java.util.*
 object LuaCli {
     private val version = Lua._VERSION + " Copyright (c) 2012 Luaj.org.org"
 
-    private val usage = "usage: java -cp luaj-jvm.jar lua [options] [script [args]].\n" +
+    private val usage = "usage: java -cp blueluak-jvm.jar lua [options] [script [args]].\n" +
             "Available options are:\n" +
             "  -e stat  execute string 'stat'\n" +
             "  -l name  require library 'name'\n" +
@@ -195,7 +195,7 @@ object LuaCli {
         val arg = LuaValue.tableOf()
         for (j in args.indices) arg.set(j - i, LuaValue.valueOf(args[j]))
         arg.set(0, LuaValue.valueOf(chunkname))
-        arg.set(-1, LuaValue.valueOf("luaj"))
+        arg.set(-1, LuaValue.valueOf("blueluak"))
         globals.set("arg", arg)
         return arg.unpack()
     }

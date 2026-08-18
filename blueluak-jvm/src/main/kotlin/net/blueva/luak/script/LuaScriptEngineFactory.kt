@@ -116,6 +116,7 @@ class LuaScriptEngineFactory : ScriptEngineFactory {
 
         private val NAMES = arrayOf<String?>(
             "lua",
+            "blueluak",
             "luaj",
         )
     }

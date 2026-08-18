@@ -34,16 +34,16 @@ import javax.script.*
  * 
  * This engine requires the types of the Bindings and ScriptContext to be
  * compatible with the engine.  For creating new client context use
- * ScriptEngine.createContext() which will return [LuajContext],
+ * ScriptEngine.createContext() which will return [LuaContext],
  * and for client bindings use the default engine scoped bindings or
- * construct a [LuajBindings] directly.
+ * construct the bindings directly.
  */
 class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
-    private val context: LuajContext
+    private val context: LuaContext
 
     init {
         // set up context
-        context = LuajContext()
+        context = LuaContext()
         context.setBindings(createBindings(), ScriptContext.ENGINE_SCOPE)
         setContext(context)
 
@@ -71,7 +71,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
             try {
                 val g: Globals = context.globals
                 val f: LuaFunction = g.load(`is`, "script", "t", g)!!.checkfunction()!!
-                return LuajCompiledScript(f, g)
+                return LuaCompiledScript(f, g)
             } catch (lee: LuaError) {
                 throw ScriptException(lee.message)
             } finally {
@@ -84,7 +84,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
 
     @Throws(ScriptException::class)
     override fun eval(reader: Reader, bindings: Bindings): Any? {
-        return (compile(reader) as LuajCompiledScript).eval(context.globals, bindings)
+        return (compile(reader) as LuaCompiledScript).eval(context.globals, bindings)
     }
 
     @Throws(ScriptException::class)
@@ -93,7 +93,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
     }
 
     override fun getScriptContext(nn: Bindings?): ScriptContext? {
-        throw IllegalStateException("LuajScriptEngine should not be allocating contexts.")
+        throw IllegalStateException("LuaScriptEngine should not be allocating contexts.")
     }
 
     override fun createBindings(): Bindings {
@@ -115,7 +115,7 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
     }
 
 
-    internal inner class LuajCompiledScript(@JvmField val function: LuaFunction, val compiling_globals: Globals?) :
+    internal inner class LuaCompiledScript(@JvmField val function: LuaFunction, val compiling_globals: Globals?) :
         CompiledScript() {
         override fun getEngine(): ScriptEngine {
             return this@LuaScriptEngine
@@ -128,12 +128,12 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
 
         @Throws(ScriptException::class)
         override fun eval(bindings: Bindings): Any? {
-            return eval((getContext() as LuajContext).globals, bindings)
+            return eval((getContext() as LuaContext).globals, bindings)
         }
 
         @Throws(ScriptException::class)
         override fun eval(context: ScriptContext): Any? {
-            return eval((context as LuajContext).globals, context.getBindings(ScriptContext.ENGINE_SCOPE))
+            return eval((context as LuaContext).globals, context.getBindings(ScriptContext.ENGINE_SCOPE))
         }
 
         @Throws(ScriptException::class)

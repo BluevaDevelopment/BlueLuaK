@@ -22,7 +22,7 @@ import net.blueva.luak.Lua
 import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaValue
 import net.blueva.luak.lib.OneArgFunction
-import net.blueva.luak.script.LuaScriptEngine.LuajCompiledScript
+import net.blueva.luak.script.LuaScriptEngine.LuaCompiledScript
 import java.io.CharArrayReader
 import java.io.CharArrayWriter
 import java.io.Reader
@@ -92,7 +92,7 @@ object ScriptEngineTests : TestSuite() {
         @Throws(ScriptException::class)
         fun testCompiledFunctionIsClosure() {
             val cs = (e as Compilable).compile("return 'foo'")
-            val value: LuaValue = (cs as LuajCompiledScript).function
+            val value: LuaValue = (cs as LuaCompiledScript).function
             assertTrue(value.isclosure())
         }
     }
@@ -107,7 +107,7 @@ object ScriptEngineTests : TestSuite() {
         @Throws(ScriptException::class)
         fun testCompiledFunctionIsNotClosure() {
             val cs = (e as Compilable).compile("return 'foo'")
-            val value: LuaValue = (cs as LuajCompiledScript).function
+            val value: LuaValue = (cs as LuaCompiledScript).function
             assertFalse(value.isclosure())
         }
     }
@@ -285,7 +285,7 @@ object ScriptEngineTests : TestSuite() {
         protected var c: ScriptContext? = null
         public override fun setUp() {
             this.e = ScriptEngineManager().getEngineByName("luaj")
-            this.c = LuajContext()
+            this.c = LuaContext()
             this.b = c!!.getBindings(ScriptContext.ENGINE_SCOPE)
         }
 

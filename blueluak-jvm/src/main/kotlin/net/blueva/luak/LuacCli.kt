@@ -143,7 +143,7 @@ class LuacCli private constructor(args: Array<String>) {
     companion object {
         private val version = Lua._VERSION + "Copyright (C) 2009 luaj.org"
 
-        private val usage = "usage: java -cp luaj-jvm.jar luac [options] [filenames].\n" +
+        private val usage = "usage: java -cp blueluak-jvm.jar luac [options] [filenames].\n" +
                 "Available options are:\n" +
                 "  -        process stdin\n" +
                 "  -l       list\n" +

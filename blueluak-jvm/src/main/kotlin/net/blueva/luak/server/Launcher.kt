@@ -19,22 +19,22 @@ package net.blueva.luak.server
 import java.io.InputStream
 import java.io.Reader
 
-/** Interface to launch lua scripts using the [LuajClassLoader].
+/** Interface to launch lua scripts using the [LuaClassLoader].
  * <P>
  * *Note: This class is experimental and subject to change in future versions.*
 </P> * <P>
  * This interface is purposely genericized to defer class loading so that
  * luaj classes can come from the class loader.
 </P> * <P>
- * The implementation should be acquired using [LuajClassLoader.NewLauncher]
- * or [LuajClassLoader.NewLauncher] which ensure that the classes are
+ * The implementation should be acquired using [LuaClassLoader.NewLauncher]
+ * or [LuaClassLoader.NewLauncher] which ensure that the classes are
  * loaded to give each Launcher instance a pristine set of Globals, including
  * the shared metatables.
  * 
- * @see LuajClassLoader
+ * @see LuaClassLoader
  * 
- * @see LuajClassLoader.NewLauncher
- * @see LuajClassLoader.NewLauncher
+ * @see LuaClassLoader.NewLauncher
+ * @see LuaClassLoader.NewLauncher
  * @see DefaultLauncher
  * 
  * @since luaj 3.0.1
