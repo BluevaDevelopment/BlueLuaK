@@ -21,9 +21,11 @@ import net.blueva.luak.LoadState
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
 import net.blueva.luak.compiler.LuaC
+import net.blueva.luak.lib.BaseLib
 import net.blueva.luak.lib.Bit32Lib
 import net.blueva.luak.lib.CoroutineLib
 import net.blueva.luak.lib.DebugLib
+import net.blueva.luak.lib.MathLib
 import net.blueva.luak.lib.PackageLib
 import net.blueva.luak.lib.TableLib
 
@@ -88,13 +90,13 @@ object JvmPlatform {
     @JvmStatic
     fun standardGlobals(): Globals {
         val globals = Globals()
-        globals.load(JvmBaseLib())
+        globals.load(BaseLib())
         globals.load(PackageLib())
         globals.load(Bit32Lib())
         globals.load(TableLib())
         globals.load(JvmStringLib())
         globals.load(CoroutineLib())
-        globals.load(JvmMathLib())
+        globals.load(MathLib())
         globals.load(JvmIoLib())
         globals.load(JvmOsLib())
         globals.load(LuajavaLib())
