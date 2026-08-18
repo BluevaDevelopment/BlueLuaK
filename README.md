@@ -33,8 +33,10 @@ BlueLuaK currently implements Lua 5.2 and provides:
 - Lua source parsing through ANTLR Kotlin, without JavaCC or generated Java.
 - Lua bytecode compilation and execution across the configured KMP targets.
 - Tables, metatables, functions, coroutines, and Lua 5.2 standard libraries.
+- `LuaPlatform.standardGlobals()`, one entry point that builds a fully loaded `Globals` on every target.
+- A shared `io` library — `io.open`, `io.lines`, `io.tmpfile`, file handles, `os.remove`/`rename`/`tmpname` — on every target, not just the JVM.
 - Shared tests for the runtime, compiler, and parser across KMP targets.
-- JVM integrations for filesystem access, processes, Java reflection, script engines, and `luajava`.
+- JVM integrations for processes, Java reflection, script engines, and `luajava`.
 
 BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform classes, and APIs use BlueLuaK naming under `net.blueva.luak`.
 
@@ -45,7 +47,11 @@ BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform c
 | [`blueluak-core/src/commonMain/kotlin/`](blueluak-core/src/commonMain/kotlin/) | Shared Lua runtime, compiler, AST, parser, and libraries |
 | [`blueluak-core/src/jvmMain/kotlin/`](blueluak-core/src/jvmMain/kotlin/) | JVM implementations of platform abstractions |
 | [`blueluak-core/src/nonJvmMain/kotlin/`](blueluak-core/src/nonJvmMain/kotlin/) | Portable implementations shared by JavaScript and Wasm |
+| [`blueluak-core/src/jsHostMain/kotlin/`](blueluak-core/src/jsHostMain/kotlin/) | JavaScript-host implementations (`node:fs`, `process`) for the JS and Wasm-JS targets |
+| [`blueluak-core/src/wasmWasiMain/kotlin/`](blueluak-core/src/wasmWasiMain/kotlin/) | WASI implementations over raw `wasi_snapshot_preview1` syscalls |
 | [`blueluak-core/src/nativeMain/kotlin/`](blueluak-core/src/nativeMain/kotlin/) | Kotlin/Native implementations of platform abstractions |
+| [`blueluak-core/src/nativePosixMain/kotlin/`](blueluak-core/src/nativePosixMain/kotlin/) | 64-bit file offsets for Linux and macOS |
+| [`blueluak-core/src/nativeWindowsMain/kotlin/`](blueluak-core/src/nativeWindowsMain/kotlin/) | 64-bit file offsets for Windows |
 | [`blueluak-core/src/commonTest/kotlin/`](blueluak-core/src/commonTest/kotlin/) | Tests shared by all core targets |
 | [`blueluak-jvm/src/main/kotlin/`](blueluak-jvm/src/main/kotlin/) | JVM-only integrations and command-line tooling |
 | [`grammar/`](grammar/) | ANTLR Kotlin lexer and parser grammars for Lua 5.2 |
@@ -58,7 +64,9 @@ Gradle modules:
 | `blueluak-core` | JVM, JavaScript IR, Wasm, Kotlin/Native | Multiplatform Lua runtime, compiler, and parser |
 | `blueluak-jvm` | JVM | JVM platform adapters, `luajava`, scripting, CLI, and JIT support |
 
-Platform-dependent functionality is exposed through `expect`/`actual` implementations. Code intended to run on every target belongs in `commonMain`; Java and JVM APIs remain confined to JVM source sets and `blueluak-jvm`.
+Platform-dependent functionality is exposed through `expect`/`actual` implementations. Code intended to run on every target belongs in `commonMain`; Java and JVM APIs remain confined to JVM source sets and `blueluak-jvm`. No type in the public `commonMain` API is platform-specific.
+
+The host surface every shared library is built on is deliberately small: console streams, resource lookup, a random-access file handle, delete/rename/temp-name, environment variables, exit, GC, and weak references. Everything else — the value model, the compiler, the parser, and all nine standard libraries — is shared code.
 
 ## Installation
 
@@ -70,8 +78,8 @@ Two artifacts are available. Pick one:
 
 | Artifact | Contains | Use it when |
 |---|---|---|
-| `blueluak-jvm` | The multiplatform core (as a compile dependency) plus `JvmPlatform.standardGlobals()`, `luajava`, the `luajc` JIT compiler, CLI tooling, and `javax.script` integration | You want a ready-to-use Lua runtime — the common case |
-| `blueluak-core-jvm` | Just the shared runtime, compiler, AST, parser, and standard libraries on the JVM target, with no JVM-specific globals helper | You're assembling your own `Globals` from individual library classes, or want the smallest possible footprint |
+| `blueluak-jvm` | The multiplatform core (as a compile dependency) plus `JvmPlatform.standardGlobals()`, `luajava`, `io.popen`/`os.execute`, the `luajc` JIT compiler, CLI tooling, and `javax.script` integration | You want a ready-to-use Lua runtime — the common case |
+| `blueluak-core-jvm` | Just the shared runtime, compiler, AST, parser, and standard libraries on the JVM target, including `LuaPlatform.standardGlobals()`, but without `luajava`, `io.popen`, `os.execute`, or the JIT | You don't need the JVM-only integrations, or want the smallest possible footprint |
 
 `blueluak-jvm` pulls in `blueluak-core-jvm` transitively, so depending on it alone is enough for most projects.
 
@@ -106,9 +114,20 @@ dependencies {
 
 ### Other Kotlin Multiplatform targets
 
-`blueluak-core` is only distributed as a Kotlin Multiplatform library: every non-JVM target is a Kotlin `.klib`, consumable from another Kotlin Multiplatform Gradle project — not a raw JS/npm package, and not a C-callable Native library. There's no `JvmPlatform`-equivalent convenience on these targets yet; build your own `Globals` from the individual library classes in `net.blueva.luak.lib` (`BaseLib`, `PackageLib`, `StringLib`, `TableLib`, `MathLib`, `CoroutineLib`, `OsLib`, `IoLib`, `Bit32Lib`).
+`blueluak-core` is only distributed as a Kotlin Multiplatform library: every non-JVM target is a Kotlin `.klib`, consumable from another Kotlin Multiplatform Gradle project — not a raw JS/npm package, and not a C-callable Native library.
 
-Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.3
+`LuaPlatform.standardGlobals()` works on every target, so no target needs a hand-assembled `Globals`:
+
+```kotlin
+import net.blueva.luak.lib.LuaPlatform
+
+val globals = LuaPlatform.standardGlobals()
+globals.load("print('hello, world')")!!.call()
+```
+
+`LuaPlatform.debugGlobals()` adds the `debug` library. Loading the individual classes in `net.blueva.luak.lib` (`BaseLib`, `PackageLib`, `StringLib`, `TableLib`, `MathLib`, `CoroutineLib`, `OsLib`, `IoLib`, `Bit32Lib`) by hand remains available when you want a smaller footprint.
+
+Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.3` artifact from `commonMain`.
 
 | Target | Gradle target function | Source set | Tested on |
 |---|---|---|---|
@@ -178,6 +197,7 @@ Run an individual target suite:
 ./gradlew :blueluak-core:jvmTest
 ./gradlew :blueluak-core:jsNodeTest
 ./gradlew :blueluak-core:wasmJsNodeTest
+./gradlew :blueluak-core:wasmWasiNodeTest
 ./gradlew :blueluak-core:macosArm64Test
 ```
 
@@ -205,18 +225,37 @@ BlueLuaK has completed its initial Kotlin and KMP restructuring. It is functiona
 | Multiplatform core | Compiles for JVM, JavaScript IR, Wasm, Linux x64, Windows x64, macOS x64, and macOS ARM64 |
 | Lua parser | ANTLR Kotlin in `commonMain` |
 | Lua runtime and compiler | Shared in `commonMain`; tested on JVM, JavaScript, and Wasm |
-| JVM integrations | Available through `blueluak-jvm` |
+| Standard libraries | All nine (`base`, `package`, `string`, `table`, `math`, `io`, `os`, `coroutine`, `bit32`) shared in `commonMain` and available on every target |
+| JVM integrations | `luajava`, `io.popen`, `os.execute`, the `luajc` JIT, CLI tooling, and `javax.script`, through `blueluak-jvm` |
 | Lua language version | Lua 5.2 |
 | Legacy regression suite | Green; no `ignoreFailures` exemptions |
 | Native platform services | Coroutines, file/resource I/O, environment variables, GC control, and weak references are implemented for real and tested |
+| Public API | `commonMain` exposes no JVM- or Node-specific type; binary compatibility is not yet guaranteed between releases |
 | Future Lua work | Migration path from Lua 5.2 toward modern Lua releases |
+
+## Platform Support and Limitations
+
+The shared runtime, compiler, parser, and standard libraries behave identically on every target. What differs is what the *host* can provide, and BlueLuaK reports those gaps the way Lua does — `nil` plus a message, or an ordinary Lua error — rather than omitting functions:
+
+| Capability | JVM | Kotlin/Native | JavaScript / Wasm-JS | Wasm-WASI |
+|---|---|---|---|---|
+| Files (`io.open`, `io.lines`, `os.remove`, `os.rename`) | Yes | Yes, POSIX `stdio` | Yes under Node (`node:fs`); unavailable in a browser | Yes, limited to the directories the host pre-opens |
+| Script lookup (`require`, `dofile`) | Filesystem, then classpath | Filesystem | Filesystem under Node | Pre-opened directories |
+| `os.getenv` | Environment, then system properties | `getenv` | `process.env` under Node | WASI `environ_get` |
+| `io.popen`, `os.execute` | Yes | No — no portable process API | No | No |
+| `package.loadlib` | Yes | No | No | No |
+| Weak tables (`__mode`) | Yes | Yes | No — no weak references in the host | No |
+| `os.date` / `os.time` | UTC | UTC | UTC | UTC |
+
+Where a host grants no filesystem at all, `io.open` returns `nil` and a message and the rest of the library keeps working. `io.popen` behaves the same way outside `blueluak-jvm`.
+
+Versioning is a single incrementing release number, published on every push to `master`. BlueLuaK is pre-1.0: the public API is still being refined and **binary compatibility between releases is not guaranteed**. Renamed public types keep a deprecated alias for at least one release. BlueLuaK is not source- or binary-compatible with LuaJ, and reintroducing `org.luaj.vm2` naming is out of scope.
 
 ## Roadmap
 
 Current priorities are:
 
 1. Modernize the Lua implementation beyond 5.2.
-2. Continue refining multiplatform APIs without restoring LuaJ compatibility constraints.
 
 ## License
 
