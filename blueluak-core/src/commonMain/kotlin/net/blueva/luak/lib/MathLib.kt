@@ -20,58 +20,48 @@ import net.blueva.luak.LuaDouble
 import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
+import kotlin.math.pow
 import kotlin.random.Random
 
 /**
  * Subclass of [LibFunction] which implements the lua standard `math`
  * library.
- * 
- * 
- * It contains only the math library support that is possible on JME.
- * For a more complete implementation based on math functions specific to JVM
- * use [net.blueva.luak.lib.jvm.JvmMathLib].
- * In Particular the following math functions are **not** implemented by this library:
- * 
- *  * acos
- *  * asin
- *  * atan
- *  * cosh
- *  * log
- *  * sinh
- *  * tanh
- *  * atan2
- * 
- * 
- * 
- * The implementations of `exp()` and `pow()` are constructed by
- * hand for JME, so will be slower and less accurate than when executed on the JVM platform.
- * 
- * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
- * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
- * When using [net.blueva.luak.lib.jvm.JvmPlatform] as in this example,
- * the subclass [net.blueva.luak.lib.jvm.JvmMathLib] will
- * be included, which also includes this base functionality.
- * 
- * 
- * To instantiate and use it directly,
- * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new MathLib()); System.out.println( globals.get("math").get("sqrt").call( LuaValue.valueOf(2) ) ); ` </pre>
+ *
+ *
+ * The whole library is implemented in `commonMain` on top of [kotlin.math],
+ * so every target - JVM, JavaScript, Wasm, and Native - gets the same set of
+ * functions with the same accuracy. There is no reduced variant: the
+ * hand-rolled `exp()`/`pow()` approximations BlueLuaK inherited from LuaJ's
+ * J2ME profile are gone, and `acos`, `asin`, `atan`, `atan2`, `cosh`, `log`,
+ * `sinh`, and `tanh` are part of this class rather than a JVM-only subclass.
+ *
+ *
+ * Typically this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals] (any target) or
+ * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] (JVM only):
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("math").get("sqrt").call(LuaValue.valueOf(2)))
+ * ```
+ *
+ *
+ * To instantiate and use it directly, link it into your globals table via
+ * [Globals.load] using code such as:
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(MathLib())
+ * ```
  * Doing so will ensure the library is properly initialized
  * and loaded into the globals table.
- * 
- * 
+ *
+ *
  * This has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * @see LibFunction
- * 
- * @see net.blueva.luak.lib.jvm.JvmPlatform
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
- * @see net.blueva.luak.lib.jvm.JvmMathLib
- * 
+ *
+ * @see net.blueva.luak.lib.LuaPlatform
+ *
  * @see [Lua 5.2 Math Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.6)
  */
 open class MathLib : TwoArgFunction() {
@@ -91,15 +81,22 @@ open class MathLib : TwoArgFunction() {
     open override fun call(modname: LuaValue?, env: LuaValue?): LuaValue? {
         val math: LuaTable = LuaTable(0, 30)
         math.set("abs", net.blueva.luak.lib.MathLib.abs())
+        math.set("acos", net.blueva.luak.lib.MathLib.acos())
+        math.set("asin", net.blueva.luak.lib.MathLib.asin())
+        val atan: LuaValue = net.blueva.luak.lib.MathLib.atan()
+        math.set("atan", atan)
+        math.set("atan2", atan)
         math.set("ceil", net.blueva.luak.lib.MathLib.ceil())
         math.set("cos", net.blueva.luak.lib.MathLib.cos())
+        math.set("cosh", net.blueva.luak.lib.MathLib.cosh())
         math.set("deg", net.blueva.luak.lib.MathLib.deg())
-        math.set("exp", net.blueva.luak.lib.MathLib.exp(this))
+        math.set("exp", net.blueva.luak.lib.MathLib.exp())
         math.set("floor", net.blueva.luak.lib.MathLib.floor())
         math.set("fmod", net.blueva.luak.lib.MathLib.fmod())
         math.set("frexp", net.blueva.luak.lib.MathLib.frexp())
         math.set("huge", LuaDouble.POSINF)
         math.set("ldexp", net.blueva.luak.lib.MathLib.ldexp())
+        math.set("log", net.blueva.luak.lib.MathLib.log())
         math.set("max", net.blueva.luak.lib.MathLib.max())
         math.set("min", net.blueva.luak.lib.MathLib.min())
         math.set("modf", net.blueva.luak.lib.MathLib.modf())
@@ -110,8 +107,10 @@ open class MathLib : TwoArgFunction() {
         math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed((r)!!))
         math.set("rad", net.blueva.luak.lib.MathLib.rad())
         math.set("sin", net.blueva.luak.lib.MathLib.sin())
+        math.set("sinh", net.blueva.luak.lib.MathLib.sinh())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
         math.set("tan", net.blueva.luak.lib.MathLib.tan())
+        math.set("tanh", net.blueva.luak.lib.MathLib.tanh())
         env!!.set("math", math)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("math", math)
         return math
@@ -136,6 +135,55 @@ open class MathLib : TwoArgFunction() {
     internal class abs : UnaryOp() {
         override fun call(d: Double): Double {
             return kotlin.math.abs(d)
+        }
+    }
+
+    internal class acos : UnaryOp() {
+        override fun call(d: Double): Double {
+            return kotlin.math.acos(d)
+        }
+    }
+
+    internal class asin : UnaryOp() {
+        override fun call(d: Double): Double {
+            return kotlin.math.asin(d)
+        }
+    }
+
+    /** Serves both `math.atan` and its Lua 5.1 alias `math.atan2`; the second
+     * argument defaults to 1.0, which makes the one-argument form the plain
+     * arc tangent. */
+    internal class atan : TwoArgFunction() {
+        override fun call(y: LuaValue?, x: LuaValue?): LuaValue? {
+            return valueOf(kotlin.math.atan2(y!!.checkdouble(), x!!.optdouble(1.0)))
+        }
+    }
+
+    internal class cosh : UnaryOp() {
+        override fun call(d: Double): Double {
+            return kotlin.math.cosh(d)
+        }
+    }
+
+    internal class sinh : UnaryOp() {
+        override fun call(d: Double): Double {
+            return kotlin.math.sinh(d)
+        }
+    }
+
+    internal class tanh : UnaryOp() {
+        override fun call(d: Double): Double {
+            return kotlin.math.tanh(d)
+        }
+    }
+
+    /** `math.log(x [, base])`; the base defaults to [kotlin.math.E]. */
+    internal class log : TwoArgFunction() {
+        override fun call(x: LuaValue?, base: LuaValue?): LuaValue? {
+            var natural: Double = kotlin.math.ln(x!!.checkdouble())
+            val b: Double = base!!.optdouble(kotlin.math.E)
+            if (b != kotlin.math.E) natural /= kotlin.math.ln(b)
+            return valueOf(natural)
         }
     }
 
@@ -187,9 +235,9 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class exp(val mathlib: MathLib) : UnaryOp() {
+    internal class exp : UnaryOp() {
         override fun call(d: Double): Double {
-            return mathlib.dpow_lib(kotlin.math.E, d)
+            return kotlin.math.exp(d)
         }
     }
 
@@ -298,7 +346,8 @@ open class MathLib : TwoArgFunction() {
     }
 
     /**
-     * Hook to override default dpow behavior with faster implementation.
+     * Hook to override the default `^` / `math.pow` behavior with a different
+     * implementation. The default is already [kotlin.math.pow] on every target.
      */
     open fun dpow_lib(a: Double, b: Double): Double {
         return net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
@@ -312,45 +361,20 @@ open class MathLib : TwoArgFunction() {
 
         /** compute power using installed math library, or default if there is no math library installed  */
         fun dpow(a: Double, b: Double): LuaValue {
-            return LuaDouble.valueOf(
-                if (net.blueva.luak.lib.MathLib.Companion.MATHLIB!! != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB!!.dpow_lib(
-                    a,
-                    b
-                ) else net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
-            )!!
+            return LuaDouble.valueOf(net.blueva.luak.lib.MathLib.Companion.dpow_d(a, b))!!
         }
 
         fun dpow_d(a: Double, b: Double): Double {
-            return if (net.blueva.luak.lib.MathLib.Companion.MATHLIB!! != null) net.blueva.luak.lib.MathLib.Companion.MATHLIB!!.dpow_lib(
-                a,
-                b
-            ) else net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
+            val installed: MathLib? = net.blueva.luak.lib.MathLib.Companion.MATHLIB
+            return installed?.dpow_lib(a, b) ?: net.blueva.luak.lib.MathLib.Companion.dpow_default(a, b)
         }
 
         /**
-         * Default JME version computes using longhand heuristics.
+         * Accurate power on every target; [kotlin.math.pow] is part of the
+         * Kotlin standard library, so nothing here needs a platform-specific
+         * override any more. [dpow_lib] survives only as an extension point
+         * for embedders that want a different implementation.
          */
-        protected fun dpow_default(a: Double, b: Double): Double {
-            var a = a
-            var b = b
-            if (b < 0) return 1 / net.blueva.luak.lib.MathLib.Companion.dpow_default(a, -b)
-            var p = 1.0
-            var whole = b.toInt()
-            var v = a
-            while (whole > 0) {
-                if ((whole and 1) != 0) p *= v
-                whole = whole shr 1
-                v *= v
-            }
-            if ((whole.let { b -= it; b }) > 0) {
-                var frac = (0x10000 * b).toInt()
-                while ((frac and 0xffff) != 0) {
-                    a = kotlin.math.sqrt(a)
-                    if ((frac and 0x8000) != 0) p *= a
-                    frac = frac shl 1
-                }
-            }
-            return p
-        }
+        protected fun dpow_default(a: Double, b: Double): Double = a.pow(b)
     }
 }
