@@ -24,52 +24,60 @@ import net.blueva.luak.Varargs
 import net.blueva.luak.io.ByteArrayOutputStream
 import net.blueva.luak.io.EOFException
 import net.blueva.luak.io.IOException
+import net.blueva.luak.io.InputStream
+import net.blueva.luak.io.PlatformFileHandle
+import net.blueva.luak.io.PlatformFileMode
+import net.blueva.luak.io.platformDeleteFile
+import net.blueva.luak.io.platformOpenFile
+import net.blueva.luak.io.platformStandardInput
+import net.blueva.luak.io.platformTempFilePath
 
 /**
- * Abstract base class extending [LibFunction] which implements the
- * core of the lua standard `io` library.
- * 
- * 
- * It contains the implementation of the io library support that is common to
- * the JVM and JME platforms.
- * In practice on of the concrete IOLib subclasses is chosen:
- * [net.blueva.luak.lib.jvm.JvmIoLib] for the JVM platform, and
- * [net.blueva.luak.lib.jme.JmeIoLib] for the JME platform.
- * 
- * 
- * The JVM implementation conforms almost completely to the C-based lua library,
- * while the JME implementation follows closely except in the area of random-access files,
- * which are difficult to support properly on JME.
- * 
- * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
- * In this example the platform-specific [net.blueva.luak.lib.jvm.JvmIoLib] library will be loaded, which will include
- * the base functionality provided by this class, whereas the [net.blueva.luak.lib.jvm.JvmPlatform] would load the
- * [net.blueva.luak.lib.jvm.JvmIoLib].
- * 
- * 
- * To instantiate and use it directly,
- * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n")); ` </pre>
- * 
- * 
+ * Subclass of [LibFunction] which implements the lua standard `io` library.
+ *
+ *
+ * The whole library - the `file` userdata, the read formats, `file:lines()`,
+ * `io.open`, `io.lines`, `io.tmpfile` - lives in `commonMain` on top of the
+ * small set of host primitives in `net.blueva.luak.io`, so it behaves the same
+ * on JVM, JavaScript, Wasm, and Native instead of needing a platform-specific
+ * subclass. The one operation that has no portable form is `io.popen`, which
+ * needs to spawn a process: [openProgram] therefore fails with an [IOException]
+ * by default and is overridden by [net.blueva.luak.lib.jvm.JvmIoLib].
+ *
+ *
+ * On a host that grants no filesystem access at all (a browser, or a WASI
+ * module with no pre-opened directory), opening a file fails the way Lua
+ * expects - `io.open` returns `nil` plus a message rather than throwing.
+ *
+ *
+ * Typically this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]:
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * globals.get("io").get("write").call(LuaValue.valueOf("hello, world\n"))
+ * ```
+ *
+ *
+ * To instantiate and use it directly, link it into your globals table via
+ * [Globals.load] using code such as:
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(IoLib())
+ * ```
+ *
+ *
  * This has been implemented to match as closely as possible the behavior in the corresponding library in C.
  * @see LibFunction
- * 
- * @see net.blueva.luak.lib.jvm.JvmPlatform
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
+ *
+ * @see net.blueva.luak.lib.LuaPlatform
+ *
  * @see net.blueva.luak.lib.jvm.JvmIoLib
- * 
- * @see net.blueva.luak.lib.jme.JmeIoLib
- * 
- * @see [http://www.lua.org/manual/5.1/manual.html.5.7](http://www.lua.org/manual/5.1/manual.html.5.7)
+ *
+ * @see [Lua 5.2 I/O Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.8)
  */
-abstract
-class IoLib : TwoArgFunction() {
+open class IoLib : TwoArgFunction() {
     abstract
     inner class File : LuaValue() {
         @kotlin.Throws(IOException::class)
@@ -148,7 +156,7 @@ class IoLib : TwoArgFunction() {
      * @throws IOException
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun wrapStdin(): File?
+    protected open fun wrapStdin(): File? = StandardInputFile()
 
     /**
      * Wrap the standard output.
@@ -156,7 +164,7 @@ class IoLib : TwoArgFunction() {
      * @throws IOException
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun wrapStdout(): File?
+    protected open fun wrapStdout(): File? = StandardOutputFile(FTYPE_STDOUT)
 
     /**
      * Wrap the standard error output.
@@ -164,7 +172,7 @@ class IoLib : TwoArgFunction() {
      * @throws IOException
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun wrapStderr(): File?
+    protected open fun wrapStderr(): File? = StandardOutputFile(FTYPE_STDERR)
 
     /**
      * Open a file in a particular mode.
@@ -177,13 +185,23 @@ class IoLib : TwoArgFunction() {
      * @throws IOException if could not be opened
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun openFile(
+    protected open fun openFile(
         filename: String?,
         readMode: Boolean,
         appendMode: Boolean,
         updateMode: Boolean,
         binaryMode: Boolean
-    ): File?
+    ): File? {
+        val path: String = filename ?: throw IOException("no file name")
+        // Every mode Lua accepts maps onto one C fopen mode; binaryMode makes
+        // no difference here because the handles are byte-oriented anyway.
+        val mode: PlatformFileMode = when {
+            readMode -> if (updateMode) PlatformFileMode.READ_WRITE else PlatformFileMode.READ
+            appendMode -> if (updateMode) PlatformFileMode.READ_APPEND else PlatformFileMode.APPEND
+            else -> if (updateMode) PlatformFileMode.READ_WRITE_TRUNCATE else PlatformFileMode.WRITE
+        }
+        return HostFile(platformOpenFile(path, mode), path, deleteOnClose = false)
+    }
 
     /**
      * Open a temporary file.
@@ -191,17 +209,215 @@ class IoLib : TwoArgFunction() {
      * @throws IOException if could not be opened
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun tmpFile(): File?
+    protected open fun tmpFile(): File? {
+        val path: String = platformTempFilePath()
+        return HostFile(platformOpenFile(path, PlatformFileMode.READ_WRITE_TRUNCATE), path, deleteOnClose = true)
+    }
 
     /**
-     * Start a new process and return a file for input or output
+     * Start a new process and return a file for input or output.
+     *
+     * Spawning a process has no portable form across the supported targets, so
+     * the shared implementation always fails; [net.blueva.luak.lib.jvm.JvmIoLib]
+     * overrides it with a real one.
      * @param prog the program to execute
      * @param mode "r" to read, "w" to write
      * @return File to read to or write from
      * @throws IOException if an i/o exception occurs
      */
     @kotlin.Throws(IOException::class)
-    protected abstract fun openProgram(prog: String?, mode: String?): File?
+    protected open fun openProgram(prog: String?, mode: String?): File? =
+        throw IOException("io.popen is not supported on this platform")
+
+    /** A file backed by a real host file, seekable in both directions. */
+    private inner class HostFile(
+        private val handle: PlatformFileHandle,
+        private val path: String,
+        private val deleteOnClose: Boolean,
+    ) : File() {
+        private var closed = false
+        private var nobuffer = false
+
+        // Identity, not the path: two handles on the same file are two distinct
+        // Lua values and must not share a tostring().
+        override fun tojstring(): String = "file (" + (if (closed) "closed" else hashCode().toString()) + ")"
+
+        override fun isstdfile(): Boolean = false
+        override fun isclosed(): Boolean = closed
+
+        @kotlin.Throws(IOException::class)
+        override fun write(string: LuaString?) {
+            val s: LuaString = string ?: return
+            handle.write(s.m_bytes, s.m_offset, s.m_length)
+            if (nobuffer) flush()
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun flush() = handle.flush()
+
+        @kotlin.Throws(IOException::class)
+        override fun close() {
+            if (closed) return
+            closed = true
+            handle.close()
+            if (deleteOnClose) {
+                try {
+                    platformDeleteFile(path)
+                } catch (ignored: IOException) {
+                    // A temporary file the host already reclaimed is not an error.
+                }
+            }
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun seek(option: String?, bytecount: Int): Int {
+            val target: Long = when (option) {
+                "set" -> bytecount.toLong()
+                "end" -> handle.size() + bytecount
+                else -> handle.position() + bytecount
+            }
+            handle.seek(target)
+            return handle.position().toInt()
+        }
+
+        override fun setvbuf(mode: String?, size: Int) {
+            nobuffer = "no" == mode
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun remaining(): Int = (handle.size() - handle.position()).toInt()
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun peek(): Int {
+            val here: Long = handle.position()
+            val value: Int = read()
+            handle.seek(here)
+            return value
+        }
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun read(): Int {
+            val byte = ByteArray(1)
+            return if (handle.read(byte, 0, 1) < 0) -1 else byte[0].toInt() and 0xff
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun read(bytes: ByteArray?, offset: Int, length: Int): Int {
+            val target: ByteArray = bytes ?: return -1
+            return handle.read(target, offset, length)
+        }
+    }
+
+    /** `io.stdout` / `io.stderr`, writing through the [Globals] streams. */
+    private inner class StandardOutputFile(private val fileType: Int) : File() {
+        override fun tojstring(): String = "file (" + hashCode().toString() + ")"
+
+        private fun stream() = if (fileType == FTYPE_STDERR) globals?.STDERR else globals?.STDOUT
+
+        @kotlin.Throws(IOException::class)
+        override fun write(string: LuaString?) {
+            val s: LuaString = string ?: return
+            stream()?.write(s.m_bytes, s.m_offset, s.m_length)
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun flush() {
+            stream()?.flush()
+        }
+
+        override fun isstdfile(): Boolean = true
+
+        @kotlin.Throws(IOException::class)
+        override fun close() {
+            // do not close std files.
+        }
+
+        override fun isclosed(): Boolean = false
+
+        @kotlin.Throws(IOException::class)
+        override fun seek(option: String?, bytecount: Int): Int = 0
+
+        override fun setvbuf(mode: String?, size: Int) = Unit
+
+        @kotlin.Throws(IOException::class)
+        override fun remaining(): Int = 0
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun peek(): Int = 0
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun read(): Int = 0
+
+        @kotlin.Throws(IOException::class)
+        override fun read(bytes: ByteArray?, offset: Int, length: Int): Int = 0
+    }
+
+    /**
+     * `io.stdin`. Standard input is not seekable, so `peek()` is served from a
+     * one-byte pushback rather than by rewinding the stream.
+     */
+    private inner class StandardInputFile : File() {
+        private var pushback = -1
+
+        override fun tojstring(): String = "file (" + hashCode().toString() + ")"
+
+        private fun stream(): InputStream? = globals?.STDIN ?: platformStandardInput()
+
+        @kotlin.Throws(IOException::class)
+        override fun write(string: LuaString?) = Unit
+
+        @kotlin.Throws(IOException::class)
+        override fun flush() = Unit
+
+        override fun isstdfile(): Boolean = true
+
+        @kotlin.Throws(IOException::class)
+        override fun close() {
+            // do not close std files.
+        }
+
+        override fun isclosed(): Boolean = false
+
+        @kotlin.Throws(IOException::class)
+        override fun seek(option: String?, bytecount: Int): Int = 0
+
+        override fun setvbuf(mode: String?, size: Int) = Unit
+
+        @kotlin.Throws(IOException::class)
+        override fun remaining(): Int = -1
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun peek(): Int {
+            if (pushback < 0) pushback = stream()?.read() ?: -1
+            return pushback
+        }
+
+        @kotlin.Throws(IOException::class, EOFException::class)
+        override fun read(): Int {
+            if (pushback >= 0) {
+                val value = pushback
+                pushback = -1
+                return value
+            }
+            return stream()?.read() ?: -1
+        }
+
+        @kotlin.Throws(IOException::class)
+        override fun read(bytes: ByteArray?, offset: Int, length: Int): Int {
+            val target: ByteArray = bytes ?: return -1
+            if (length == 0) return 0
+            var written = 0
+            if (pushback >= 0) {
+                target[offset] = pushback.toByte()
+                pushback = -1
+                written = 1
+                if (written == length) return written
+            }
+            val count: Int = stream()?.read(target, offset + written, length - written) ?: -1
+            if (count < 0) return if (written > 0) written else -1
+            return written + count
+        }
+    }
 
     private var infile: File? = null
     private var outfile: File? = null
