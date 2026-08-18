@@ -40,7 +40,7 @@ import net.blueva.luak.Varargs
  * library.
  * 
  * 
- * The debug library in luaj tries to emulate the behavior of the corresponding C-based lua library.
+ * The debug library in BlueLuaK tries to emulate the behavior of the corresponding C-based lua library.
  * To do this, it must maintain a separate stack of calls to [LuaClosure] and [LibFunction]
  * instances.
  * Especially when lua-to-java bytecode compiling is being used
@@ -48,15 +48,21 @@ import net.blueva.luak.Varargs
  * this cannot be done in all cases.
  * 
  * 
- * Typically, this library is included as part of a call to either
+ * Typically, this library is included as part of a call to
  * [net.blueva.luak.lib.jvm.JvmPlatform.debugGlobals] or
- * [net.blueva.luak.lib.jme.JmePlatform.debugGlobals]
+ * [net.blueva.luak.lib.LuaPlatform.debugGlobals]
  * <pre> `Globals globals = JvmPlatform.debugGlobals(); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new DebugLib()); System.out.println( globals.get("debug").get("traceback").call() ); ` </pre>
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(DebugLib())
+ * println(globals.get("debug").get("traceback").call())
+ * ```
  * 
  * 
  * This library exposes the entire state of lua code, and provides method to see and modify
@@ -67,7 +73,7 @@ import net.blueva.luak.Varargs
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see [Lua 5.2 Debug Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.10)
  */

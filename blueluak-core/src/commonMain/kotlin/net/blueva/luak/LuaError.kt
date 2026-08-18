@@ -27,7 +27,7 @@ package net.blueva.luak
  * 
  * Since it is an unchecked exception inheriting from [RuntimeException],
  * Java method signatures do notdeclare this exception, althoug it can
- * be thrown on almost any luaj Java operation.
+ * be thrown on almost any BlueLuaK operation.
  * This is analagous to the fact that any lua script can throw a lua error at any time.
  * 
  * 

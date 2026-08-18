@@ -39,7 +39,7 @@ package net.blueva.luak
  * To simplify loading, the [Globals.compilePrototype] method may be used:
  * <pre> `Prototype p = globals.compileProtoytpe(is, "script"); `</pre>
  * 
- * It may also be loaded from a [java.io.Reader] via [Globals.compilePrototype]:
+ * It may also be loaded from a [net.blueva.luak.io.Reader] via [Globals.compilePrototype]:
  * <pre> `Prototype p = globals.compileProtoytpe(new StringReader(script), "script"); `</pre>
  * 
  * To un-dump a binary file known to be a binary lua file that has been dumped to a string,

@@ -33,7 +33,7 @@ import net.blueva.luak.Upvaldesc
  * @see FuncState
  */
 open class Constants : Lua() {
-    /** Maximum stack size of a luaj vm interpreter instance.  */
+    /** Maximum stack size of a BlueLuaK vm interpreter instance.  */
     val MAXSTACK: Int = 250
 
     val LUAI_MAXUPVAL: Int = 0xff

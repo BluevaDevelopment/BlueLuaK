@@ -28,7 +28,7 @@ import net.blueva.luak.Varargs
  * library.
  * 
  * 
- * The coroutine library in luaj has the same behavior as the
+ * The coroutine library in BlueLuaK has the same behavior as the
  * coroutine library in C, but is implemented using Java Threads to maintain
  * the call state between invocations.  Therefore it can be yielded from anywhere,
  * similar to the "Coco" yield-from-anywhere patch available for C-based lua.
@@ -36,21 +36,30 @@ import net.blueva.luak.Varargs
  * may not be collected by the garbage collector.
  * 
  * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("coroutine").get("running").call() ); ` </pre>
+ * Typically, this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("coroutine").get("running").call())
+ * ```
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new CoroutineLib()); System.out.println( globals.get("coroutine").get("running").call() ); ` </pre>
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(CoroutineLib())
+ * println(globals.get("coroutine").get("running").call())
+ * ```
  * 
  * 
  * @see LibFunction
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see [Lua 5.2 Coroutine Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.2)
  */

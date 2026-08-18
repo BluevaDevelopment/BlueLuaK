@@ -17,7 +17,7 @@
 package net.blueva.luak
 
 /**
- * [java.lang.Error] sublcass that indicates a lua thread that is no
+ * [Error] sublcass that indicates a lua thread that is no
  * longer referenced has been detected.
  * 
  * 
@@ -28,7 +28,7 @@ package net.blueva.luak
  * is thrown, and should fall through all the way to the thread's [Thread.run] method.
  * 
  * 
- * Java code mixed with the luaj vm should not catch this error because it may
+ * Host code mixed with the BlueLuaK vm should not catch this error because it may
  * occur when the coroutine is not running, so any processing done during error
  * handling could break the thread-safety of the application because other lua
  * processing could be going on in a different thread.

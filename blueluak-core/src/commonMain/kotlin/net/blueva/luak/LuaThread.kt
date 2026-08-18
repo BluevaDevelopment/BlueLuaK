@@ -39,8 +39,8 @@ import kotlin.coroutines.suspendCoroutine
  * [.LuaThread].
  *
  *
- * The utility classes [net.blueva.luak.lib.jvm.JvmPlatform] and
- * [net.blueva.luak.lib.jme.JmePlatform]
+ * The utility classes [net.blueva.luak.lib.LuaPlatform] and
+ * [net.blueva.luak.lib.jvm.JvmPlatform]
  * see to it that this [Globals] are initialized properly.
  *
  *
@@ -68,7 +68,7 @@ import kotlin.coroutines.suspendCoroutine
  *
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  *
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  *
  * @see net.blueva.luak.lib.CoroutineLib
  */

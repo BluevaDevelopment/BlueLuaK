@@ -19,42 +19,35 @@ package net.blueva.luak.lib
 import net.blueva.luak.io.InputStream
 
 /**
- * Interface for opening application resource files such as scripts sources.
- * 
- * 
- * This is used by required to load files that are part of
- * the application, and implemented by BaseLib
- * for both the Jme and Jvm platforms.
- * 
- * 
- * The Jme version of base lib [BaseLib]
- * implements [Globals.finder] via [Class.getResourceAsStream],
- * while the Jvm version [net.blueva.luak.lib.jvm.JvmBaseLib] implements it using [java.io.File.File].
- * 
- * 
- * The io library does not use this API for file manipulation.
- * 
- * 
+ * Interface for opening application resource files such as script sources.
+ *
+ *
+ * This is what `require`, `dofile`, and `loadfile` use to find files that are
+ * part of the application. [BaseLib] implements it for every target: an
+ * ordinary host file first, then the platform's own resource namespace - the
+ * classpath on the JVM, the working directory or a pre-opened directory
+ * elsewhere.
+ *
+ *
+ * Install your own to load scripts from somewhere else entirely (an archive,
+ * an asset bundle, a network cache) by assigning it to [Globals.finder] after
+ * the libraries are loaded.
+ *
+ *
+ * The `io` library does not use this API for file manipulation.
+ *
+ *
  * @see BaseLib
- * 
+ *
  * @see Globals.finder
- * 
- * @see net.blueva.luak.lib.jvm.JvmBaseLib
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
- * @see net.blueva.luak.lib.jvm.JvmPlatform
+ *
+ * @see net.blueva.luak.lib.LuaPlatform
  */
 interface ResourceFinder {
     /**
      * Try to open a file, or return null if not found.
-     * 
-     * @see net.blueva.luak.lib.BaseLib
-     * 
-     * @see net.blueva.luak.lib.jvm.JvmBaseLib
-     * 
-     * 
-     * @param filename
+     *
+     * @param filename name of the resource to open
      * @return InputStream, or null if not found.
      */
     fun findResource(filename: String?): InputStream?

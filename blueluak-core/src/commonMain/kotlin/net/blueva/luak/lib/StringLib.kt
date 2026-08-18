@@ -31,14 +31,23 @@ import net.blueva.luak.io.IOException
  * library.
  * 
  * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("string").get("upper").call( LuaValue.valueOf("abcde") ) ); ` </pre>
+ * Typically, this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("string").get("upper").call(LuaValue.valueOf("abcde")))
+ * ```
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new JvmStringLib()); System.out.println( globals.get("string").get("upper").call( LuaValue.valueOf("abcde") ) ); ` </pre>
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(StringLib())
+ * println(globals.get("string").get("upper").call(LuaValue.valueOf("abcde")))
+ * ```
  * 
  * 
  * This is a direct port of the corresponding library in C.
@@ -46,7 +55,7 @@ import net.blueva.luak.io.IOException
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see [Lua 5.2 String Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.4)
  */

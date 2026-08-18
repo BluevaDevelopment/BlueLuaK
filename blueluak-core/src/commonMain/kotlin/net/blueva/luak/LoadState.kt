@@ -26,7 +26,7 @@ import net.blueva.luak.io.InputStream
  * 
  * The [LoadState] class provides the default [Globals.Undumper]
  * which is used to undump a string of bytes that represent a lua binary file
- * using either the C-based lua compiler, or luaj's
+ * using either the C-based lua compiler, or BlueLuaK's
  * [net.blueva.luak.compiler.LuaC] compiler.
  * 
  * 
@@ -37,8 +37,8 @@ import net.blueva.luak.io.InputStream
  * have been installed.
  * 
  * 
- * By default, when using [net.blueva.luak.lib.jvm.JvmPlatform] or
- * [net.blueva.luak.lib.jme.JmePlatform]
+ * By default, when using [net.blueva.luak.lib.LuaPlatform] or
+ * [net.blueva.luak.lib.jvm.JvmPlatform]
  * to construct globals, the [LoadState] default undumper is installed
  * as the default [Globals.Undumper].
  * 

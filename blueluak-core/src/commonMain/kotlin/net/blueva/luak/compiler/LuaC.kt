@@ -44,7 +44,7 @@ import net.blueva.luak.io.InputStream
  * 
  * 
  * The [LuaC] compiler is installed by default by both the
- * [net.blueva.luak.lib.jvm.JvmPlatform] and [net.blueva.luak.lib.jme.JmePlatform] classes,
+ * [net.blueva.luak.lib.LuaPlatform] and [net.blueva.luak.lib.jvm.JvmPlatform] classes,
  * so in the following example, the default [LuaC] compiler
  * will be used:
  * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.load(new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
@@ -61,7 +61,7 @@ import net.blueva.luak.io.InputStream
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see BaseLib
  * 

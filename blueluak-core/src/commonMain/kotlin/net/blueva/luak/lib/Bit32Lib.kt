@@ -24,14 +24,23 @@ import net.blueva.luak.Varargs
  * Subclass of LibFunction that implements the Lua standard `bit32` library.
  * 
  * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("bit32").get("bnot").call( LuaValue.valueOf(2) ) ); ` </pre>
+ * Typically, this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("bit32").get("bnot").call(LuaValue.valueOf(2)))
+ * ```
  * 
  * 
  * To instantiate and use it directly,
  * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new Bit32Lib()); System.out.println( globals.get("bit32").get("bnot").call( LuaValue.valueOf(2) ) ); ` </pre>
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(Bit32Lib())
+ * println(globals.get("bit32").get("bnot").call(LuaValue.valueOf(2)))
+ * ```
  * 
  * 
  * This has been implemented to match as closely as possible the behavior in the corresponding library in C.
@@ -39,7 +48,7 @@ import net.blueva.luak.Varargs
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see [Lua 5.2 Bitwise Operation Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.7)
  */

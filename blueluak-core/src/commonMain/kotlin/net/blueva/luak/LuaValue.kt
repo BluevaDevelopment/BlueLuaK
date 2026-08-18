@@ -61,7 +61,7 @@ import kotlin.reflect.KClass
  * <pre> `globals.get("require").call(LuaValue.valueOf("main")); ` </pre>
  * For this to work the file must be in the current directory, or in the class path,
  * dependening on the platform.
- * See [net.blueva.luak.lib.jvm.JvmPlatform] and [net.blueva.luak.lib.jme.JmePlatform] for details.
+ * See [net.blueva.luak.lib.LuaPlatform] and [net.blueva.luak.lib.jvm.JvmPlatform] for details.
  * 
  * 
  * In general a [LuaError] may be thrown on any operation when the
@@ -93,7 +93,7 @@ import kotlin.reflect.KClass
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see LoadState
  * 

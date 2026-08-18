@@ -32,7 +32,7 @@ package net.blueva.luak
  * repeatedly until the tail calls are completed.
  * 
  * 
- * Normally, users of luaj need not concern themselves with the
+ * Normally, users of BlueLuaK need not concern themselves with the
  * details of this mechanism, as it is built into the core
  * execution framework.
  * @see Prototype

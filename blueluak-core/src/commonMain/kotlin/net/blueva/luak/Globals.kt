@@ -28,14 +28,13 @@ import net.blueva.luak.io.standardError
 import net.blueva.luak.io.standardOutput
 
 /**
- * Global environment used by luaj.  Contains global variables referenced by executing lua.
+ * Global environment used by BlueLuaK.  Contains global variables referenced by executing lua.
  * 
  * 
  * 
  * <h3>Constructing and Initializing Instances</h3>
  * Typically, this is constructed indirectly by a call to
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or
- * [net.blueva.luak.lib.jme.JmePlatform.standardGlobals],
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals],
  * and then used to load lua scripts for execution as in the following example.
  * <pre> `Globals globals = JvmPlatform.standardGlobals(); globals.load( new StringReader("print 'hello'"), "main.lua" ).call(); ` </pre>
  * The creates a complete global environment with the standard libraries loaded.
@@ -79,11 +78,11 @@ import net.blueva.luak.io.standardOutput
  * 
  * 
  * <h3>Lua Environment Variables</h3>
- * When using [net.blueva.luak.lib.jvm.JvmPlatform] or [net.blueva.luak.lib.jme.JmePlatform],
+ * When using [net.blueva.luak.lib.LuaPlatform] or [net.blueva.luak.lib.jvm.JvmPlatform],
  * these environment variables are created within the Globals.
  * 
  *  * "_G" Pointer to this Globals.
- *  * "_VERSION" String containing the version of luaj.
+ *  * "_VERSION" String containing the version of Lua implemented by BlueLuaK.
  * 
  * 
  * <h3>Use in Multithreaded Environments</h3>
@@ -95,7 +94,7 @@ import net.blueva.luak.io.standardOutput
  * 
  * @see net.blueva.luak.lib.jvm.JvmPlatform
  * 
- * @see net.blueva.luak.lib.jme.JmePlatform
+ * @see net.blueva.luak.lib.LuaPlatform
  * 
  * @see LuaValue
  * 
