@@ -19,59 +19,32 @@ package net.blueva.luak.lib.jvm
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
 import net.blueva.luak.lib.OsLib
-import java.io.File
 import java.io.IOException
 
 /**
- * Subclass of [LibFunction] which implements the standard lua `os` library.
- * 
- * 
- * This contains more complete implementations of the following functions
- * using features that are specific to JVM:
- * 
- *  * `execute()`
- *  * `remove()`
- *  * `rename()`
- *  * `tmpname()`
- * 
- * 
- * 
- * Because the nature of the `os` library is to encapsulate
- * os-specific features, the behavior of these functions varies considerably
- * from their counterparts in the C platform.
- * 
- * 
- * Typically, this library is included as part of a call to
- * [JvmPlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("os").get("time").call() ); ` </pre>
- * 
- * 
- * For special cases where the smallest possible footprint is desired,
- * a minimal set of libraries could be loaded
- * directly via [Globals.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new JvmOsLib()); System.out.println( globals.get("os").get("time").call() ); ` </pre>
- * 
- * However, other libraries such as *MathLib* are not loaded in this case.
- * 
- * 
- * @see LibFunction
- * 
+ * Subclass of [OsLib] which adds the one part of the standard lua `os`
+ * library that has no portable implementation: `os.execute`.
+ *
+ * `os.getenv`, `os.remove`, `os.rename`, and `os.tmpname` are handled by the
+ * shared [OsLib] in `blueluak-core` and behave the same on every Kotlin
+ * Multiplatform target; only running a shell command needs the JVM.
+ *
+ * Typically this library is included as part of a call to
+ * [JvmPlatform.standardGlobals]:
+ * ```kotlin
+ * val globals = JvmPlatform.standardGlobals()
+ * println(globals.get("os").get("time").call())
+ * ```
+ *
  * @see OsLib
- * 
+ *
  * @see JvmPlatform
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
+ *
  * @see [Lua 5.2 OS Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.9)
  */
 class JvmOsLib
 /** public constructor  */
     : OsLib() {
-    override fun getenv(varname: String?): String? {
-        val s = System.getenv(varname)
-        return if (s != null) s else System.getProperty(varname)
-    }
-
     override fun execute(command: String?): Varargs {
         var exitValue: Int
         try {
@@ -85,29 +58,6 @@ class JvmOsLib
         }
         if (exitValue == 0) return LuaValue.varargsOf(TRUE, valueOf("exit"), ZERO!!)
         return varargsOf(NIL, valueOf("signal"), valueOf(exitValue))
-    }
-
-    @Throws(IOException::class)
-    override fun remove(filename: String?) {
-        val f = File(filename)
-        if (!f.exists()) throw IOException("No such file or directory")
-        if (!f.delete()) throw IOException("Failed to delete")
-    }
-
-    @Throws(IOException::class)
-    override fun rename(oldname: String?, newname: String?) {
-        val f = File(oldname)
-        if (!f.exists()) throw IOException("No such file or directory")
-        if (!f.renameTo(File(newname))) throw IOException("Failed to rename")
-    }
-
-    override fun tmpname(): String {
-        try {
-            val f = File.createTempFile(TMP_PREFIX, TMP_SUFFIX)
-            return f.getAbsolutePath()
-        } catch (ioe: IOException) {
-            return super.tmpname()
-        }
     }
 
     companion object {

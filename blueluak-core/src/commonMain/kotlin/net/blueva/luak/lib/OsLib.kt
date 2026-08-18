@@ -20,6 +20,7 @@ import net.blueva.luak.DateParts
 import net.blueva.luak.currentTimeMillis
 import net.blueva.luak.dateParts
 import net.blueva.luak.epochSeconds
+import net.blueva.luak.platformEnvironment
 import net.blueva.luak.platformExit
 import net.blueva.luak.platformProperty
 import net.blueva.luak.Buffer
@@ -28,56 +29,53 @@ import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Varargs
 import net.blueva.luak.io.IOException
+import net.blueva.luak.io.platformDeleteFile
+import net.blueva.luak.io.platformRenameFile
+import net.blueva.luak.io.platformTempFilePath
 
 /**
  * Subclass of [LibFunction] which implements the standard lua `os` library.
- * 
- * 
- * It is a usable base with simplified stub functions
- * for library functions that cannot be implemented uniformly
- * on Jvm and Jme.
- * 
- * 
- * This can be installed as-is on either platform, or extended
- * and refined to be used in a complete Jvm implementation.
- * 
- * 
- * Because the nature of the `os` library is to encapsulate
- * os-specific features, the behavior of these functions varies considerably
- * from their counterparts in the C platform.
- * 
- * 
- * The following functions have limited implementations of features
- * that are not supported well on Jme:
- * 
- *  * `execute()`
- *  * `remove()`
- *  * `rename()`
- *  * `tmpname()`
- * 
- * 
- * 
- * Typically, this library is included as part of a call to either
- * [net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals] or [net.blueva.luak.lib.jme.JmePlatform.standardGlobals]
- * <pre> `Globals globals = JvmPlatform.standardGlobals(); System.out.println( globals.get("os").get("time").call() ); ` </pre>
- * In this example the platform-specific [net.blueva.luak.lib.jvm.JvmOsLib] library will be loaded, which will include
- * the base functionality provided by this class.
- * 
- * 
- * To instantiate and use it directly,
- * link it into your globals table via [LuaValue.load] using code such as:
- * <pre> `Globals globals = new Globals(); globals.load(new JvmBaseLib()); globals.load(new PackageLib()); globals.load(new OsLib()); System.out.println( globals.get("os").get("time").call() ); ` </pre>
- * 
- * 
+ *
+ *
+ * Everything except `os.execute` is implemented in `commonMain` and behaves
+ * the same on every Kotlin Multiplatform target: `os.getenv` reads the real
+ * process environment, and `os.remove`, `os.rename`, and `os.tmpname` act on
+ * the host filesystem. Running a shell command has no portable form, so
+ * [execute] reports failure here and is overridden by
+ * [net.blueva.luak.lib.jvm.JvmOsLib].
+ *
+ *
+ * Because the nature of the `os` library is to encapsulate os-specific
+ * features, the behavior of these functions varies considerably from their
+ * counterparts in the C platform. On a host with no filesystem the file
+ * operations fail the way Lua expects rather than being absent.
+ *
+ *
+ * Typically this library is included as part of a call to
+ * [net.blueva.luak.lib.LuaPlatform.standardGlobals]:
+ * ```kotlin
+ * val globals = LuaPlatform.standardGlobals()
+ * println(globals.get("os").get("time").call())
+ * ```
+ *
+ *
+ * To instantiate and use it directly, link it into your globals table via
+ * [Globals.load] using code such as:
+ * ```kotlin
+ * val globals = Globals()
+ * globals.load(BaseLib())
+ * globals.load(PackageLib())
+ * globals.load(OsLib())
+ * ```
+ *
+ *
  * @see LibFunction
- * 
+ *
+ * @see net.blueva.luak.lib.LuaPlatform
+ *
  * @see net.blueva.luak.lib.jvm.JvmOsLib
- * 
- * @see net.blueva.luak.lib.jvm.JvmPlatform
- * 
- * @see net.blueva.luak.lib.jme.JmePlatform
- * 
- * @see [http://www.lua.org/manual/5.1/manual.html.5.8](http://www.lua.org/manual/5.1/manual.html.5.8)
+ *
+ * @see [Lua 5.2 OS Lib Reference](http://www.lua.org/manual/5.2/manual.html.6.9)
  */
 open class OsLib
 /**
@@ -179,7 +177,7 @@ open class OsLib
 
     /**
      * @return an approximation of the amount in seconds of CPU time used by
-     * the program.  For luaj this simple returns the elapsed time since the
+     * the program.  BlueLuaK simply returns the elapsed time since the
      * OsLib class was loaded.
      */
     protected fun clock(): Double {
@@ -283,42 +281,34 @@ open class OsLib
     }
 
     /**
-     * Returns the value of the process environment variable varname,
-     * or the System property value for varname,
-     * or null if the variable is not defined in either environment.
-     * 
-     * The default implementation, which is used by the JmePlatform,
-     * only queryies System.getProperty().
-     * 
-     * The JvmPlatform overrides this behavior and returns the
-     * environment variable value using System.getenv() if it exists,
-     * or the System property value if it does not.
-     * 
-     * A SecurityException may be thrown if access is not allowed
-     * for 'varname'.
+     * Returns the value of the process environment variable varname, falling
+     * back to the host's named-property namespace (JVM system properties; the
+     * environment again everywhere else), or null if neither defines it.
+     *
      * @param varname
      * @return String value, or null if not defined
      */
     protected open fun getenv(varname: String?): String? {
-        return varname?.let(::platformProperty)
+        val name: String = varname ?: return null
+        return platformEnvironment(name) ?: platformProperty(name)
     }
 
     /**
      * Deletes the file or directory with the given name.
      * Directories must be empty to be removed.
-     * If this function fails, it throws and IOException
+     * If this function fails, it throws an IOException
      * 
      * @param filename
      * @throws IOException if it fails
      */
     @kotlin.Throws(IOException::class)
     protected open fun remove(filename: String?) {
-        throw IOException("not implemented")
+        platformDeleteFile(filename ?: throw IOException("no file name"))
     }
 
     /**
      * Renames file or directory named oldname to newname.
-     * If this function fails,it throws and IOException
+     * If this function fails, it throws an IOException
      * 
      * @param oldname old file name
      * @param newname new file name
@@ -326,7 +316,10 @@ open class OsLib
      */
     @kotlin.Throws(IOException::class)
     protected open fun rename(oldname: String?, newname: String?) {
-        throw IOException("not implemented")
+        platformRenameFile(
+            oldname ?: throw IOException("no file name"),
+            newname ?: throw IOException("no file name"),
+        )
     }
 
     /**
@@ -386,10 +379,15 @@ open class OsLib
      * @return String filename to use
      */
     protected open fun tmpname(): String =
-        TMP_PREFIX + (tmpnames++) + TMP_SUFFIX
+        try {
+            platformTempFilePath()
+        } catch (e: IOException) {
+            // No host temp directory: fall back to a bare, unique relative name.
+            TMP_PREFIX + (tmpnames++) + TMP_SUFFIX
+        }
 
     companion object {
-        val TMP_PREFIX: String = ".luaj"
+        val TMP_PREFIX: String = ".blueluak"
         val TMP_SUFFIX: String = "tmp"
 
         private const val CLOCK = 0

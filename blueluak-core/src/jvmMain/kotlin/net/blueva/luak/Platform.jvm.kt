@@ -18,6 +18,7 @@ import kotlin.reflect.KClass
 
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 internal actual fun platformProperty(name: String): String? = System.getProperty(name)
+internal actual fun platformEnvironment(name: String): String? = System.getenv(name)
 internal actual fun platformExit(code: Int) = System.exit(code)
 internal actual fun platformCollectGarbage() = System.gc()
 internal actual fun platformUsedMemory(): Long = Runtime.getRuntime().run { totalMemory() - freeMemory() }

@@ -24,6 +24,8 @@ import kotlin.wasm.WasmImport
 // JS-hosted assumptions; this file is intentionally small to duplicate.
 internal actual fun currentTimeMillis(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
 internal actual fun platformProperty(name: String): String? = null
+internal actual fun platformEnvironment(name: String): String? =
+    net.blueva.luak.io.wasiEnvironmentValue(name)
 
 @OptIn(ExperimentalWasmInterop::class)
 @WasmImport("wasi_snapshot_preview1", "proc_exit")

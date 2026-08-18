@@ -36,6 +36,9 @@ internal actual fun platformProperty(name: String): String? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
+internal actual fun platformEnvironment(name: String): String? = getenv(name)?.toKString()
+
+@OptIn(ExperimentalForeignApi::class)
 internal actual fun platformExit(code: Int): Unit = exit(code)
 
 @OptIn(NativeRuntimeApi::class)

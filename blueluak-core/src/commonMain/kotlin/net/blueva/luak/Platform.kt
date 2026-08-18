@@ -18,6 +18,9 @@ import kotlin.reflect.KClass
 
 internal expect fun currentTimeMillis(): Long
 internal expect fun platformProperty(name: String): String?
+
+/** Value of the process environment variable [name], or null if the host has none. */
+internal expect fun platformEnvironment(name: String): String?
 internal expect fun platformExit(code: Int)
 internal expect fun platformCollectGarbage()
 internal expect fun platformUsedMemory(): Long
