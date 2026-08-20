@@ -227,6 +227,50 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     override suspend fun invokeSuspend(args: Varargs): Varargs = onInvokeImpl(args)!!.evalSuspend()
     override suspend fun onInvokeSuspend(args: Varargs): Varargs? = onInvokeImpl(args)
 
+    /**
+     * The `OP_CALL` shapes with a fixed argument count and a fixed result count.
+     *
+     * These eight branches are the bulk of the opcode's bytecode - each suspending
+     * call site expands into its own spill/restore block - and none of them
+     * touches anything but `stack[a]`, so they can be lifted out of [execute]
+     * wholesale. Returns false for the multiple-result and vararg shapes, which
+     * [execute] keeps because they also update its `v` and `top`.
+     */
+    private suspend fun callFixedArity(stack: Array<LuaValue>, i: Int, a: Int): Boolean {
+        when (i and (Lua.MASK_B or Lua.MASK_C)) {
+            (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend()
+            (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1])
+            (3 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1], stack[a + 2])
+            (4 shl Lua.POS_B) or (1 shl Lua.POS_C) ->
+                stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])
+
+            (1 shl Lua.POS_B) or (2 shl Lua.POS_C) -> stack[a] = stack[a].callSuspend()!!
+            (2 shl Lua.POS_B) or (2 shl Lua.POS_C) -> stack[a] = stack[a].callSuspend(stack[a + 1])!!
+            (3 shl Lua.POS_B) or (2 shl Lua.POS_C) ->
+                stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2])!!
+
+            (4 shl Lua.POS_B) or (2 shl Lua.POS_C) ->
+                stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])!!
+
+            else -> return false
+        }
+        return true
+    }
+
+    /**
+     * The bytecode interpreter loop.
+     *
+     * **Keep this method small enough to stay JIT-compilable.** HotSpot refuses
+     * to compile any method whose bytecode exceeds `-XX:HugeMethodLimit`
+     * (8000 bytes by default) and runs it in its own interpreter instead, which
+     * costs this runtime roughly a factor of ten to eighteen. Being a `suspend`
+     * function makes that easy to trip over: every suspending call site inside
+     * the loop expands into a spill/restore block, so a handful of them is
+     * worth hundreds of bytes each. `callFixedArity` exists purely to keep the
+     * total under the limit, and `InterpreterCodeSizeTest` fails the build if it
+     * creeps back up. If more room is needed, lift another group of opcode cases
+     * out rather than raising the bound.
+     */
     protected suspend fun execute(stack: Array<LuaValue>, varargs: Varargs): Varargs? {
         // loop through instructions
         var i: Int
@@ -535,55 +579,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             continue
                         }
 
-                        (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].callSuspend()
-                            ++pc
-                            continue
-                        }
-
-                        (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].callSuspend(stack[a + 1])
-                            ++pc
-                            continue
-                        }
-
-                        (3 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].callSuspend(stack[a + 1], stack[a + 2])
-                            ++pc
-                            continue
-                        }
-
-                        (4 shl Lua.POS_B) or (1 shl Lua.POS_C) -> {
-                            stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])
-                            ++pc
-                            continue
-                        }
-
-                        (1 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].callSuspend()!!
-                            ++pc
-                            continue
-                        }
-
-                        (2 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].callSuspend(stack[a + 1])!!
-                            ++pc
-                            continue
-                        }
-
-                        (3 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2])!!
-                            ++pc
-                            continue
-                        }
-
-                        (4 shl Lua.POS_B) or (2 shl Lua.POS_C) -> {
-                            stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])!!
-                            ++pc
-                            continue
-                        }
-
                         else -> {
+                            // The fixed-arity shapes touch nothing but stack[a], so
+                            // they live in callFixedArity() to keep this method under
+                            // the JVM's 8000-bytecode JIT limit - see execute()'s doc.
+                            if (callFixedArity(stack, i, a)) {
+                                ++pc
+                                continue
+                            }
                             b = i ushr 23
                             c = (i shr 14) and 0x1ff
                             v = stack[a].invokeSuspend(
