@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@v6
 
   jvm:
     name: JVM 17
@@ -34,7 +34,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
       - name: Test KMP JVM core
         run: ./gradlew :blueluak-core:jvmTest --no-daemon --stacktrace
       - name: Build JVM integrations
@@ -62,7 +62,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
       - name: Run ${{ matrix.target }} tests
         run: ./gradlew :blueluak-core:${{ matrix.task }} --no-daemon --stacktrace
 
@@ -94,7 +94,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
       - name: Run ${{ matrix.target }} tests
         run: ./gradlew :blueluak-core:${{ matrix.task }} --no-daemon --stacktrace
 
@@ -110,6 +110,6 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
       - name: Publish all variants to Maven Local
         run: ./gradlew publishToMavenLocal --no-daemon --stacktrace
