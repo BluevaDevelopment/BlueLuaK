@@ -25,17 +25,16 @@ BlueLuaK is a Kotlin-first fork of [LuaJ 3.0.2](https://github.com/luaj/luaj), r
 - **WebAssembly**, tested on Node.js
 - **Kotlin/Native** for Linux x64, Windows x64, macOS x64, and macOS ARM64
 
-The Lua runtime, value model, bytecode compiler, AST, standard libraries, and ANTLR Kotlin parser live in `commonMain`. JVM-specific integration is isolated from the shared runtime.
+The Lua runtime, value model, bytecode compiler, and standard libraries live in `commonMain`. JVM-specific integration is isolated from the shared runtime.
 
 BlueLuaK currently implements Lua 5.2 and provides:
 
 - An embeddable Lua VM written entirely in Kotlin.
-- Lua source parsing through ANTLR Kotlin, without JavaCC or generated Java.
 - Lua bytecode compilation and execution across the configured KMP targets.
 - Tables, metatables, functions, coroutines, and Lua 5.2 standard libraries.
 - `LuaPlatform.standardGlobals()`, one entry point that builds a fully loaded `Globals` on every target.
 - A shared `io` library (`io.open`, `io.lines`, `io.tmpfile`, file handles, `os.remove`/`rename`/`tmpname`) on every target, not just the JVM.
-- Shared tests for the runtime, compiler, and parser across KMP targets.
+- Shared tests for the runtime, compiler, and libraries across KMP targets.
 - JVM integrations for processes, Java reflection, script engines, and `luajava`.
 
 BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform classes, and APIs use BlueLuaK naming under `net.blueva.luak`.
@@ -44,7 +43,7 @@ BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform c
 
 | Source set or module | Purpose |
 |---|---|
-| [`blueluak-core/src/commonMain/kotlin/`](blueluak-core/src/commonMain/kotlin/) | Shared Lua runtime, compiler, AST, parser, and libraries |
+| [`blueluak-core/src/commonMain/kotlin/`](blueluak-core/src/commonMain/kotlin/) | Shared Lua runtime, compiler, and libraries |
 | [`blueluak-core/src/jvmMain/kotlin/`](blueluak-core/src/jvmMain/kotlin/) | JVM implementations of platform abstractions |
 | [`blueluak-core/src/nonJvmMain/kotlin/`](blueluak-core/src/nonJvmMain/kotlin/) | Portable implementations shared by JavaScript and Wasm |
 | [`blueluak-core/src/jsHostMain/kotlin/`](blueluak-core/src/jsHostMain/kotlin/) | JavaScript-host implementations (`node:fs`, `process`) for the JS and Wasm-JS targets |
@@ -54,19 +53,18 @@ BlueLuaK is no longer source-compatible with LuaJ: modules, packages, platform c
 | [`blueluak-core/src/nativeWindowsMain/kotlin/`](blueluak-core/src/nativeWindowsMain/kotlin/) | 64-bit file offsets for Windows |
 | [`blueluak-core/src/commonTest/kotlin/`](blueluak-core/src/commonTest/kotlin/) | Tests shared by all core targets |
 | [`blueluak-jvm/src/main/kotlin/`](blueluak-jvm/src/main/kotlin/) | JVM-only integrations and command-line tooling |
-| [`grammar/`](grammar/) | ANTLR Kotlin lexer and parser grammars for Lua 5.2 |
 | [`examples/`](examples/) | Kotlin and Lua usage examples |
 
 Gradle modules:
 
 | Module | Targets | Purpose |
 |---|---|---|
-| `blueluak-core` | JVM, JavaScript IR, Wasm, Kotlin/Native | Multiplatform Lua runtime, compiler, and parser |
+| `blueluak-core` | JVM, JavaScript IR, Wasm, Kotlin/Native | Multiplatform Lua runtime, compiler, and libraries |
 | `blueluak-jvm` | JVM | JVM platform adapters, `luajava`, scripting, CLI, and JIT support |
 
 Platform-dependent functionality is exposed through `expect`/`actual` implementations. Code intended to run on every target belongs in `commonMain`; Java and JVM APIs remain confined to JVM source sets and `blueluak-jvm`. No type in the public `commonMain` API is platform-specific.
 
-The host surface every shared library is built on is deliberately small: console streams, resource lookup, a random-access file handle, delete/rename/temp-name, environment variables, exit, GC, and weak references. Everything else (the value model, the compiler, the parser, and all nine standard libraries) is shared code.
+The host surface every shared library is built on is deliberately small: console streams, resource lookup, a random-access file handle, delete/rename/temp-name, environment variables, exit, GC, and weak references. Everything else (the value model, the compiler, and all nine standard libraries) is shared code.
 
 ## Installation
 
@@ -79,7 +77,7 @@ Two artifacts are available. Pick one:
 | Artifact | Contains | Use it when |
 |---|---|---|
 | `blueluak-jvm` | The multiplatform core (as a compile dependency) plus `JvmPlatform.standardGlobals()`, `luajava`, `io.popen`/`os.execute`, the `luajc` JIT compiler, CLI tooling, and `javax.script` integration | You want a ready-to-use Lua runtime, the common case |
-| `blueluak-core-jvm` | Just the shared runtime, compiler, AST, parser, and standard libraries on the JVM target, including `LuaPlatform.standardGlobals()`, but without `luajava`, `io.popen`, `os.execute`, or the JIT | You don't need the JVM-only integrations, or want the smallest possible footprint |
+| `blueluak-core-jvm` | Just the shared runtime, compiler, and standard libraries on the JVM target, including `LuaPlatform.standardGlobals()`, but without `luajava`, `io.popen`, `os.execute`, or the JIT | You don't need the JVM-only integrations, or want the smallest possible footprint |
 
 `blueluak-jvm` pulls in `blueluak-core-jvm` transitively, so depending on it alone is enough for most projects.
 
@@ -217,7 +215,7 @@ Use the included wrapper rather than a system Gradle installation.
 
 ## Platform Support and Limitations
 
-The shared runtime, compiler, parser, and standard libraries behave identically on every target. What differs is what the *host* can provide, and BlueLuaK reports those gaps the way Lua does, returning `nil` plus a message or raising an ordinary Lua error, rather than omitting functions:
+The shared runtime, compiler, and standard libraries behave identically on every target. What differs is what the *host* can provide, and BlueLuaK reports those gaps the way Lua does, returning `nil` plus a message or raising an ordinary Lua error, rather than omitting functions:
 
 | Capability | JVM | Kotlin/Native | JavaScript / Wasm-JS | Wasm-WASI |
 |---|---|---|---|---|

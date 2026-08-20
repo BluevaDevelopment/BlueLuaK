@@ -1,15 +1,12 @@
-import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import java.time.Duration
 
 plugins {
     kotlin("multiplatform")
-    id("com.strumenta.antlr-kotlin")
     `maven-publish`
 }
 
 val generatedBuildInfo = layout.buildDirectory.dir("generated-src/build-info/commonMain/kotlin")
-val generatedGrammar = layout.buildDirectory.dir("generated-src/antlr/commonMain/kotlin")
 
 val generateBuildInfo = tasks.register("generateBuildInfo") {
     group = "build"
@@ -31,18 +28,6 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
             )
         }
     }
-}
-
-val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
-    source = fileTree(rootProject.layout.projectDirectory.dir("grammar")) {
-        include("LuaLexer.g4", "LuaParser.g4")
-    }
-    packageName = "net.blueva.luak.parser.antlr"
-    arguments = listOf("-visitor", "-no-listener")
-    outputDirectory = generatedGrammar
-        .map { it.dir("net/blueva/luak/parser/antlr") }
-        .get()
-        .asFile
 }
 
 @OptIn(ExperimentalWasmDsl::class)
@@ -113,10 +98,6 @@ kotlin {
         }
         commonMain {
             kotlin.srcDir(generatedBuildInfo)
-            kotlin.srcDir(generatedGrammar)
-            dependencies {
-                implementation("com.strumenta:antlr-kotlin-runtime:1.0.13")
-            }
         }
         commonTest {
             dependencies {
@@ -127,7 +108,7 @@ kotlin {
 }
 
 tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.configureEach {
-    dependsOn(generateBuildInfo, generateKotlinGrammarSource)
+    dependsOn(generateBuildInfo)
 }
 
 // Bounds every test task so an unresumed coroutine continuation fails
@@ -138,7 +119,7 @@ tasks.matching { it.name.endsWith("Test") }.configureEach {
 }
 
 tasks.matching { it.name.endsWith("SourcesJar", ignoreCase = true) }.configureEach {
-    dependsOn(generateBuildInfo, generateKotlinGrammarSource)
+    dependsOn(generateBuildInfo)
 }
 
 publishing {
