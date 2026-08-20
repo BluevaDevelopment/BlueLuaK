@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.DebugLib
 import net.blueva.luak.lib.DebugLib.CallFrame
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
@@ -245,13 +246,18 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val openups: Array<UpValue?>? = if (p.p!!.size > 0) arrayOfNulls<UpValue>(stack.size) else null
 
 
+        // Resolved once per frame rather than per instruction: the per-opcode
+        // "globals != null && globals.debuglib != null" reload was two field
+        // loads and two branches on the hottest path in the interpreter.
+        val debuglib: DebugLib? = globals?.debuglib
+
         // allow for debug hooks
-        if (globals != null && globals.debuglib != null) globals.debuglib!!.onCall(this, varargs, stack as Array<LuaValue?>)
+        if (debuglib != null) debuglib.onCall(this, varargs, stack as Array<LuaValue?>)
 
         // process instructions
         try {
             while (true) {
-                if (globals != null && globals.debuglib != null) globals.debuglib!!.onInstruction(pc, v, top)
+                if (debuglib != null) debuglib.onInstruction(pc, v, top)
 
 
                 // pull out instruction
@@ -754,7 +760,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     if (openups[u] != null) openups[u]!!.close()
                 }
             }
-            if (globals != null && globals.debuglib != null) globals.debuglib!!.onReturn()
+            if (debuglib != null) debuglib.onReturn()
         }
     }
 
