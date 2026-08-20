@@ -24,7 +24,7 @@ jobs:
       revision: ${{ steps.version.outputs.revision }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # year.build, resetting the build number when the year changes.
       - name: Bump version
@@ -83,7 +83,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: v${{ needs.release.outputs.revision }}
       - name: Set up JDK 17
