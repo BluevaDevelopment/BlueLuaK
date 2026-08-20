@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-26.4-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-26.5-blue">
   <img alt="Kotlin Multiplatform" src="https://img.shields.io/badge/Kotlin_Multiplatform-JVM_%7C_JS_%7C_Wasm_%7C_Native-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Gradle" src="https://img.shields.io/badge/Gradle-9.6.1-02303A?logo=gradle&logoColor=white">
@@ -91,7 +91,7 @@ repositories {
 }
 
 dependencies {
-    implementation("net.blueva:blueluak-jvm:26.4")
+    implementation("net.blueva:blueluak-jvm:26.5")
 }
 ```
 
@@ -108,7 +108,7 @@ dependencies {
 <dependency>
   <groupId>net.blueva</groupId>
   <artifactId>blueluak-jvm</artifactId>
-  <version>26.4</version>
+  <version>26.5</version>
 </dependency>
 ```
 
@@ -127,7 +127,7 @@ globals.load("print('hello, world')")!!.call()
 
 `LuaPlatform.debugGlobals()` adds the `debug` library. Loading the individual classes in `net.blueva.luak.lib` (`BaseLib`, `PackageLib`, `StringLib`, `TableLib`, `MathLib`, `CoroutineLib`, `OsLib`, `IoLib`, `Bit32Lib`) by hand remains available when you want a smaller footprint.
 
-Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.4
+Add the `repo.blueva.net/releases` repository shown above at the project level, then depend on the shared `net.blueva:blueluak-core:26.5
 
 | Target | Gradle target function | Source set | Tested on |
 |---|---|---|---|
@@ -153,7 +153,7 @@ kotlin {
             dependencies {
                 // Resolves to blueluak-core-js, -wasm-js, -wasm-wasi, -linuxx64,
                 // -macosarm64, etc. automatically for each target above.
-                implementation("net.blueva:blueluak-core:26.4")
+                implementation("net.blueva:blueluak-core:26.5")
             }
         }
     }
