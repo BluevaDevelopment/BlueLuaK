@@ -115,7 +115,7 @@ kotlin {
             kotlin.srcDir(generatedBuildInfo)
             kotlin.srcDir(generatedGrammar)
             dependencies {
-                implementation("com.strumenta:antlr-kotlin-runtime:1.0.10")
+                implementation("com.strumenta:antlr-kotlin-runtime:1.0.13")
             }
         }
         commonTest {
