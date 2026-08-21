@@ -2245,7 +2245,11 @@ open class LuaValue : Varargs() {
      * @throws LuaError if  `this` is not a table or string, and has no [.UNM] metatag
      */
     open fun neg(): LuaValue {
-        return checkmetatag(net.blueva.luak.LuaValue.Companion.UNM, "attempt to perform arithmetic on ").call(this)!!
+        // Lua hands a unary operator its operand twice.
+        return checkmetatag(
+            net.blueva.luak.LuaValue.Companion.UNM,
+            "attempt to perform arithmetic on ",
+        ).call(this, this)!!
     }
 
     /** Length operator: return lua length of object `(#this)` including metatag processing as java int
@@ -2827,7 +2831,16 @@ open class LuaValue : Varargs() {
      *   `__bnot` metamethod
      */
     open fun bnot(): LuaValue {
-        return arithmtwith(net.blueva.luak.LuaValue.Companion.BNOT, 0.0)
+        val h: LuaValue = metatag(net.blueva.luak.LuaValue.Companion.BNOT)
+        if (h.isnil()) {
+            net.blueva.luak.LuaValue.Companion.operandError(
+                net.blueva.luak.LuaValue.Companion.BNOT,
+                this,
+                this,
+            )
+        }
+        // Lua hands a unary operator its operand twice.
+        return h.call(this, this)!!
     }
 
     /** Reverse-divide: Perform numeric divide operation into another value
@@ -2954,7 +2967,7 @@ open class LuaValue : Varargs() {
         var h = this.metatag(tag)
         if (h.isnil()) {
             h = op2.metatag(tag)
-            if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on " + typename() + " and " + op2.typename())
+            if (h.isnil()) net.blueva.luak.LuaValue.Companion.operandError(tag, this, op2)
         }
         return h.call(this, op2)!!
     }
@@ -2988,7 +3001,13 @@ open class LuaValue : Varargs() {
      */
     protected fun arithmtwith(tag: LuaValue?, op1: Double): LuaValue {
         val h = metatag(tag)
-        if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on number and " + typename())
+        if (h.isnil()) {
+            net.blueva.luak.LuaValue.Companion.operandError(
+                tag,
+                net.blueva.luak.LuaValue.Companion.valueOf(op1),
+                this,
+            )
+        }
         return h.call(net.blueva.luak.LuaValue.Companion.valueOf(op1), this)!!
     }
 
@@ -3992,6 +4011,10 @@ open class LuaValue : Varargs() {
         val CLOSE: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__close")
 
+        /** LuaString constant with value "__name" for use as metatag  */
+        val NAME: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__name")
+
         /** LuaString constant with value "__len" for use as metatag  */
         val LEN: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__len")
@@ -4060,6 +4083,31 @@ open class LuaValue : Varargs() {
          * @param msg String providing information about the invalid argument
          * @throws LuaError in all cases
          */
+        /**
+         * Reports an operator applied to something it cannot work on.
+         *
+         * The blame goes to the first operand that is not a number, which is
+         * the one the reader needs to know about; a bitwise operator says so
+         * rather than calling itself arithmetic.
+         */
+        fun operandError(tag: LuaValue?, op1: LuaValue, op2: LuaValue): Nothing {
+            val bitwise: Boolean = tag != null && (
+                tag == net.blueva.luak.LuaValue.Companion.BAND ||
+                    tag == net.blueva.luak.LuaValue.Companion.BOR ||
+                    tag == net.blueva.luak.LuaValue.Companion.BXOR ||
+                    tag == net.blueva.luak.LuaValue.Companion.SHL ||
+                    tag == net.blueva.luak.LuaValue.Companion.SHR ||
+                    tag == net.blueva.luak.LuaValue.Companion.BNOT
+                )
+            val what: String = if (bitwise) "perform bitwise operation on" else "perform arithmetic on"
+            val culprit: LuaValue =
+                if (op1.type() != net.blueva.luak.LuaValue.Companion.TNUMBER) op1 else op2
+            net.blueva.luak.LuaValue.Companion.error(
+                "attempt to " + what + " a " + culprit.typename() + " value",
+            )
+            throw IllegalStateException()
+        }
+
         fun argerror(iarg: Int, msg: String?): LuaValue? {
             throw LuaError("bad argument #" + iarg + ": " + msg)
         }

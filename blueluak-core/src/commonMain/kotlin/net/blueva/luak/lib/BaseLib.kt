@@ -211,6 +211,15 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         companion object {
             /** The collector mode last asked for; 5.5 starts generational. */
             var mode: String = "generational"
+
+            /** The tunables and their Lua 5.5 defaults. */
+            val parameters: MutableMap<String, Long> = mutableMapOf(
+                "minormul" to 20L,
+                "majorminor" to 50L,
+                "pause" to 250L,
+                "stepmul" to 200L,
+                "stepsize" to 9600L,
+            )
         }
 
         override fun invoke(args: Varargs): Varargs {
@@ -230,6 +239,16 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 return (LuaValue.TRUE)!!
             } else if ("stop".equals(s) || "restart".equals(s)) {
                 return (ZERO)!!
+            } else if ("param".equals(s)) {
+                // The host collector is not tunable from here, so a parameter
+                // is only remembered. Lua answers the value that was in force.
+                val name: String = args.checkjstring(2)!!
+                val previous: Long = net.blueva.luak.lib.BaseLib.collectgarbage.parameters[name]
+                    ?: return (argerror(2, "invalid option '" + name + "'"))!!
+                if (!args.isnoneornil(3)) {
+                    net.blueva.luak.lib.BaseLib.collectgarbage.parameters[name] = args.checklong(3)
+                }
+                return valueOf(previous)!!
             } else if ("generational".equals(s) || "incremental".equals(s)) {
                 // The host collector picks its own strategy, so the mode is
                 // only remembered, not applied. Lua answers the mode that was
@@ -311,10 +330,53 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         return null
     }
 
+    companion object {
+        /**
+         * Lua's own rendering of a value as a string, upstream's `luaL_tolstring`.
+         *
+         * A `__tostring` metamethod decides if there is one, and must answer
+         * something string-like. Otherwise a value with no text of its own is
+         * named by its `__name` metafield, falling back to its type, followed
+         * by an identity.
+         */
+        internal fun tolstring(value: LuaValue): LuaValue {
+            val handler: LuaValue = value.metatag(TOSTRING)
+            if (!handler.isnil()) {
+                val rendered: LuaValue = handler.call(value)!!
+                if (!rendered.isstring()) LuaValue.error("'__tostring' must return a string")
+                return rendered
+            }
+            when (value.type()) {
+                // A string is already its own rendering, and handing back the
+                // same bytes matters: decoding and re-encoding them would
+                // mangle any that are not valid UTF-8.
+                LuaValue.TSTRING -> return value
+
+                // The other primitives render as themselves, whatever metatable
+                // a shared one may carry.
+                LuaValue.TNIL, LuaValue.TBOOLEAN, LuaValue.TNUMBER ->
+                    return valueOf(value.tojstring())!!
+            }
+            val own: LuaValue = value.tostring()
+            if (!own.isnil()) return own
+            val name: LuaValue = value.metatag(net.blueva.luak.LuaValue.NAME)
+            if (name.isstring()) {
+                val rendered: String = value.tojstring()
+                return valueOf(name.tojstring() + ": " + rendered.substringAfter(": ", rendered))!!
+            }
+            // Otherwise the value's own rendering, which on this runtime is
+            // already "type: identity" and, for a Java object behind a
+            // userdata, that object's own text.
+            return valueOf(value.tojstring())!!
+        }
+    }
+
     // "error", // ( message [,level] ) -> ERR
     internal class error : TwoArgFunction() {
         override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
-            if (arg1!!.isnil()) throw LuaError(NIL)
+            // A nil error object becomes text at the point it is raised, so a
+            // handler always has something to report.
+            if (arg1!!.isnil()) throw LuaError(valueOf("<no error object>"))
             val level: Int = arg2!!.optint(1)
             if (!arg1.isstring()) throw LuaError(arg1)
             if (level == 0) {
@@ -400,6 +462,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             } catch (e: Exception) {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+            } catch (t: Throwable) {
+                // Unbounded recursion exhausts the host's stack rather than a
+                // stack of Lua's own; a protected call is where that becomes
+                // the ordinary Lua error the caller expects. The conversion
+                // happens here, not deeper in, because building the error needs
+                // some stack back.
+                if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
+                return (varargsOf(FALSE, valueOf("stack overflow")))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
                 if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
@@ -426,6 +496,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             } catch (e: Exception) {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+            } catch (t: Throwable) {
+                // Unbounded recursion exhausts the host's stack rather than a
+                // stack of Lua's own; a protected call is where that becomes
+                // the ordinary Lua error the caller expects. The conversion
+                // happens here, not deeper in, because building the error needs
+                // some stack back.
+                if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
+                return (varargsOf(FALSE, valueOf("stack overflow")))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
                 if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
@@ -436,12 +514,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     // "print", // (...) -> void
     internal inner class print(val baselib: BaseLib) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val tostring: LuaValue = globals!!.get("tostring")!!
+            // Rendered here rather than through the global `tostring`: Lua
+            // uses its own conversion, so replacing that global changes what
+            // scripts see from `tostring` and leaves `print` alone.
             var i = 1
             val n: Int = args.narg()
             while (i <= n) {
                 if (i > 1) globals!!.STDOUT!!.print('\t')
-                val s: LuaString = tostring.call(args.arg(i))!!.strvalue()!!
+                val s: LuaString = net.blueva.luak.lib.BaseLib.tolstring(args.arg(i)!!).strvalue()!!
                 globals!!.STDOUT!!.print(s.tojstring())
                 i++
             }
@@ -544,11 +624,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     // "tostring", // (e) -> value
     internal class tostring : LibFunction() {
         override fun call(arg: LuaValue?): LuaValue? {
-            val h: LuaValue = arg!!.metatag(TOSTRING)
-            if (!h.isnil()) return h.call(arg)
-            val v: LuaValue = arg!!.tostring()
-            if (!v.isnil()) return v
-            return valueOf(arg!!.tojstring())
+            return net.blueva.luak.lib.BaseLib.tolstring(arg!!)
         }
     }
 
@@ -584,6 +660,10 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 } catch (e: Exception) {
                     val m: String? = e.message
                     return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+                } catch (t: Throwable) {
+                    // See pcall: a host stack overflow becomes a Lua error here.
+                    if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
+                    return (varargsOf(FALSE, valueOf("stack overflow")))!!
                 } finally {
                     if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
@@ -612,6 +692,10 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 } catch (e: Exception) {
                     val m: String? = e.message
                     return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
+                } catch (t: Throwable) {
+                    // See pcall: a host stack overflow becomes a Lua error here.
+                    if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
+                    return (varargsOf(FALSE, valueOf("stack overflow")))!!
                 } finally {
                     if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
@@ -644,7 +728,9 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     internal class ipairs : VarArgFunction() {
         var inext: inext = net.blueva.luak.lib.BaseLib.inext()
         override fun invoke(args: Varargs): Varargs {
-            return varargsOf(inext, args.checktable(1), (ZERO)!!)
+            // Anything indexable will do: the iterator reads with ordinary
+            // indexing, so an __index metamethod is honoured.
+            return varargsOf(inext, args.checkvalue(1), (ZERO)!!)
         }
     }
 
@@ -656,9 +742,19 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     }
 
     // "inext" ( table, [int-index] ) -> next-index, next-value
+    /**
+     * The iterator `ipairs` hands back.
+     *
+     * Counts up from the given index and stops at the first nil. The step
+     * wraps around at the maximum integer, as every integer operation in Lua
+     * does, so an iteration that reaches it ends rather than trapping.
+     */
     internal class inext : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            return (args.checktable(1).inext(args.arg(2)))!!
+            val list: LuaValue = args.checkvalue(1)!!
+            val index: Long = args.checklong(2) + 1L
+            val value: LuaValue = list.get(valueOf(index))
+            return if (value.isnil()) NIL else varargsOf(valueOf(index), value)!!
         }
     }
 

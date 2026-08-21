@@ -45,6 +45,16 @@ open class Lua {
     /** use return values from previous op  */
     val LUA_MULTRET: Int = -1
 
+    /**
+     * Bit in `Prototype.is_vararg` marking a named vararg parameter.
+     *
+     * `function f(a, ...t)`, from Lua 5.5, binds the extra arguments to a
+     * table. The table and `...` are the same storage, so assigning `t[1]`
+     * changes what `...` yields, which is why the table is built once on entry
+     * and `...` is read back out of it.
+     */
+    const val VARARG_NAMED: Int = 2
+
 
     // from lopcodes.h
     /*===========================================================================

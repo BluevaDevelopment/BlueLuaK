@@ -126,7 +126,7 @@ object LuaCli {
             var i = 0
             while (i < args.size) {
                 if (!processing || !args[i].startsWith("-")) {
-                    LuaCli.processScript(FileInputStream(args[i]), args[i], args, i)
+                    LuaCli.processScript(FileInputStream(args[i]), "@" + args[i], args, i)
                     break
                 } else if ("-" == args[i]) {
                     LuaCli.processScript(System.`in`, "=stdin", args, i)
@@ -136,7 +136,12 @@ object LuaCli {
                         'l', 'c' -> ++i
                         'e' -> {
                             ++i
-                            LuaCli.processScript(ByteArrayInputStream(args[i].toByteArray()), "string", args, i)
+                            LuaCli.processScript(
+                                ByteArrayInputStream(args[i].toByteArray()),
+                                "=(command line)",
+                                args,
+                                i,
+                            )
                         }
 
                         '-' -> processing = false
@@ -184,7 +189,7 @@ object LuaCli {
                 script.close()
             }
             if (print && c.isclosure()) Print.print(c.checkclosure()!!.p)
-            val scriptargs = setGlobalArg(chunkname, args, firstarg, globals!!)
+            val scriptargs = setGlobalArg(chunkname?.removePrefix("@"), args, firstarg, globals!!)
             installMessageHandler(globals!!)
             c.invoke(scriptargs!!)
         } catch (e: LuaError) {

@@ -352,7 +352,7 @@ class LuaInteger
     }
 
     override fun gt(rhs: Double): LuaValue {
-        return (if (v > rhs) TRUE else FALSE)!!
+        return (if (luaFloatLessThanInteger(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gt(rhs: Long): LuaValue {
@@ -368,7 +368,7 @@ class LuaInteger
     }
 
     override fun gt_b(rhs: Double): Boolean {
-        return v > rhs
+        return luaFloatLessThanInteger(rhs, v)
     }
 
     override fun gteq(rhs: LuaValue): LuaValue {
@@ -376,7 +376,7 @@ class LuaInteger
     }
 
     override fun gteq(rhs: Double): LuaValue {
-        return (if (v >= rhs) TRUE else FALSE)!!
+        return (if (luaFloatLessOrEqualInteger(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gteq(rhs: Long): LuaValue {
@@ -392,7 +392,7 @@ class LuaInteger
     }
 
     override fun gteq_b(rhs: Double): Boolean {
-        return v >= rhs
+        return luaFloatLessOrEqualInteger(rhs, v)
     }
 
     // string comparison

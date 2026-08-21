@@ -39,3 +39,9 @@ internal actual fun platformCollectGarbage() = Unit
 internal actual fun platformUsedMemory(): Long = 0L
 internal actual fun platformLoadLibrary(className: String, globals: Globals): LuaValue? = null
 internal actual fun platformTypeName(type: KClass<*>): String = type.simpleName ?: "userdata"
+
+/**
+ * Always false: a Wasm stack overflow traps rather than arriving here as a
+ * throwable, so there is nothing to translate.
+ */
+internal actual fun platformIsStackOverflow(failure: Throwable): Boolean = false

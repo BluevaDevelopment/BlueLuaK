@@ -293,6 +293,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // null for the overwhelming majority of functions, which declare none.
         var tbc: ArrayList<Int>? = null
 
+        // A named vararg parameter is a table over the extra arguments, built
+        // once here so that it and '...' read the same storage.
+        if (p.is_vararg and Lua.VARARG_NAMED != 0) buildVarargTable(varargs, p, stack)
+
 
         // Resolved once per frame rather than per instruction: the per-opcode
         // "globals != null && globals.debuglib != null" reload was two field
@@ -735,15 +739,19 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     Lua.OP_TFORCALL -> {
                         v = stack[a].invokeSuspend((varargsOf(stack[a + 1], stack[a + 2]))!!)
                         c = (i shr 14) and 0x1ff
-                        while (--c >= 0) stack[a + 3 + c] = v.arg(c + 1)
+                        // Four control values now, so the results start one
+                        // slot further along than they did in 5.2.
+                        while (--c >= 0) stack[a + 4 + c] = v.arg(c + 1)
                         v = NONE
                         ++pc
                         continue
                     }
 
                     Lua.OP_TFORLOOP -> {
-                        if (!stack[a + 1].isnil()) { /* continue loop? */
-                            stack[a] = stack[a + 1] /* save control varible. */
+                        // R(A) is the control value and R(A+2) the first result,
+                        // with the closing value in between.
+                        if (!stack[a + 2].isnil()) { /* continue loop? */
+                            stack[a] = stack[a + 2] /* save control variable */
                             pc += (i ushr 14) - 0x1ffff
                         }
                         ++pc
@@ -799,15 +807,16 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_VARARG -> {
+                        val source: Varargs = varargSource(varargs, p, stack)
                         b = i ushr 23
                         if (b == 0) {
-                            b = varargs.narg()
+                            b = source.narg()
                             top = a + b
-                            v = varargs
+                            v = source
                         } else {
                             var j = 1
                             while (j < b) {
-                                stack[a + j - 1] = varargs.arg(j)
+                                stack[a + j - 1] = source.arg(j)
                                 ++j
                             }
                         }
@@ -839,6 +848,8 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             if (tbc != null) closeToBeClosed(tbc, stack, 0, le.messageObject ?: NIL)
             if (le.traceback == null) {
                 enrichArgError(le, p, pc, stack)
+                enrichOperandError(le, p, pc, stack)
+                enrichCallError(le, p, pc)
                 processErrorHooks(le, p, pc)
             }
             throw le
@@ -879,6 +890,90 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             return "error in error handling"
         } finally {
             r.errorfunc = e
+        }
+    }
+
+    /**
+     * Says how the program named the thing it tried to call.
+     *
+     * "attempt to call a nil value" becomes "... (field 'bbbb')" once the call
+     * instruction is read back, which is usually the whole of what the reader
+     * needs to spot a misspelling.
+     */
+    private fun enrichCallError(le: LuaError, p: Prototype, pc: Int) {
+        if (le.argMessageOverride != null) return
+        val m: String = le.message ?: return
+        if (!Regex("^attempt to call a \\w+ value$").matches(m)) return
+        val code: IntArray = p.code ?: return
+        if (pc < 0 || pc >= code.size) return
+        val instr: Int = code[pc]
+        val opcode: Int = Lua.GET_OPCODE(instr)
+        if (opcode != Lua.OP_CALL && opcode != Lua.OP_TAILCALL) return
+        val found = net.blueva.luak.lib.DebugLib.getobjname(p, pc, Lua.GETARG_A(instr)) ?: return
+        le.argMessageOverride = m + " (" + found.namewhat + " '" + found.name + "')"
+    }
+
+    /**
+     * Says where a rejected operand came from, as Lua's `varinfo` does.
+     *
+     * "attempt to perform arithmetic on a nil value" becomes "... (field 'x')"
+     * once the instruction is read back to see which operand had that type and
+     * how the program named it. Without this the message says what went wrong
+     * but not which of the two values was at fault.
+     */
+    private fun enrichOperandError(le: LuaError, p: Prototype, pc: Int, stack: Array<LuaValue>) {
+        if (le.argMessageOverride != null) return
+        val m: String = le.message ?: return
+        // Two messages carry a varinfo: one names the type it could not work
+        // on, the other says a number was not a whole one.
+        val wanted: String
+        val insertAt: Int
+        val operand = Regex("^attempt to perform (?:arithmetic|bitwise operation) on a (\\w+) value$")
+            .find(m)
+        if (operand != null) {
+            wanted = operand.groupValues[1]
+            insertAt = m.length
+        } else if (m == "number has no integer representation") {
+            wanted = "number"
+            insertAt = "number".length
+        } else {
+            return
+        }
+        val code: IntArray = p.code ?: return
+        if (pc < 0 || pc >= code.size) return
+        val instr: Int = code[pc]
+        val operands: IntArray = when (Lua.GET_OPCODE(instr)) {
+            Lua.OP_ADD, Lua.OP_SUB, Lua.OP_MUL, Lua.OP_DIV, Lua.OP_MOD, Lua.OP_POW,
+            Lua.OP_IDIV, Lua.OP_BAND, Lua.OP_BOR, Lua.OP_BXOR, Lua.OP_SHL, Lua.OP_SHR,
+            -> intArrayOf(Lua.GETARG_B(instr), Lua.GETARG_C(instr))
+
+            Lua.OP_UNM, Lua.OP_BNOT, Lua.OP_LEN -> intArrayOf(Lua.GETARG_B(instr))
+            else -> return
+        }
+        for (rk in operands) {
+            val value: LuaValue = if (Lua.ISK(rk)) {
+                p.k?.getOrNull(Lua.INDEXK(rk)) ?: continue
+            } else {
+                if (rk >= stack.size) continue
+                stack[rk]
+            }
+            if (value.typename() != wanted) continue
+            // For the "not a whole number" message, the operand to blame is
+            // the one that is not whole - the other may well be an integer.
+            if (insertAt != m.length && net.blueva.luak.luaHasIntegerRepresentation(value)) continue
+            val kind: String
+            val name: String
+            if (Lua.ISK(rk)) {
+                kind = "constant"
+                name = net.blueva.luak.lib.DebugLib.kname(p, pc, rk)
+            } else {
+                val found = net.blueva.luak.lib.DebugLib.getobjname(p, pc, rk) ?: return
+                kind = found.namewhat
+                name = found.name
+            }
+            val varinfo = " (" + kind + " '" + name + "')"
+            le.argMessageOverride = m.substring(0, insertAt) + varinfo + m.substring(insertAt)
+            return
         }
     }
 
@@ -969,6 +1064,49 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val name: String = if (bx > 0 && bx - 1 < k.size) k[bx - 1]!!.tojstring() else "?"
         LuaValue.error("global '" + name + "' already defined")
         throw IllegalStateException()
+    }
+
+    /** As many values as a vararg table may claim, mirroring Lua's stack cap. */
+    private val MAX_VARARG_TABLE: Long = 1000000L
+
+    /**
+     * Fills the register of a named vararg parameter with its table.
+     *
+     * The table holds the extra arguments at `1..n` and their count at `n`,
+     * which is what makes `t.n` right even when an argument was nil.
+     */
+    private fun buildVarargTable(varargs: Varargs, p: Prototype, stack: Array<LuaValue>) {
+        val count: Int = varargs.narg()
+        val table = LuaTable(count, 1)
+        for (i in 1..count) table.set(i, varargs.arg(i)!!)
+        table.set("n", count)
+        stack[p.numparams] = table
+    }
+
+    /**
+     * Where `...` reads from.
+     *
+     * Ordinarily the arguments the call arrived with; in a function that named
+     * them, the table they were put in, so a change made through the name is
+     * visible through `...` as well.
+     */
+    private fun varargSource(varargs: Varargs, p: Prototype, stack: Array<LuaValue>): Varargs {
+        if (p.is_vararg and Lua.VARARG_NAMED == 0) return varargs
+        val table: LuaValue = stack[p.numparams]
+        val declared: LuaValue = table.get("n")!!
+        // The table's 'n' says how many values '...' has, so a program that
+        // sets it to something that is not a sensible count has broken the
+        // link rather than resized it.
+        if (!declared.isnumber() || !declared.isinttype()) {
+            LuaValue.error("vararg table has no proper 'n'")
+        }
+        val n: Long = declared.tolong()
+        if (n < 0 || n > MAX_VARARG_TABLE) LuaValue.error("vararg table has no proper 'n'")
+        val count: Int = n.toInt()
+        if (count <= 0) return NONE!!
+        val out: Array<LuaValue?> = arrayOfNulls(count)
+        for (i in 0..<count) out[i] = table.get(i + 1)
+        return varargsOf(out)!!
     }
 
     /**

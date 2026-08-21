@@ -72,9 +72,16 @@ class SimpleTests : TestCase() {
     }
 
     fun testShebang() {
+        // A '#!' line is stripped while Lua reads a *file*, so the chunk has to
+        // be named as one; `load` of the same text is an ordinary chunk that
+        // starts with the length operator and does not compile.
         val s = "#!../lua\n" +
                 "print( 2 )\n"
-        doTest(s)
+        try {
+            globals!!.load(s, "@script")!!.call()
+        } catch (e: Exception) {
+            fail("i/o exception: " + e)
+        }
     }
 
     fun testInlineTable() {

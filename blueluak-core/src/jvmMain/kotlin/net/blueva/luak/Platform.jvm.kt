@@ -29,3 +29,5 @@ internal actual fun platformLoadLibrary(className: String, globals: Globals): Lu
 }
 internal actual fun platformTypeName(type: KClass<*>): String =
     type.qualifiedName ?: type.simpleName ?: "userdata"
+
+internal actual fun platformIsStackOverflow(failure: Throwable): Boolean = failure is StackOverflowError

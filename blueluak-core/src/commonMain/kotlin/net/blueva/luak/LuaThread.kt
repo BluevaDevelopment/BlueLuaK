@@ -242,7 +242,13 @@ class LuaThread : LuaValue {
                 return if (finished) {
                     val r = finalResult!!
                     val err = r.exceptionOrNull()
-                    if (err != null) LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(err.message))!!
+                    if (err != null) {
+                        // A host error may carry no message of its own, and a
+                        // resume still has to answer with something.
+                        val text: String = err.message
+                            ?: if (platformIsStackOverflow(err)) "stack overflow" else err.toString()
+                        LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(text))!!
+                    }
                     else LuaValue.varargsOf(LuaValue.TRUE, r.getOrThrow())!!
                 } else {
                     status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED

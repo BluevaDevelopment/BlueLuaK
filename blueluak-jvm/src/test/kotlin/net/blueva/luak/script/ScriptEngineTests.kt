@@ -160,7 +160,9 @@ object ScriptEngineTests : TestSuite() {
                 e!!.eval("\n\nbuggy lua code\n\n")
             } catch (se: ScriptException) {
                 TestCase.assertEquals(
-                    "eval threw javax.script.ScriptException: [string \"script\"]:3: syntax error",
+                    // The message names the token the compiler stopped at.
+                    "eval threw javax.script.ScriptException: " +
+                        "[string \"script\"]:3: syntax error near 'lua'",
                     se.message
                 )
                 return

@@ -138,6 +138,14 @@ class DebugLib : TwoArgFunction() {
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
             var func: LuaValue? = args.arg(a++)
             val what: String = args.optjstring(a++, "flnStu")!!
+            // Every letter has to name something this can report; a stray one
+            // is a mistake in the call rather than a request to be ignored. A
+            // leading '>' is called out on its own, as it means something in
+            // the C API that has no equivalent here.
+            if (what.startsWith(">")) return (argerror(a - 1, "invalid option '>'"))!!
+            for (letter in what) {
+                if (letter !in "flnStuLr") return (argerror(a - 1, "invalid option"))!!
+            }
             val callstack = callstack(thread)
 
             // find the stack info

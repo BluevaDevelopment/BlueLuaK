@@ -80,9 +80,10 @@ open class CompilerUnitTests : AbstractUnitTests("test/lua", "luaj3.0-tests.zip"
         doTest("gc.lua")
     }
 
-    fun testGoto() {
-        doTest("goto.lua")
-    }
+    // testGoto is gone: its script has "::l3::" at function level and then
+    // "do goto l3; ::l3:: end", which 5.5 rejects because an inner block can
+    // see the outer label - checked against lua-5.5.1, which reports the same
+    // "label 'l3' already defined". The script stays in the archive.
 
     fun testLiterals() {
         doTest("literals.lua")

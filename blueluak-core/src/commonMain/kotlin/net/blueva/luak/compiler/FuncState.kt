@@ -49,6 +49,7 @@ internal class FuncState internal constructor() : Constants() {
     var nk: Int = 0 /* number of elements in `k' */
     var np: Int = 0 /* number of elements in `p' */
     var firstlocal: Int = 0 /* index of first local var (in Dyndata array) */
+    var firstlabel: Int = 0 /* index of first label of this function */
     var nlocvars: Short = 0 /* number of elements in `locvars' */
     var nactvar: Short = 0 /* number of active local variables */
     var nups: Short = 0 /* number of upvalues */
@@ -77,14 +78,20 @@ internal class FuncState internal constructor() : Constants() {
     // =============================================================
     // from lparser.c
     // =============================================================
-    /* check for repeated labels on the same block */
+    /**
+     * Rejects a label already defined anywhere in the current function.
+     *
+     * The search starts at the function's first label rather than the block's:
+     * an inner block can see a label declared outside it, so repeating the name
+     * there would leave two candidates for the same `goto`.
+     */
     fun checkrepeated(ll: Array<LexState.Labeldesc?>, ll_n: Int, label: LuaString) {
         var i: Int
-        i = bl!!.firstlabel.toInt()
+        i = firstlabel
         while (i < ll_n) {
             if (label.eq_b(ll[i]!!.name)) {
                 val msg: String? = ls!!.L!!.pushfstring(
-                    "label '" + label + " already defined on line " + ll[i]!!.line
+                    "label '" + label + "' already defined on line " + ll[i]!!.line
                 )
                 ls!!.semerror(msg)
             }

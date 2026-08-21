@@ -23,6 +23,16 @@ internal expect fun platformProperty(name: String): String?
 internal expect fun platformEnvironment(name: String): String?
 internal expect fun platformExit(code: Int)
 internal expect fun platformCollectGarbage()
+
+/**
+ * True when [failure] is the host running out of call stack.
+ *
+ * The interpreter recurses on the host's stack, so a Lua program that recurses
+ * without bound exhausts that rather than a stack of Lua's own. Recognising it
+ * is what lets the runtime report it as the ordinary Lua "stack overflow" a
+ * `pcall` can catch, instead of letting a host error escape.
+ */
+internal expect fun platformIsStackOverflow(failure: Throwable): Boolean
 internal expect fun platformUsedMemory(): Long
 internal expect fun platformLoadLibrary(className: String, globals: Globals): LuaValue?
 internal expect fun platformTypeName(type: KClass<*>): String

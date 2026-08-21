@@ -121,7 +121,7 @@ internal fun luaIntegerMod(x: Long, y: Long): Long {
 /** Floored modulo of two floats, matching upstream's `luai_nummod`. */
 internal fun luaFloatMod(x: Double, y: Double): Double {
     var remainder = x % y
-    if (if (remainder > 0) y < 0 else (remainder < 0 && y != remainder)) remainder += y
+    if (if (remainder > 0) y < 0 else (remainder < 0 && y > 0)) remainder += y
     return remainder
 }
 
@@ -150,8 +150,7 @@ internal fun luaBitwiseOperand(value: LuaValue): Long {
     if (value.isinttype()) return value.tolong()
     if (value.isnumber() && value !is LuaString) {
         val asDouble: Double = value.todouble()
-        val asLong: Long = asDouble.toLong()
-        if (asLong.toDouble() == asDouble) return asLong
+        if (fitsInteger(asDouble)) return asDouble.toLong()
         LuaValue.error("number has no integer representation")
     }
     LuaValue.error("attempt to perform bitwise operation on a " + value.typename() + " value")
@@ -184,8 +183,19 @@ internal fun luaShiftLeft(x: Long, y: Long): Long {
 internal fun luaHasIntegerRepresentation(value: LuaValue): Boolean {
     if (value.isinttype()) return true
     if (!value.isnumber() || value is LuaString) return false
-    val asDouble: Double = value.todouble()
-    return asDouble.toLong().toDouble() == asDouble
+    return fitsInteger(value.todouble())
+}
+
+/**
+ * True when [value] is exactly some 64-bit integer.
+ *
+ * The range has to be checked as well as the round trip: converting a double
+ * outside it saturates at the nearest end, and converting that back lands on
+ * the same double again, so a round trip alone would accept `2^63`.
+ */
+private fun fitsInteger(value: Double): Boolean {
+    if (value < -9.2233720368547758E18 || value >= 9.2233720368547758E18) return false
+    return value.toLong().toDouble() == value
 }
 
 /**

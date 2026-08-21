@@ -85,6 +85,45 @@ internal object DecimalFormat {
         return if (looksLikeInteger(text)) "$text.0" else text
     }
 
+    /**
+     * C's `%a`: the exact value in hexadecimal, `0x1.<mantissa>p<exponent>`.
+     *
+     * Every double has an exact hexadecimal form, so this is the notation to
+     * reach for when a value has to survive being written out and read back -
+     * which is what `string.format("%q", x)` needs.
+     */
+    fun hex(value: Double, upper: Boolean): String {
+        if (value.isNaN() || value.isInfinite()) return nonFinite(value, upper)
+        val bits: Long = value.toRawBits()
+        val negative: Boolean = bits < 0
+        val exponentField: Int = ((bits ushr 52) and 0x7FF).toInt()
+        val mantissaField: Long = bits and 0x000FFFFFFFFFFFFFL
+        val lead: Int
+        val exponent: Int
+        if (exponentField == 0) {
+            // Zero and the subnormals, which have no implicit leading one.
+            lead = 0
+            exponent = if (mantissaField == 0L) 0 else -1022
+        } else {
+            lead = 1
+            exponent = exponentField - 1023
+        }
+        var fraction: String = mantissaField.toString(16).padStart(13, '0').trimEnd('0')
+        val body: String = buildString {
+            if (negative) append('-')
+            append("0x")
+            append(lead)
+            if (fraction.isNotEmpty()) {
+                append('.')
+                append(fraction)
+            }
+            append('p')
+            if (exponent >= 0) append('+')
+            append(exponent)
+        }
+        return if (upper) body.uppercase() else body
+    }
+
     /** C's `%.Pe`. */
     fun e(value: Double, precision: Int, upper: Boolean): String {
         if (value.isNaN() || value.isInfinite()) return nonFinite(value, upper)

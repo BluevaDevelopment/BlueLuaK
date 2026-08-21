@@ -330,7 +330,7 @@ class LuaDouble
     }
 
     override fun gt(rhs: Long): LuaValue {
-        return (if (v > rhs) TRUE else FALSE)!!
+        return (if (luaIntegerLessThanFloat(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gt_b(rhs: LuaValue): Boolean {
@@ -338,7 +338,7 @@ class LuaDouble
     }
 
     override fun gt_b(rhs: Long): Boolean {
-        return v > rhs
+        return luaIntegerLessThanFloat(rhs, v)
     }
 
     override fun gt_b(rhs: Double): Boolean {
@@ -354,7 +354,7 @@ class LuaDouble
     }
 
     override fun gteq(rhs: Long): LuaValue {
-        return (if (v >= rhs) TRUE else FALSE)!!
+        return (if (luaIntegerLessOrEqualFloat(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gteq_b(rhs: LuaValue): Boolean {
@@ -362,7 +362,7 @@ class LuaDouble
     }
 
     override fun gteq_b(rhs: Long): Boolean {
-        return v >= rhs
+        return luaIntegerLessOrEqualFloat(rhs, v)
     }
 
     override fun gteq_b(rhs: Double): Boolean {

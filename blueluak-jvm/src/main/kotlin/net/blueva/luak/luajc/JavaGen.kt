@@ -355,17 +355,18 @@ class JavaGen private constructor(pi: ProtoInfo, val classname: String?, filenam
                         builder.loadLocal(pc, a + 1)
                         builder.loadLocal(pc, a + 2)
                         builder.invoke(2)
+                        // Results start after the four control values.
                         var i = 1
                         while (i <= c) {
                             if (i < c) builder.dup()
                             builder.arg(i)
-                            builder.storeLocal(pc, a + 2 + i)
+                            builder.storeLocal(pc, a + 3 + i)
                             i++
                         }
                     }
 
                     Lua.OP_TFORLOOP -> {
-                        builder.loadLocal(pc, a + 1)
+                        builder.loadLocal(pc, a + 2)
                         builder.dup()
                         builder.storeLocal(pc, a)
                         builder.isNil()

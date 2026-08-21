@@ -18,6 +18,7 @@ package net.blueva.luak.luajc
 
 import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.Globals
+import net.blueva.luak.LuaClosure
 import net.blueva.luak.LuaFunction
 import net.blueva.luak.LuaValue
 import net.blueva.luak.Prototype
@@ -107,10 +108,31 @@ class LuaJC protected constructor() : Globals.Loader {
 
     @Throws(IOException::class)
     override fun load(p: Prototype?, name: String?, globals: LuaValue?): LuaFunction? {
+        // The generated code has nowhere to run a __close handler from and no
+        // notion of a declared global, so a chunk that uses either is left to
+        // the interpreter rather than compiled wrongly.
+        if (p != null && usesInterpreterOnlyOpcodes(p)) {
+            return LuaClosure(p, globals as? net.blueva.luak.Globals)
+        }
         val luaname: String = toStandardLuaFileName(name!!)
         val classname: String = toStandardJavaClassName(luaname)
         val loader = JavaLoader()
         return loader.load(p, classname, luaname, globals)
+    }
+
+    /** True when [p] or anything nested in it needs the interpreter. */
+    private fun usesInterpreterOnlyOpcodes(p: Prototype): Boolean {
+        val code: IntArray = p.code ?: return false
+        for (instruction in code) {
+            when (net.blueva.luak.Lua.GET_OPCODE(instruction)) {
+                net.blueva.luak.Lua.OP_TBC, net.blueva.luak.Lua.OP_ERRNNIL -> return true
+            }
+        }
+        val inner: Array<Prototype?> = p.p ?: return false
+        for (nested in inner) {
+            if (nested != null && usesInterpreterOnlyOpcodes(nested)) return true
+        }
+        return false
     }
 
     companion object {

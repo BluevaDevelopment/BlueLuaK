@@ -38,12 +38,19 @@ class StandardGlobalsTest {
 
     @Test
     fun everyStandardLibraryIsPresent() {
-        for (library in arrayOf("string", "table", "math", "os", "io", "coroutine", "bit32", "package")) {
+        for (library in arrayOf("string", "table", "math", "os", "io", "coroutine", "utf8", "package")) {
             assertFalse(globals.get(library)!!.isnil(), "missing library: $library")
         }
-        for (function in arrayOf("print", "pairs", "pcall", "require", "load", "setmetatable")) {
+        for (function in arrayOf("print", "pairs", "pcall", "require", "load", "setmetatable", "warn")) {
             assertFalse(globals.get(function)!!.isnil(), "missing base function: $function")
         }
+    }
+
+    @Test
+    fun bit32IsNotLoadedByDefault() {
+        // Deprecated in 5.3 and removed in 5.4: with 64-bit integers and the
+        // operators in the language there is nothing left for it to do.
+        assertTrue(globals.get("bit32")!!.isnil(), "bit32 should not be loaded")
     }
 
     @Test

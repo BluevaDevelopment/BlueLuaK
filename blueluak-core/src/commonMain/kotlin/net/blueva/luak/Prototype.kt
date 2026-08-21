@@ -145,7 +145,9 @@ class Prototype {
             '@' -> {
                 val body = name.substring(1)
                 if (body.length + 1 <= budget) return body
-                budget -= ELLIPSIS.length
+                // One character of the budget goes to the terminator upstream
+                // reserves, so the ellipsis and the tail together come to 59.
+                budget -= ELLIPSIS.length + 1
                 return ELLIPSIS + body.substring(body.length - budget)
             }
 

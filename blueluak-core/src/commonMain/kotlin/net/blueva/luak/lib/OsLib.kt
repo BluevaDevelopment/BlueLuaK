@@ -341,7 +341,12 @@ open class OsLib
      * cannot be honored.
      */
     protected fun setlocale(locale: String?, category: String?): String? {
-        return "C"
+        // This runtime has one locale and it is "C": numbers and dates are
+        // formatted the same way everywhere it runs. Reporting success for a
+        // locale that is not in force would tell a caller it can expect, say, a
+        // comma decimal separator that it will never get.
+        if (locale == null || locale == "C" || locale.isEmpty()) return "C"
+        return null
     }
 
     /**

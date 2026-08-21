@@ -231,8 +231,10 @@ open class StringLib
             var i = 0
             var a = 1
             while (i < n) {
-                val c: Int = args.checkint(a)
-                if (c < 0 || c >= 256) argerror(a, "invalid value for string.char [0; 255]: " + c)
+                // Checked as a whole integer, so a value far out of range is
+                // rejected rather than wrapping into an acceptable byte.
+                val c: Long = args.checklong(a)
+                if (c < 0 || c > 255) argerror(a, "value out of range")
                 bytes[i] = c.toByte()
                 i++
                 a++
@@ -335,12 +337,40 @@ open class StringLib
                                 'i'.code, 'd'.code -> fdsc.format(result, args.checklong(arg))
                                 'o'.code, 'u'.code, 'x'.code, 'X'.code -> fdsc.format(result, args.checklong(arg))
                                 'e'.code, 'E'.code, 'f'.code, 'g'.code, 'G'.code -> fdsc.format(result, args.checkdouble(arg))
-                                'q'.code -> net.blueva.luak.lib.StringLib.Companion.addquoted(result, args.checkstring(arg))
+                                'a'.code, 'A'.code -> fdsc.format(
+                                    result,
+                                    LuaString.valueOf(
+                                        net.blueva.luak.DecimalFormat.hex(
+                                            args.checkdouble(arg),
+                                            upper = fdsc.conversion == 'A'.code,
+                                        ),
+                                    ),
+                                )
+
+                                'p'.code -> fdsc.format(
+                                    result,
+                                    net.blueva.luak.lib.StringLib.Companion.pointer(args.arg(arg)!!),
+                                )
+
+                                'q'.code -> net.blueva.luak.lib.StringLib.Companion.addliteral(
+                                    result,
+                                    args.arg(arg)!!,
+                                )
                                 's'.code -> {
-                                    val s: LuaString = args.checkstring(arg)
-                                    if (fdsc.precision == -1 && s.length() >= 100) {
+                                    // Lua's own conversion, so %s accepts a nil
+                                    // or a table with __tostring.
+                                    val s: LuaString = net.blueva.luak.lib.BaseLib
+                                        .tolstring(args.arg(arg)!!).strvalue()!!
+                                    if (!fdsc.hasmodifiers) {
+                                        // Passed through whole, embedded zeros
+                                        // and all: there is nothing to line up.
                                         result.append(s)
                                     } else {
+                                        args.argcheck(
+                                            s.indexOf(0.toByte(), 0) < 0,
+                                            arg,
+                                            "string contains zeros",
+                                        )
                                         fdsc.format(result, s)
                                     }
                                 }
@@ -438,7 +468,13 @@ open class StringLib
                     'o'.code -> radix = 8
                     else -> radix = 10
                 }
-                digits = number.toString(radix)
+                // Hexadecimal and octal read the value as unsigned, the way C
+                // does, so -1 comes out as all ones rather than with a sign.
+                digits = if (radix == 10) {
+                    number.toString(10)
+                } else {
+                    number.toULong().toString(radix)
+                }
                 if (conversion == 'X'.code) digits = digits.uppercase()
             }
 
@@ -446,7 +482,9 @@ open class StringLib
             var ndigits = minwidth
             val nzeros: Int
 
-            if (number < 0) {
+            if (number < 0 && conversion != 'x'.code && conversion != 'X'.code &&
+                conversion != 'o'.code
+            ) {
                 ndigits--
             } else if (explicitPlus || space) {
                 minwidth++
@@ -512,11 +550,18 @@ open class StringLib
             buf.append(text)
         }
 
+        /** True when the conversion carries a width, precision or flag. */
+        val hasmodifiers: Boolean
+            get() = width > 0 || precision >= 0 || leftAdjust
+
         fun format(buf: Buffer, s: LuaString) {
             var s: LuaString = s
-            val nullindex: Int = s.indexOf('\u0000'.code.toByte(), 0)
-            if (nullindex != -1) s = s.substring(0, nullindex)
+            // A precision on %s is a maximum length, and a width pads to it.
+            if (precision >= 0 && s.length() > precision) s = s.substring(0, precision)
+            val padding: Int = width - s.length()
+            if (padding > 0 && !leftAdjust) pad(buf, ' ', padding)
             buf.append(s)
+            if (padding > 0 && leftAdjust) pad(buf, ' ', padding)
         }
 
         fun pad(buf: Buffer, c: Char, n: Int) {
@@ -555,19 +600,32 @@ open class StringLib
         override fun invoke(args: Varargs): Varargs {
             val src: LuaString = args.checkstring(1)
             val pat: LuaString = args.checkstring(2)
-            return net.blueva.luak.lib.StringLib.GMatchAux(args, src, pat)
+            // Since 5.4 a third argument says where to start, counted the way
+            // string.find counts, so a negative one is from the end.
+            val init: Int = net.blueva.luak.lib.StringLib.Companion.posrelat(
+                args.optint(3, 1),
+                src.length(),
+            )
+            val start: Int = when {
+                init < 1 -> 0
+                init > src.length() + 1 -> src.length() + 1
+                else -> init - 1
+            }
+            return net.blueva.luak.lib.StringLib.GMatchAux(args, src, pat, start)
         }
     }
 
-    internal class GMatchAux(args: Varargs, src: LuaString, pat: LuaString) : VarArgFunction() {
+    internal class GMatchAux(args: Varargs, src: LuaString, pat: LuaString, start: Int = 0) :
+        VarArgFunction() {
         private val srclen: Int
         private val ms: MatchState
-        private var soffset = 0
+        private var soffset: Int
         private var lastmatch: Int
 
         init {
             this.srclen = src.length()
             this.ms = net.blueva.luak.lib.StringLib.MatchState(args, src, pat)
+            this.soffset = start
             this.lastmatch = -1
         }
 
@@ -648,12 +706,16 @@ open class StringLib
 
             var soffset = 0
             var n = 0
+            // Whether anything was actually replaced. When nothing was, the
+            // original string is handed back rather than an equal copy, which
+            // is what lets a caller compare identities to detect a no-op.
+            var changed = false
             while (n < max_s) {
                 ms.reset()
                 val res = ms.match(soffset, if (anchor) 1 else 0)
                 if (res != -1 && res != lastmatch) {  /* match? */
                     n++
-                    ms.add_value(lbuf, soffset, res, repl) /* add replacement to buffer */
+                    if (ms.add_value(lbuf, soffset, res, repl)) changed = true
                     lastmatch = res
                     soffset = lastmatch
                 } else if (soffset < srclen)  /* otherwise, skip one character */
@@ -661,6 +723,7 @@ open class StringLib
                 else break /* end of subject */
                 if (anchor) break
             }
+            if (!changed) return (varargsOf(src, valueOf(n)))!!
             lbuf.append(src.substring(soffset, srclen))
             return (varargsOf(lbuf.tostring(), valueOf(n)))!!
         }
@@ -711,16 +774,39 @@ open class StringLib
      * 
      * Returns a string that is the concatenation of n copies of the string s.
      */
+    /**
+     * `string.rep (s, n [, sep])`.
+     *
+     * The separator, from Lua 5.2, goes between copies and not around them, so
+     * `("x"):rep(3, "-")` is `"x-x-x"`.
+     */
     internal class rep : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val s: LuaString = args.checkstring(1)
-            val n: Int = args.checkint(2)
-            val bytes = ByteArray(s.length() * n)
+            val n: Long = args.checklong(2)
+            val sep: LuaString = if (args.isnoneornil(3)) EMPTYSTRING!! else args.checkstring(3)
+            if (n <= 0L) return EMPTYSTRING!!
             val len: Int = s.length()
+            val seplen: Int = sep.length()
+            // Checked by division rather than by multiplying out, which would
+            // wrap around and let an impossible size look acceptable.
+            val perCopy: Long = len.toLong() + seplen.toLong()
+            if (perCopy != 0L && n > Int.MAX_VALUE.toLong() / perCopy) {
+                LuaValue.error("resulting string too large")
+            }
+            val total: Long = len.toLong() * n + seplen.toLong() * (n - 1)
+            if (total > Int.MAX_VALUE.toLong()) LuaValue.error("resulting string too large")
+            val bytes = ByteArray(total.toInt())
             var offset = 0
-            while (offset < bytes.size) {
+            var copies = 0L
+            while (copies < n) {
+                if (copies > 0 && seplen > 0) {
+                    sep.copyInto(0, bytes, offset, seplen)
+                    offset += seplen
+                }
                 s.copyInto(0, bytes, offset, len)
                 offset += len
+                copies++
             }
             return LuaString.valueUsing(bytes)
         }
@@ -843,12 +929,18 @@ open class StringLib
             }
         }
 
-        fun add_value(lbuf: Buffer, soffset: Int, end: Int, repl: LuaValue) {
+        /**
+         * Appends the replacement for one match.
+         *
+         * @return true when something was actually replaced; a function or
+         *   table that answers nil or false leaves the matched text as it was
+         */
+        fun add_value(lbuf: Buffer, soffset: Int, end: Int, repl: LuaValue): Boolean {
             var repl: LuaValue = repl
             when (repl.type()) {
                 LuaValue.TSTRING, LuaValue.TNUMBER -> {
                     add_s(lbuf, (repl.strvalue())!!, soffset, end)
-                    return
+                    return true
                 }
 
                 LuaValue.TFUNCTION -> repl = repl.invoke(push_captures(true, soffset, end))!!.arg1()
@@ -857,16 +949,19 @@ open class StringLib
 
                 else -> {
                     error("bad argument: string/function/table expected")
-                    return
+                    return false
                 }
             }
 
             if (!repl.toboolean()) {
-                repl = s.substring(soffset, end)
-            } else if (!repl.isstring()) {
+                lbuf.append(s.substring(soffset, end))
+                return false
+            }
+            if (!repl.isstring()) {
                 error("invalid replacement value (a " + repl.typename() + ")")
             }
             lbuf.append((repl.strvalue())!!)
+            return true
         }
 
         fun push_captures(wholeMatch: Boolean, soff: Int, end: Int): Varargs {
@@ -1177,6 +1272,72 @@ open class StringLib
     }
 
     companion object {
+        /**
+         * The identity `%p` reports, or `(null)` for a value that has none.
+         *
+         * Only the reference types have one; a number, string, boolean or nil
+         * is its own value rather than something living at an address.
+         */
+        fun pointer(value: LuaValue): LuaString {
+            return when (value.type()) {
+                // A string has an identity of its own, and two equal strings
+                // need not share it, so the bytes behind it are what answers.
+                LuaValue.TSTRING -> LuaString.valueOf(
+                    "0x" + (value as LuaString).m_bytes.hashCode().toString(16),
+                )
+
+                LuaValue.TTABLE, LuaValue.TFUNCTION, LuaValue.TTHREAD, LuaValue.TUSERDATA -> {
+                    val rendered: String = value.tojstring()
+                    LuaString.valueOf("0x" + rendered.substringAfter(": ", rendered))
+                }
+
+                else -> LuaString.valueOf("(null)")
+            }
+        }
+
+        /**
+         * `%q`: writes [value] so that reading it back gives the same value.
+         *
+         * A string is quoted and escaped; a float goes out in hexadecimal so no
+         * digits are lost, with the values that have no literal - the
+         * infinities and NaN - written as expressions that produce them.
+         */
+        fun addliteral(buf: Buffer, value: LuaValue) {
+            when (value.type()) {
+                LuaValue.TSTRING -> {
+                    net.blueva.luak.lib.StringLib.Companion.addquoted(buf, value.checkstring()!!)
+                    return
+                }
+
+                LuaValue.TNUMBER -> {
+                    if (value.isinttype()) {
+                        val n: Long = value.tolong()
+                        // The minimum integer has no positive literal to negate,
+                        // so it is written in hexadecimal.
+                        buf.append(if (n == Long.MIN_VALUE) "0x8000000000000000" else n.toString())
+                    } else {
+                        val d: Double = value.todouble()
+                        buf.append(
+                            when {
+                                d.isNaN() -> "(0/0)"
+                                d == Double.POSITIVE_INFINITY -> "1e9999"
+                                d == Double.NEGATIVE_INFINITY -> "-1e9999"
+                                else -> net.blueva.luak.DecimalFormat.hex(d, upper = false)
+                            },
+                        )
+                    }
+                    return
+                }
+
+                LuaValue.TNIL, LuaValue.TBOOLEAN -> {
+                    buf.append(value.tojstring())
+                    return
+                }
+
+                else -> LuaValue.error("value has no literal form")
+            }
+        }
+
         fun addquoted(buf: Buffer, s: LuaString) {
             var c: Int
             buf.append('"'.code.toByte())
@@ -1218,7 +1379,10 @@ open class StringLib
             var init: Int = args.optint(3, 1)
 
             if (init > 0) {
-                init = minOf(init - 1, s.length())
+                // Starting past the end finds nothing, not even the empty
+                // pattern: there is no position there to match at.
+                if (init > s.length() + 1) return (if (find) NIL else NIL)!!
+                init -= 1
             } else if (init < 0) {
                 init = maxOf(0, s.length() + init)
             }

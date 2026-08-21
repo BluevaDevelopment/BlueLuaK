@@ -120,8 +120,15 @@ class PackageLib : TwoArgFunction() {
         searchers.set(2, lua_searcher().also { luaSearcher = it })
         searchers.set(3, java_searcher().also { javaSearcher = it })
         package_!!.set(net.blueva.luak.lib.PackageLib.Companion._SEARCHERS, searchers)
+        // No C loader here, so the path for one is empty rather than absent:
+        // a chunk that reads package.cpath still finds a string.
+        package_!!.set("cpath", "")
         package_!!.set("config", net.blueva.luak.lib.PackageLib.Companion.FILE_SEP.toString() + "\n;\n?\n!\n-\n")
         package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set("package", package_)
+        // The globals table is a loaded module too, under the name Lua gives
+        // it. Among other things that is where an error message looks to find
+        // out what a plain global function is called.
+        package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!).set("_G", env)
         env!!.set("package", package_)
         globals!!.package_ = this
         return env
@@ -190,14 +197,20 @@ class PackageLib : TwoArgFunction() {
             while (true) {
                 val searcher: LuaValue = tbl.get(i)
                 if (searcher.isnil()) {
-                    error("module '" + name + "' not found: " + name + sb)
+                    // One line per searcher that had nothing, and no repeat of
+                    // the name: the searchers already say what they looked for.
+                    error("module '" + name + "' not found:" + sb)
                 }
 
 
                 /* call loader with module name as argument */
                 loader = searcher.invoke((name)!!)
                 if (loader!!.isfunction(1)) break
-                if (loader!!.isstring(1)) sb.append(loader!!.tojstring(1))
+                if (loader!!.isstring(1)) {
+                    val report: String = loader!!.tojstring(1)
+                    if (!report.startsWith("\n")) sb.append("\n\t")
+                    sb.append(report)
+                }
                 i++
             }
 
@@ -244,6 +257,7 @@ class PackageLib : TwoArgFunction() {
 
 
             // Did we get a result?
+            // searchpath already lists one "no file" line per template.
             if (!v.isstring(1)) return v.arg(2)!!.tostring()
             val filename: LuaString = v.arg1()!!.strvalue()!!
 
@@ -280,12 +294,9 @@ class PackageLib : TwoArgFunction() {
                 val template: String = path.substring(b, e)
 
 
-                // create filename
-                val q: Int = template.indexOf('?')
-                var filename = template
-                if (q >= 0) {
-                    filename = template.substring(0, q) + name + template.substring(q + 1)
-                }
+                // create filename: every '?' stands for the name, not just
+                // the first one
+                val filename: String = template.replace("?", name)
 
 
                 // try opening the file
@@ -301,7 +312,10 @@ class PackageLib : TwoArgFunction() {
 
                 // report error
                 if (sb == null) sb = StringBuilder()
-                sb.append("\n\t" + filename)
+                // One line per template that did not match, worded the way Lua
+                // words it so a caller can read the list back.
+                if (sb.isNotEmpty()) sb.append("\n\t")
+                sb.append("no file '" + filename + "'")
             }
             return (varargsOf(NIL, valueOf(sb.toString())))!!
         }
@@ -315,7 +329,9 @@ class PackageLib : TwoArgFunction() {
                     ?: return valueOf("\n\tno class '$className'")
                 varargsOf(value, globals!!)!!
             } catch (error: Throwable) {
-                valueOf("\n\tclass load failed on '$className', $error")
+                // Reported the way the other searchers report, so a failed
+                // require reads as a list of places that were looked in.
+                valueOf("\n\tno class '$className'")
             }
         }
     }

@@ -664,8 +664,9 @@ object FragmentsTest : TestSuite() {
         }
 
         fun testNullError() {
+            // A nil error object becomes text at the point it is raised.
             runFragment(
-                LuaValue.varargsOf(LuaValue.FALSE, LuaValue.NIL)!!,
+                LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf("<no error object>"))!!,
                 "return pcall(error)\n"
             )
         }
@@ -692,7 +693,10 @@ object FragmentsTest : TestSuite() {
 
         fun testErrorArgIsNil() {
             runFragment(
-                LuaValue.varargsOf(LuaValue.valueOf("nil"), LuaValue.NIL)!!,
+                LuaValue.varargsOf(
+                    LuaValue.valueOf("string"),
+                    LuaValue.valueOf("<no error object>"),
+                )!!,
                 "a,b = pcall(error); return type(b), b\n"
             )
         }

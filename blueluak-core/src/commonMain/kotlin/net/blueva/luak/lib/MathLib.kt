@@ -164,7 +164,13 @@ open class MathLib : TwoArgFunction() {
             if (x.isinttype()) return x
             val n: LuaValue = x.tonumber()
             if (n.isnil()) return NIL
+            // A numeral that already denotes an integer is one, whatever its
+            // magnitude; only a float has to be checked for a whole value.
+            if (n.isinttype()) return n
             val d: Double = n.todouble()
+            // Range as well as round trip: converting a double past the
+            // integer range saturates, and converting that back matches.
+            if (d < -9.2233720368547758E18 || d >= 9.2233720368547758E18) return NIL
             val l: Long = d.toLong()
             return if (l.toDouble() == d) valueOf(l) else NIL
         }
@@ -299,10 +305,34 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
+    /**
+     * `math.ldexp (m, e)`: `m * 2^e`.
+     *
+     * Split into steps that each stay inside the double range, so a large
+     * exponent does not go through an infinity on the way and lose the value.
+     */
     internal class ldexp : BinaryOp() {
         override fun call(x: Double, y: Double): Double {
-            // This is the behavior on os-x, windows differs in rounding behavior.
-            return x * Double.fromBits(((y.toLong()) + 1023) shl 52)
+            if (x == 0.0 || x.isNaN() || x.isInfinite()) return x
+            var result: Double = x
+            var remaining: Int = y.toInt()
+            while (remaining > 1000) {
+                result *= net.blueva.luak.lib.MathLib.Companion.TWO_POW_1000
+                remaining -= 1000
+            }
+            while (remaining < -1000) {
+                result /= net.blueva.luak.lib.MathLib.Companion.TWO_POW_1000
+                remaining += 1000
+            }
+            var step = 1.0
+            var factor = 2.0
+            var count: Int = if (remaining < 0) -remaining else remaining
+            while (count > 0) {
+                if (count and 1 == 1) step *= factor
+                factor *= factor
+                count = count shr 1
+            }
+            return if (remaining < 0) result / step else result * step
         }
     }
 
@@ -316,6 +346,9 @@ open class MathLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Double = args.checkdouble(1)
             if (x == 0.0) return (varargsOf(ZERO, (ZERO)!!))!!
+            // An infinity and a NaN have no mantissa and exponent to split
+            // into; C answers the value itself with a zero exponent.
+            if (x.isNaN() || x.isInfinite()) return (varargsOf(valueOf(x), (ZERO)!!))!!
             val bits: Long = (x).toBits()
             val m =
                 ((bits and ((-1L shl 52).inv()).toLong()) + (1L shl 52)) * (if (bits >= 0) (.5 / (1L shl 52)) else (-.5 / (1L shl 52)))
@@ -459,8 +492,26 @@ open class MathLib : TwoArgFunction() {
     }
 
     companion object {
+        /** 2^1000, the largest step ldexp can take without leaving the range. */
+        internal val TWO_POW_1000: Double = run {
+            var result = 1.0
+            repeat(1000) { result *= 2.0 }
+            result
+        }
+
         /** A float result becomes an integer when it is representable as one. */
+        /**
+         * The integer [value] denotes, or the float itself when it denotes none.
+         *
+         * The range has to be checked as well as the round trip: converting a
+         * double past the integer range saturates at the end, and converting
+         * that back lands on the same double, so `2^63` would otherwise look
+         * like an integer.
+         */
         internal fun narrowToInteger(value: Double): LuaValue {
+            if (value < -9.2233720368547758E18 || value >= 9.2233720368547758E18) {
+                return LuaValue.valueOf(value)
+            }
             val asLong: Long = value.toLong()
             return if (asLong.toDouble() == value) LuaValue.valueOf(asLong) else LuaValue.valueOf(value)
         }

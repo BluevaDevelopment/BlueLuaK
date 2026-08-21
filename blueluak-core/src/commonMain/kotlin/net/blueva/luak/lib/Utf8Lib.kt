@@ -102,8 +102,10 @@ class Utf8Lib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val s: LuaString = args.checkstring(1)!!
             val length: Int = s.m_length
-            val first: Int = position(args.optint(2, 1), length, 1)
-            val last: Int = position(args.optint(3, -1), length, 1)
+            // Zero is out of bounds rather than a stand-in for one: a
+            // position counts from 1, or from the end when negative.
+            val first: Int = position(args.optint(2, 1), length, 0)
+            val last: Int = position(args.optint(3, -1), length, 0)
             val lax: Boolean = args.optboolean(4, false)
             if (first < 1 || first > length + 1) LuaValue.argerror(2, "initial position out of bounds")
             if (last > length) LuaValue.argerror(3, "final position out of bounds")
@@ -169,6 +171,10 @@ class Utf8Lib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val s: LuaString = args.checkstring(1)!!
             val lax: Boolean = args.optboolean(2, false)
+            // A string that begins mid-sequence has no first character to
+            // report, so the mistake is in the argument rather than in the
+            // iteration that would follow.
+            args.argcheck(s.m_length == 0 || !isContinuation(s, 1), 1, "invalid UTF-8 code")
             return LuaValue.varargsOf(iterator(lax), s, LuaValue.valueOf(0L))!!
         }
     }
@@ -187,7 +193,12 @@ class Utf8Lib : TwoArgFunction() {
                 at = 1
             }
             if (at > length) return NIL
-            val decoded: Long = decode(s, at, lax) ?: LuaValue.error("invalid UTF-8 code").let { return NONE!! }
+            val decoded: Long = decode(s, at, lax)
+                ?: LuaValue.error("invalid UTF-8 code").let { return NONE!! }
+            // A continuation byte where the next character should start means
+            // the sequence just read was followed by stray bytes.
+            val after: Int = at + sequenceLength(s, at)
+            if (after <= length && isContinuation(s, after)) LuaValue.error("invalid UTF-8 code")
             return LuaValue.varargsOf(LuaValue.valueOf(at.toLong()), LuaValue.valueOf(decoded))!!
         }
     }

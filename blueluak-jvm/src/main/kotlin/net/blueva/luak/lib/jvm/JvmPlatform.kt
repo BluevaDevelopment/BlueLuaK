@@ -92,7 +92,6 @@ object JvmPlatform {
         val globals = Globals()
         globals.load(BaseLib())
         globals.load(PackageLib())
-        globals.load(Bit32Lib())
         globals.load(TableLib())
         globals.load(net.blueva.luak.lib.StringLib())
         globals.load(CoroutineLib())
