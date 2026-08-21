@@ -227,7 +227,7 @@ class LuaJcMain private constructor(args: Array<String>) {
     }
 
     companion object {
-        private val version = Lua._VERSION + " Copyright (C) 2012 luaj.org"
+        private val version = Lua.BLUELUAK_VERSION + " Copyright (C) 2012 luaj.org"
 
         private val usage = "usage: java -cp blueluak-jvm.jar,bcel-5.2.jar luajc [options] fileordir [, fileordir ...]\n" +
                 "Available options are:\n" +

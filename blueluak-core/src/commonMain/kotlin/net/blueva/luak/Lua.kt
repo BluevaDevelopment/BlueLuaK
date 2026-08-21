@@ -26,8 +26,17 @@ package net.blueva.luak
  */
 open class Lua {
     companion object {
-    /** version is supplied by ant build task  */
-    val _VERSION: String = BuildInfo.VERSION
+    /** The Lua *language* version this runtime implements, as scripts see it in
+     * the `_VERSION` global. Lua programs branch on this
+     * (`if _VERSION == "Lua 5.4" then ...`) and the reference test suite reads
+     * it, so it must name the language and not the implementation. Bump it as
+     * the port to 5.5 lands, and see [BLUELUAK_VERSION] for BlueLuaK's own
+     * release number.  */
+    val _VERSION: String = "Lua 5.2"
+
+    /** BlueLuaK's own release, such as `"BlueLuaK 26.5"`. This is what tooling
+     * should report as the *engine* version; [_VERSION] is the language.  */
+    val BLUELUAK_VERSION: String = BuildInfo.VERSION
 
     /** use return values from previous op  */
     val LUA_MULTRET: Int = -1

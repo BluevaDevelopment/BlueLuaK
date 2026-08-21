@@ -200,11 +200,11 @@ class LuaScriptEngine : AbstractScriptEngine(), ScriptEngine, Compilable {
     }
 
     companion object {
-        private val __ENGINE_VERSION__ = Lua._VERSION
+        private val __ENGINE_VERSION__ = Lua.BLUELUAK_VERSION
         private const val __NAME__ = "BlueLuaK"
         private const val __SHORT_NAME__ = "BlueLuaK"
         private const val __LANGUAGE__ = "lua"
-        private const val __LANGUAGE_VERSION__ = "5.2"
+        private val __LANGUAGE_VERSION__ = Lua._VERSION.removePrefix("Lua ")
         private const val __ARGV__ = "arg"
         private const val __FILENAME__ = "?"
 

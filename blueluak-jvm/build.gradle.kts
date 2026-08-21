@@ -35,6 +35,11 @@ tasks.compileTestJava {
 
 tasks.test {
     useJUnit()
+    // LuaConformanceReport reads the Lua reference suite from here. Gradle does
+    // not forward its own -D flags to the test JVM, so pass it through; the
+    // BLUELUAK_LUA_TESTSUITE environment variable needs no wiring.
+    providers.systemProperty("blueluak.lua.testsuite").orNull
+        ?.let { systemProperty("blueluak.lua.testsuite", it) }
     testLogging {
         events("failed")
     }

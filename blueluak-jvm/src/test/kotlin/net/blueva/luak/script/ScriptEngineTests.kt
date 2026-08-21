@@ -64,9 +64,9 @@ object ScriptEngineTests : TestSuite() {
             val e = ScriptEngineManager().getEngineByName("luaj")
             val f = e.getFactory()
             TestCase.assertEquals("BlueLuaK", f.getEngineName())
-            TestCase.assertEquals(Lua._VERSION, f.getEngineVersion())
+            TestCase.assertEquals(Lua.BLUELUAK_VERSION, f.getEngineVersion())
             TestCase.assertEquals("lua", f.getLanguageName())
-            TestCase.assertEquals("5.2", f.getLanguageVersion())
+            TestCase.assertEquals(Lua._VERSION.removePrefix("Lua "), f.getLanguageVersion())
         }
     }
 

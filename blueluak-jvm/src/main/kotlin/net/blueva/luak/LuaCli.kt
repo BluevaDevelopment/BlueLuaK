@@ -26,7 +26,7 @@ import java.util.*
  * lua command for use in JVM environments.
  */
 object LuaCli {
-    private val version = Lua._VERSION + " Copyright (c) 2012 Luaj.org.org"
+    private val version = Lua.BLUELUAK_VERSION + " Copyright (c) 2012 Luaj.org.org"
 
     private val usage = "usage: java -cp blueluak-jvm.jar lua [options] [script [args]].\n" +
             "Available options are:\n" +
