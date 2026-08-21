@@ -189,29 +189,35 @@ class TableLib : TwoArgFunction() {
 
     internal class insert : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            val list: LuaValue = checkindexable(args, writable = true)
+            // The first free slot. A length of math.maxinteger leaves no room
+            // for one more, and the count wraps round rather than overflowing,
+            // which is what Lua does here.
+            val empty: Long = list.len().checklong() + 1L
+            val pos: Long
             when (args.narg()) {
-                2 -> {
-                    val table: LuaTable = args.checktable(1)
-                    table.insert(table.length() + 1, (args.arg(2))!!)
-                    return (NONE)!!
-                }
+                2 -> pos = empty
 
                 3 -> {
-                    val table: LuaTable = args.checktable(1)
-                    val pos: Int = args.checkint(2)
-                    val max: Int = table.length() + 1
-                    if (pos < 1 || pos > max) argerror(
+                    pos = args.checklong(2)
+                    // Read unsigned, so a position of zero or a negative one
+                    // is out of bounds without a separate test.
+                    args.argcheck(
+                        (pos - 1L).toULong() < empty.toULong(),
                         2,
-                        "position out of bounds: " + pos + " not between 1 and " + max
+                        "position out of bounds",
                     )
-                    table.insert(pos, (args.arg(3))!!)
-                    return (NONE)!!
+                    var index: Long = empty
+                    while (index > pos) {
+                        list.set(LuaValue.valueOf(index), list.get(LuaValue.valueOf(index - 1L)))
+                        index--
+                    }
                 }
 
-                else -> {
-                    return (error("wrong number of arguments to 'table.insert': " + args.narg() + " (must be 2 or 3)"))!!
-                }
+                else -> return (error("wrong number of arguments to 'insert'"))!!
             }
+            list.set(LuaValue.valueOf(pos), (args.arg(args.narg()))!!)
+            return (NONE)!!
         }
     }
 
@@ -286,11 +292,17 @@ class TableLib : TwoArgFunction() {
  * metatable supplies `__index` - and rejects everything else with the ordinary
  * "table expected" complaint.
  */
-private fun checkindexable(args: Varargs): LuaValue {
+private fun checkindexable(args: Varargs, writable: Boolean = false): LuaValue {
     val list: LuaValue = args.checkvalue(1)!!
     if (list.istable()) return list
     val metatable: LuaValue? = list.getmetatable()
-    if (metatable != null && !metatable.isnil() && !metatable.get("__index")!!.isnil()) return list
+    if (metatable != null && !metatable.isnil()) {
+        val readable: Boolean = !metatable.get("__index")!!.isnil()
+        // A function that writes back needs somewhere to write: a string can
+        // be read like a table but not assigned to.
+        val assignable: Boolean = !writable || !metatable.get("__newindex")!!.isnil()
+        if (readable && assignable) return list
+    }
     args.checktable(1) // raises "bad argument #1 ... (table expected, got X)"
     return list
 }

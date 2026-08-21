@@ -180,25 +180,26 @@ class DebugLib : TwoArgFunction() {
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ISVARARG, if (ar.isvararg) ONE else ZERO)
             }
             if (what.indexOf('n') >= 0) {
-                info.set(
-                    net.blueva.luak.lib.DebugLib.Companion.NAME,
-                    LuaValue.valueOf(if (ar.name != null) ar.name else "?")
-                )
+                // A function looked up by value has no call to be named from,
+                // and then the field is absent rather than a placeholder.
+                val named: String? = ar.name
+                if (named != null) {
+                    info.set(net.blueva.luak.lib.DebugLib.Companion.NAME, LuaValue.valueOf(named))
+                }
                 info.set(net.blueva.luak.lib.DebugLib.Companion.NAMEWHAT, LuaValue.valueOf(ar.namewhat))
             }
             if (what.indexOf('t') >= 0) {
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ISTAILCALL, ZERO)
             }
-            // A function that is not written in Lua has no lines to report.
+            // A function that is not written in Lua has no lines to report,
+            // and leaves the field absent rather than empty.
             if (what.indexOf('L') >= 0 && func != null && func.isclosure()) {
                 val lines: LuaTable = LuaTable()
+                // Every line an instruction was compiled onto, as a set: the
+                // ones a breakpoint can usefully be put on.
+                val lineinfo: IntArray? = func.checkclosure()!!.p.lineinfo
+                if (lineinfo != null) for (line in lineinfo) lines.set(line, TRUE!!)
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ACTIVELINES, lines)
-                var cf: CallFrame?
-                var l = 1
-                while ((callstack.getCallFrame(l).also { cf = it }) != null) {
-                    if (cf!!.f === func) lines.insert(-1, valueOf(cf.currentline()))
-                    ++l
-                }
             }
             if (what.indexOf('f') >= 0) {
                 if (func != null) info.set(net.blueva.luak.lib.DebugLib.Companion.FUNC, func)
@@ -212,10 +213,22 @@ class DebugLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
+            // A function where a level would go asks for a parameter's name,
+            // which lives in the prototype rather than on any stack, so only
+            // the name comes back and no value with it.
+            if (args.isfunction(a)) {
+                val func: LuaValue = args.checkfunction(a)!!
+                val index: Int = args.checkint(a + 1)
+                if (func !is LuaClosure) return NIL!!
+                return (func.p.getlocalname(index, 0) ?: NIL)!!
+            }
             val level: Int = args.checkint(a++)
             val local: Int = args.checkint(a++)
             val f = callstack(thread).getCallFrame(level)
-            return (if (f != null) f.getLocal(local) else NONE)!!
+            // A level that names no frame is a mistake in the call, not a
+            // question with a nil answer.
+            if (f == null) LuaValue.argerror(a - 2, "level out of range")
+            return (f!!.getLocal(local))!!
         }
     }
 
@@ -293,7 +306,8 @@ class DebugLib : TwoArgFunction() {
             val local: Int = args.checkint(a++)
             val value: LuaValue? = args.arg(a++)
             val f = callstack(thread).getCallFrame(level)
-            return (if (f != null) f.setLocal(local, value) else NONE)!!
+            if (f == null) LuaValue.argerror(a - 3, "level out of range")
+            return (f!!.setLocal(local, value))!!
         }
     }
 
@@ -410,8 +424,10 @@ class DebugLib : TwoArgFunction() {
             NIL
         )
         if (s.hookline) {
-            val newline = callstack().currentline()
-            if (newline != s.lastline) {
+            val frames: CallStack = callstack()
+            val frame: CallFrame? = if (frames.calls > 0) frames.frame!![frames.calls - 1] else null
+            if (frame != null && frame.reachedNewLine()) {
+                val newline: Int = frame.currentline()
                 s.lastline = newline
                 callHook(s, net.blueva.luak.lib.DebugLib.Companion.LINE, LuaValue.valueOf(newline))
             }
@@ -421,8 +437,33 @@ class DebugLib : TwoArgFunction() {
     fun onReturn() {
         val s: LuaThread.State = globals!!.running.state
         if (s.inhook) return
-        callstack().onReturn()
+        // The hook runs while the frame is still there, so code inside it can
+        // still ask which function is returning.
         if (s.hookrtrn) callHook(s, net.blueva.luak.lib.DebugLib.Companion.RETURN, NIL)
+        callstack().onReturn()
+    }
+
+    /**
+     * Runs [body] with the innermost call frame out of sight.
+     *
+     * An error has already left the function by the time its to-be-closed
+     * variables are closed, so a `__close` handler asking who called it must
+     * be shown that function's caller rather than the function itself.
+     */
+    fun <T> withoutTopFrame(body: () -> T): T {
+        val stack: CallStack = callstack()
+        if (stack.calls == 0) return body()
+        // The slot is not just hidden but reused by whatever runs next, so
+        // what was in it has to be kept and put back afterwards.
+        val hidden: CallFrame = stack.frame!![stack.calls - 1]!!
+        val saved: Array<Any?> = hidden.snapshot()
+        stack.calls--
+        try {
+            return body()
+        } finally {
+            stack.calls++
+            hidden.restore(saved)
+        }
     }
 
     fun traceback(level: Int): String {
@@ -436,6 +477,11 @@ class DebugLib : TwoArgFunction() {
     fun callHook(s: LuaThread.State, type: LuaValue?, arg: LuaValue?) {
         if (s.inhook || s.hookfunc == null) return
         s.inhook = true
+        // The hook gets a frame of its own, as it does upstream, so code
+        // inside it counts levels from itself: level 1 is the hook and level
+        // 2 the function whose return or line it was called for.
+        val hooked: Boolean = s.hookfunc is LuaFunction
+        if (hooked) callstack().onCall(s.hookfunc as LuaFunction)
         try {
             s.hookfunc!!.call(type, arg)
         } catch (e: LuaError) {
@@ -443,6 +489,7 @@ class DebugLib : TwoArgFunction() {
         } catch (e: RuntimeException) {
             throw LuaError(e)
         } finally {
+            if (hooked) callstack().onReturn()
             s.inhook = false
         }
     }
@@ -547,7 +594,11 @@ class DebugLib : TwoArgFunction() {
                 val ar = auxgetinfo("n", c.f, c)
                 if (c.linedefined() == 0) sb.append("main chunk")
                 else if (ar.name != null) {
-                    sb.append("function '")
+                    // How the name was reached comes first, as Lua writes it:
+                    // "global 'error'", "upvalue 'f'", "metamethod 'close'".
+                    val namewhat: String = ar.namewhat.orEmpty()
+                    sb.append(if (namewhat.isEmpty()) "function" else namewhat)
+                    sb.append(" '")
                     sb.append(ar.name)
                     sb.append('\'')
                 } else {
@@ -626,6 +677,15 @@ class DebugLib : TwoArgFunction() {
     class CallFrame {
         var f: LuaFunction? = null
         var pc: Int = 0
+
+        /**
+         * Where this frame was one instruction ago, upstream's `oldpc`.
+         *
+         * The line hook fires when execution reaches a line other than the one
+         * this points at, or jumps backwards, which is how a loop body on a
+         * single line still reports every pass.
+         */
+        var oldpc: Int = 0
         var top: Int = 0
         var v: Varargs? = null
         var stack: Array<LuaValue?>? = null
@@ -648,9 +708,26 @@ class DebugLib : TwoArgFunction() {
             this.f = null
             this.v = null
             this.stack = null
+            this.pc = 0
+            this.oldpc = 0
+        }
+
+        /** Everything [restore] needs to put this frame back as it is now. */
+        internal fun snapshot(): Array<Any?> = arrayOf(f, pc, top, v, stack, oldpc)
+
+        /** Puts back a frame that something else was allowed to overwrite. */
+        @Suppress("UNCHECKED_CAST")
+        internal fun restore(saved: Array<Any?>) {
+            f = saved[0] as LuaFunction?
+            pc = saved[1] as Int
+            top = saved[2] as Int
+            v = saved[3] as Varargs?
+            stack = saved[4] as Array<LuaValue?>?
+            oldpc = saved[5] as Int
         }
 
         fun instr(pc: Int, v: Varargs?, top: Int) {
+            this.oldpc = this.pc
             this.pc = pc
             this.v = v
             this.top = top
@@ -674,6 +751,21 @@ class DebugLib : TwoArgFunction() {
             } else {
                 return NIL
             }
+        }
+
+        /**
+         * True when the line hook should fire for the instruction about to run.
+         *
+         * That is when it sits on a different line from the one before it, or
+         * when the jump went backwards: a loop written on one line still
+         * reports each pass that way.
+         */
+        internal fun reachedNewLine(): Boolean {
+            if (!f!!.isclosure()) return false
+            val li: IntArray = f!!.checkclosure()!!.p.lineinfo ?: return false
+            if (pc < 0 || pc >= li.size) return false
+            if (pc <= oldpc) return true
+            return oldpc < 0 || oldpc >= li.size || li[pc] != li[oldpc]
         }
 
         fun currentline(): Int {
@@ -777,9 +869,14 @@ class DebugLib : TwoArgFunction() {
                 Lua.OP_LT -> tm = LuaValue.LT
                 Lua.OP_LE -> tm = LuaValue.LE
                 Lua.OP_CONCAT -> tm = LuaValue.CONCAT
+                // Leaving a block or a function is where a to-be-closed
+                // variable's handler runs, so a frame reached from there is
+                // that handler.
+                Lua.OP_JMP, Lua.OP_RETURN -> tm = LuaValue.CLOSE
                 else -> return null /* else no useful name can be found */
             }
-            return net.blueva.luak.lib.DebugLib.NameWhat(tm.tojstring(), "metamethod")
+            // The metatag is spelled "__close"; the name reported is "close".
+            return net.blueva.luak.lib.DebugLib.NameWhat(tm.tojstring().substring(2), "metamethod")
         }
 
         // return NameWhat if found, null if not

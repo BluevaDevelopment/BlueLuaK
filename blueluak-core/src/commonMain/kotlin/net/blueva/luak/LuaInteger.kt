@@ -265,7 +265,11 @@ class LuaInteger
     }
 
     override fun div(rhs: LuaValue): LuaValue {
-        return rhs.divInto((v).toDouble())
+        // Read as a number first so a metamethod on the other side is handed
+        // this operand as the integer it is, rather than a float of it.
+        val other: LuaValue = rhs.tonumber()
+        if (other.isnil()) return arithmt(net.blueva.luak.LuaValue.Companion.DIV, rhs)
+        return (LuaDouble.ddiv((v).toDouble(), other.todouble()))!!
     }
 
     override fun div(rhs: Double): LuaValue {

@@ -108,9 +108,10 @@ class LuaJC protected constructor() : Globals.Loader {
 
     @Throws(IOException::class)
     override fun load(p: Prototype?, name: String?, globals: LuaValue?): LuaFunction? {
-        // The generated code has nowhere to run a __close handler from and no
-        // notion of a declared global, so a chunk that uses either is left to
-        // the interpreter rather than compiled wrongly.
+        // The generated code has nowhere to run a __close handler from, no
+        // notion of a declared global, and still counts a numeric 'for' the
+        // way 5.2 did, so a chunk that uses any of those is left to the
+        // interpreter rather than compiled wrongly.
         if (p != null && usesInterpreterOnlyOpcodes(p)) {
             return LuaClosure(p, globals as? net.blueva.luak.Globals)
         }
@@ -125,7 +126,10 @@ class LuaJC protected constructor() : Globals.Loader {
         val code: IntArray = p.code ?: return false
         for (instruction in code) {
             when (net.blueva.luak.Lua.GET_OPCODE(instruction)) {
-                net.blueva.luak.Lua.OP_TBC, net.blueva.luak.Lua.OP_ERRNNIL -> return true
+                net.blueva.luak.Lua.OP_TBC,
+                net.blueva.luak.Lua.OP_ERRNNIL,
+                net.blueva.luak.Lua.OP_FORPREP,
+                -> return true
             }
         }
         val inner: Array<Prototype?> = p.p ?: return false

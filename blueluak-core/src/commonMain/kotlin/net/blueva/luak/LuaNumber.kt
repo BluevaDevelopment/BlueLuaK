@@ -153,7 +153,7 @@ internal fun luaBitwiseOperand(value: LuaValue): Long {
         if (fitsInteger(asDouble)) return asDouble.toLong()
         LuaValue.error("number has no integer representation")
     }
-    LuaValue.error("attempt to perform bitwise operation on a " + value.typename() + " value")
+    LuaValue.error("attempt to perform bitwise operation on a " + value.objtypename() + " value")
     return 0L
 }
 

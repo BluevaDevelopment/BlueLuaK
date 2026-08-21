@@ -151,18 +151,17 @@ class LuaThread : LuaValue {
      * @return `true`, or `false` plus the error a closer raised
      */
     fun close(): Varargs {
-        // Raised rather than reported: there is no coroutine here to have
-        // failed, so this is a mistake in the call itself.
-        if (this.isMainThread) LuaValue.error("cannot close main thread")
+        // Raised rather than reported: only a suspended or dead coroutine can
+        // be closed, so anything else is a mistake in the call itself. The
+        // status is looked at before the thread's identity, since the main
+        // thread is "normal" while whatever it resumed is running.
         val s = this.state
-        if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING ||
-            s.status == net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
-        ) {
-            val name = if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING) "running" else "normal"
-            return LuaValue.varargsOf(
-                LuaValue.FALSE,
-                LuaValue.valueOf("cannot close a " + name + " coroutine"),
-            )!!
+        if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_NORMAL) {
+            LuaValue.error("cannot close a normal coroutine")
+        }
+        if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING) {
+            if (this.isMainThread) LuaValue.error("cannot close main thread")
+            LuaValue.error("cannot close a running coroutine")
         }
         return s.lua_close(this)
     }

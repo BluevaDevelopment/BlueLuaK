@@ -873,6 +873,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         new_localvar(ts)
     }
 
+    /** Declares a local with a kind other than the plain one. */
+    fun new_varkind(name: LuaString?, kind: Int) {
+        new_localvar(name)
+        dyd.actvar!![dyd.n_actvar - 1]!!.kind = kind
+    }
+
     fun adjustlocalvars(nvars: Int) {
         var nvars = nvars
         val fs: FuncState = this.fs!!
@@ -1801,7 +1807,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
-    fun forbody(base: Int, line: Int, nvars: Int, isnum: Boolean, closing: Boolean = false) {
+    fun forbody(base: Int, line: Int, nvars: Int, isnum: Boolean) {
         /* forbody -> DO block */
         val bl: BlockCnt = BlockCnt()
         val fs: FuncState = this.fs!!
@@ -1810,10 +1816,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         // A generic for has a fourth control value, closed when the loop ends,
         // which is how it can own the resource its iterator walks.
         this.adjustlocalvars(if (isnum) 3 else 4) /* control variables */
-        // Only a loop that was actually given a fourth value can have anything
-        // to close, and saying so at compile time keeps the ordinary
-        // "for k, v in pairs(t)" free of the machinery.
-        if (closing) {
+        // The mark goes in whatever the iterator turns out to return, since
+        // how many values it produces is not known until it runs; a fourth
+        // value of nil or false is skipped when the instruction executes.
+        if (!isnum) {
             fs.markblocktobeclosed()
             fs.codeABC(Lua.OP_TBC, base + 3, 0, 0)
         }
@@ -1845,10 +1851,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         /* fornum -> NAME = exp1,exp1[,exp1] forbody */
         val fs: FuncState = this.fs!!
         val base: Int = fs.freereg.toInt()
+        // The loop's own variable is a constant: Lua 5.5 refuses an
+        // assignment to it, since the loop overwrites it every pass anyway.
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_LIMIT)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STEP)
-        this.new_localvar(varname)
+        this.new_varkind(varname, net.blueva.luak.compiler.LexState.Companion.RDKCONST)
         this.checknext('='.code)
         this.exp1() /* initial value */
         this.checknext(','.code)
@@ -1875,7 +1883,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CONTROL)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CLOSING)
         /* create declared variables */
-        this.new_localvar(indexname)
+        // The first one is the control variable, which the loop overwrites
+        // every pass, so Lua 5.5 refuses an assignment to it.
+        this.new_varkind(indexname, net.blueva.luak.compiler.LexState.Companion.RDKCONST)
         while (this.testnext(','.code)) {
             this.new_localvar(this.str_checkname())
             ++nvars
@@ -1885,7 +1895,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val nexps: Int = this.explist(e)
         this.adjust_assign(4, nexps, e)
         fs.checkstack(3) /* extra space to call generator */
-        this.forbody(base, line, nvars - 4, false, nexps >= 4)
+        this.forbody(base, line, nvars - 4, false)
     }
 
 
@@ -2245,7 +2255,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             nret = this.explist(e) /* optional return values */
             if (hasmultret(e.k)) {
                 fs.setmultret(e)
-                if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1) { /* tail call? */
+                // Inside the scope of a to-be-closed variable the frame has
+                // to outlive the call, so the return stays an ordinary one.
+                if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1 &&
+                    !fs.bl!!.insidetbc
+                ) { /* tail call? */
                     SET_OPCODE((fs.getcodePtr(e))!!, Lua.OP_TAILCALL)
                     _assert(Lua.GETARG_A(fs.getcode(e)) == fs.nactvar.toInt())
                 }
@@ -2387,9 +2401,14 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     companion object {
         protected val RESERVED_LOCAL_VAR_FOR_CONTROL: String = "(for control)"
+
+        // The iterator, the state and the value the loop closes at the end all
+        // go by one name, as they do upstream, so code that walks a frame's
+        // locals counts them the way Lua's own test suite expects: the third
+        // "(for state)" is the closing one.
         protected val RESERVED_LOCAL_VAR_FOR_CLOSING: String = "(for state)"
         protected val RESERVED_LOCAL_VAR_FOR_STATE: String = "(for state)"
-        protected val RESERVED_LOCAL_VAR_FOR_GENERATOR: String = "(for generator)"
+        protected val RESERVED_LOCAL_VAR_FOR_GENERATOR: String = "(for state)"
         protected val RESERVED_LOCAL_VAR_FOR_STEP: String = "(for step)"
         protected val RESERVED_LOCAL_VAR_FOR_LIMIT: String = "(for limit)"
         protected val RESERVED_LOCAL_VAR_FOR_INDEX: String = "(for index)"

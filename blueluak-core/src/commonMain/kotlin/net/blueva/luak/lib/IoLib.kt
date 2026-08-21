@@ -225,7 +225,13 @@ open class IoLib : TwoArgFunction() {
             appendMode -> if (updateMode) PlatformFileMode.READ_APPEND else PlatformFileMode.APPEND
             else -> if (updateMode) PlatformFileMode.READ_WRITE_TRUNCATE else PlatformFileMode.WRITE
         }
-        return HostFile(platformOpenFile(path, mode), path, deleteOnClose = false)
+        return HostFile(
+            platformOpenFile(path, mode),
+            path,
+            deleteOnClose = false,
+            readable = readMode || updateMode,
+            writable = !readMode || updateMode,
+        )
     }
 
     /**
@@ -236,7 +242,13 @@ open class IoLib : TwoArgFunction() {
     @kotlin.Throws(IOException::class)
     protected open fun tmpFile(): File? {
         val path: String = platformTempFilePath()
-        return HostFile(platformOpenFile(path, PlatformFileMode.READ_WRITE_TRUNCATE), path, deleteOnClose = true)
+        return HostFile(
+            platformOpenFile(path, PlatformFileMode.READ_WRITE_TRUNCATE),
+            path,
+            deleteOnClose = true,
+            readable = true,
+            writable = true,
+        )
     }
 
     /**
@@ -259,6 +271,10 @@ open class IoLib : TwoArgFunction() {
         private val handle: PlatformFileHandle,
         private val path: String,
         private val deleteOnClose: Boolean,
+        /** Whether the mode it was opened in allows reading. */
+        private val readable: Boolean,
+        /** Whether the mode it was opened in allows writing. */
+        private val writable: Boolean,
     ) : File() {
         private var closed = false
         private var nobuffer = false
@@ -273,6 +289,9 @@ open class IoLib : TwoArgFunction() {
 
         @kotlin.Throws(IOException::class)
         override fun write(string: LuaString?) {
+            // What the host reports for the wrong end of a handle, which is
+            // the failure the caller is told about.
+            if (!writable) throw IOException(BAD_DESCRIPTOR)
             val s: LuaString = string ?: return
             handle.write(s.m_bytes, s.m_offset, s.m_length)
             if (nobuffer) flush()
@@ -323,12 +342,14 @@ open class IoLib : TwoArgFunction() {
 
         @kotlin.Throws(IOException::class, EOFException::class)
         override fun read(): Int {
+            if (!readable) throw IOException(BAD_DESCRIPTOR)
             val byte = ByteArray(1)
             return if (handle.read(byte, 0, 1) < 0) -1 else byte[0].toInt() and 0xff
         }
 
         @kotlin.Throws(IOException::class)
         override fun read(bytes: ByteArray?, offset: Int, length: Int): Int {
+            if (!readable) throw IOException(BAD_DESCRIPTOR)
             val target: ByteArray = bytes ?: return -1
             return handle.read(target, offset, length)
         }
@@ -506,8 +527,10 @@ open class IoLib : TwoArgFunction() {
         // the table expecting every value to be one of the library functions.
         filemethods!!.set("__name", "FILE*")
         // A file handle is closable, so `local f <close> = io.open(...)` closes
-        // it on the way out of the block whichever way the block is left.
-        filemethods!!.set("__close", filemethods!!.get("close")!!)
+        // it on the way out of the block whichever way the block is left. A
+        // handle that was closed by hand first is left alone rather than
+        // complained about, which is what lets both forms be written together.
+        filemethods!!.set("__close", closehandle())
         setLibInstance(mt)
 
 
@@ -630,7 +653,7 @@ open class IoLib : TwoArgFunction() {
     //	io.flush() -> bool
     @kotlin.Throws(IOException::class)
     fun _io_flush(): Varargs {
-        net.blueva.luak.lib.IoLib.Companion.checkopen(output())
+        net.blueva.luak.lib.IoLib.Companion.checkdefault(output(), "output")
         outfile!!.flush()
         return (LuaValue.TRUE)!!
     }
@@ -693,6 +716,13 @@ open class IoLib : TwoArgFunction() {
 
     //	io.lines(filename, ...) -> iterator
     fun _io_lines(args: Varargs): Varargs? {
+        // Every format is held on the stack while the iterator runs, so Lua
+        // puts a ceiling on how many there may be.
+        args.argcheck(
+            args.narg() - 1 <= net.blueva.luak.lib.IoLib.Companion.MAX_LINE_FORMATS,
+            net.blueva.luak.lib.IoLib.Companion.MAX_LINE_FORMATS + 2,
+            "too many arguments",
+        )
         val filename: String? = args.optjstring(1, null)
         val infile = if (filename == null) input() else ioopenfile(
             net.blueva.luak.lib.IoLib.Companion.FTYPE_NAMED,
@@ -706,14 +736,14 @@ open class IoLib : TwoArgFunction() {
     //	io.read(...) -> (...)
     @kotlin.Throws(IOException::class)
     fun _io_read(args: Varargs): Varargs {
-        net.blueva.luak.lib.IoLib.Companion.checkopen((input())!!)
+        net.blueva.luak.lib.IoLib.Companion.checkdefault((input())!!, "input")
         return ioread(infile!!, args)
     }
 
     //	io.write(...) -> void
     @kotlin.Throws(IOException::class)
     fun _io_write(args: Varargs): Varargs {
-        net.blueva.luak.lib.IoLib.Companion.checkopen(output())
+        net.blueva.luak.lib.IoLib.Companion.checkdefault(output(), "output")
         return net.blueva.luak.lib.IoLib.Companion.iowrite((outfile)!!, args)
     }
 
@@ -721,6 +751,20 @@ open class IoLib : TwoArgFunction() {
     @kotlin.Throws(IOException::class)
     fun _file_close(file: LuaValue?): Varargs {
         return net.blueva.luak.lib.IoLib.Companion.ioclose(net.blueva.luak.lib.IoLib.Companion.checkfile(file))
+    }
+
+    /**
+     * `__close` for a file handle, upstream's `f_gc`.
+     *
+     * Unlike `file:close()` this says nothing about a handle that is already
+     * closed: leaving the block is not a request to close it a second time.
+     */
+    internal class closehandle : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val file: File? = net.blueva.luak.lib.IoLib.Companion.optfile(args.arg1())
+            if (file == null || file.isclosed()) return (LuaValue.TRUE)!!
+            return net.blueva.luak.lib.IoLib.Companion.ioclose(file)
+        }
     }
 
     // file:flush() -> void
@@ -816,8 +860,8 @@ open class IoLib : TwoArgFunction() {
     }
 
     private fun lines(f: File?, toclose: Boolean, args: Varargs): Varargs? {
-        try {
-            return net.blueva.luak.lib.IoLib.IoLibV(
+        val iterator: LuaValue = try {
+            net.blueva.luak.lib.IoLib.IoLibV(
                 f,
                 "lnext",
                 net.blueva.luak.lib.IoLib.Companion.LINES_ITER,
@@ -828,6 +872,11 @@ open class IoLib : TwoArgFunction() {
         } catch (e: Exception) {
             return error("lines: " + e)
         }
+        // A file this call opened is handed back as the loop's fourth value,
+        // so the generic for closes it however the loop is left. A file the
+        // caller already had is left alone.
+        if (!toclose) return iterator
+        return varargsOf(arrayOf(iterator, NIL, NIL, f))
     }
 
     @kotlin.Throws(IOException::class)
@@ -946,6 +995,12 @@ open class IoLib : TwoArgFunction() {
 
         /** C's ENOENT: no such file or directory. */
         private const val ENOENT: Int = 2
+
+        /** C's EBADF: the handle is not open for what was asked of it. */
+        internal const val EBADF: Int = 9
+
+        /** What the host says when a handle is used the wrong way round. */
+        internal const val BAD_DESCRIPTOR: String = "Bad file descriptor"
         private val CLOSED_FILE: LuaValue? = valueOf("closed file")
 
         private const val IO_CLOSE = 0
@@ -996,7 +1051,7 @@ open class IoLib : TwoArgFunction() {
         )
 
         @kotlin.Throws(IOException::class)
-        private fun ioclose(f: File): Varargs {
+        internal fun ioclose(f: File): Varargs {
             if (f.isstdfile()) return net.blueva.luak.lib.IoLib.Companion.errorresult("cannot close standard file")
             else {
                 f.close()
@@ -1025,7 +1080,8 @@ open class IoLib : TwoArgFunction() {
          * caller branching on it is almost always looking for.
          */
         private fun errorresult(errortext: String?): Varargs {
-            return (varargsOf(NIL, valueOf(errortext), valueOf(ENOENT)))!!
+            val errno: Int = if (errortext == BAD_DESCRIPTOR) EBADF else ENOENT
+            return (varargsOf(NIL, valueOf(errortext), valueOf(errno)))!!
         }
 
         @kotlin.Throws(IOException::class)
@@ -1051,12 +1107,23 @@ open class IoLib : TwoArgFunction() {
             return f!!
         }
 
-        private fun optfile(`val`: LuaValue?): File? {
+        internal fun optfile(`val`: LuaValue?): File? {
             return if (`val` is File) `val` as File? else null
         }
 
         private fun checkopen(file: File): File {
             if (file.isclosed()) error("attempt to use a closed file")
+            return file
+        }
+
+        /**
+         * The default input or output file, refused if it has been closed.
+         *
+         * Named in the message, since a script that closed `io.input()` needs
+         * to know which of the two defaults it is being told about.
+         */
+        private fun checkdefault(file: File, which: String): File {
+            if (file.isclosed()) error("default " + which + " file is closed")
             return file
         }
 
@@ -1123,29 +1190,59 @@ open class IoLib : TwoArgFunction() {
         @kotlin.Throws(IOException::class)
         fun freadnumber(f: File): LuaValue {
             val baos: ByteArrayOutputStream = ByteArrayOutputStream()
+            var length = 0
+            var overflowed = false
+
+            /** Consumes one character out of [chars], if the next one is in it. */
+            fun one(chars: String): Boolean {
+                if (overflowed) return false
+                val c: Int = f.peek()
+                if (c < 0 || chars.indexOf(c.toChar()) < 0) return false
+                // Once the numeral is as long as Lua allows the read stops
+                // here, leaving the rest of it in the stream for whoever reads
+                // next, and the result is refused.
+                if (length >= net.blueva.luak.lib.IoLib.Companion.MAX_NUMERAL_LENGTH) {
+                    overflowed = true
+                    return false
+                }
+                f.read()
+                baos.write(c)
+                length++
+                return true
+            }
+
+            fun many(chars: String): Int {
+                var count = 0
+                while (one(chars)) count++
+                return count
+            }
+
             net.blueva.luak.lib.IoLib.Companion.freadchars(f, " \t\r\n", null)
-            net.blueva.luak.lib.IoLib.Companion.freadone(f, "-+", baos)
+            one("-+")
             var hexadecimal = false
             var digits = 0
-            if (net.blueva.luak.lib.IoLib.Companion.freadone(f, "0", baos)) {
-                if (net.blueva.luak.lib.IoLib.Companion.freadone(f, "xX", baos)) hexadecimal = true else digits = 1
+            if (one("0")) {
+                if (one("xX")) hexadecimal = true else digits = 1
             }
             val digitChars = if (hexadecimal) "0123456789abcdefABCDEF" else "0123456789"
-            digits += net.blueva.luak.lib.IoLib.Companion.freadchars(f, digitChars, baos)
-            if (net.blueva.luak.lib.IoLib.Companion.freadone(f, ".", baos)) {
-                digits += net.blueva.luak.lib.IoLib.Companion.freadchars(f, digitChars, baos)
+            digits += many(digitChars)
+            if (one(".")) digits += many(digitChars)
+            if (digits > 0 && one(if (hexadecimal) "pP" else "eE")) {
+                one("-+")
+                many("0123456789")
             }
-            if (digits > 0 &&
-                net.blueva.luak.lib.IoLib.Companion.freadone(f, if (hexadecimal) "pP" else "eE", baos)
-            ) {
-                net.blueva.luak.lib.IoLib.Companion.freadone(f, "-+", baos)
-                net.blueva.luak.lib.IoLib.Companion.freadchars(f, "0123456789", baos)
-            }
+            if (overflowed) return NIL
             // decodeToString(), not toString(): only the JVM's
             // ByteArrayOutputStream renders its own bytes as text.
             val s: String = baos.toByteArray().decodeToString()
             return net.blueva.luak.NumberParser.parse(s) ?: NIL
         }
+
+        /** As long as a numeral read from a file may be, upstream's `L_MAXLENNUM`. */
+        private const val MAX_NUMERAL_LENGTH = 200
+
+        /** As many formats as `io.lines` takes, upstream's `MAXARGLINE`. */
+        internal const val MAX_LINE_FORMATS = 250
 
         /** Consumes one character out of [chars], if the next one is in it. */
         @kotlin.Throws(IOException::class)

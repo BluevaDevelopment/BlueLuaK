@@ -217,7 +217,10 @@ open class LuaTable : LuaValue, Metatable {
         val key = key!!
         if (key > 0 && key <= array.size) {
             val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable!!.arrayget(array, key - 1)
-            return if (v != null) v else NIL
+            // An empty array slot is not proof the key is absent: growing the
+            // array part leaves earlier entries where they were, so the hash
+            // part still has to be asked.
+            if (v != null) return v
         }
         return hashget((LuaInteger.valueOf(key))!!)
     }
@@ -295,9 +298,18 @@ open class LuaTable : LuaValue, Metatable {
         if (!key.isinttype() || !arrayset(key.toint(), value)) hashset(key, value)
     }
 
-    /** Set an array element  */
+    /**
+     * Sets an array element.
+     *
+     * @return false when the key is not one the array part holds, so the
+     *   caller has to go to the hash part instead. Erasing a slot that is
+     *   already empty counts as that: the key may be sitting in the hash with
+     *   an index the array part happens to cover, and that is where it has to
+     *   be removed from.
+     */
     private fun arrayset(key: Int, value: LuaValue): Boolean {
         if (key > 0 && key <= array.size) {
+            if (value.isnil() && array[key - 1] == null) return false
             array[key - 1] = if (value.isnil()) null else (if (m_metatable != null) m_metatable!!.wrap(value) else value)
             return true
         }
@@ -372,7 +384,8 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun len(): LuaValue {
         val h: LuaValue = metatag(LEN)
-        if (h.toboolean()) return h.call(this)!!
+        // Lua hands a unary operator its operand twice.
+        if (h.toboolean()) return h.call(this, this)!!
         return (LuaInteger.valueOf(rawlen()))!!
     }
 
@@ -821,9 +834,8 @@ open class LuaTable : LuaValue, Metatable {
     override fun eq_b(`val`: LuaValue?): Boolean {
         val `val` = `val`!!
         if (this === `val`) return true
-        if (m_metatable == null || !`val`.istable()) return false
-        val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, (m_metatable!!.toLuaValue())!!, `val`, valmt)
+        if (!`val`.istable()) return false
+        return LuaValue.eqmtcall(this, `val`)
     }
 
     /** Unpack all the elements of this table  */
@@ -1263,13 +1275,17 @@ open class LuaTable : LuaValue, Metatable {
             return if (next != null) next!!.add(newEntry) else newEntry
         }
 
-        override fun remove(target: StrongSlot?): Slot {
+        override fun remove(target: StrongSlot?): Slot? {
+            // The rest of the chain is searched either way: dropping this
+            // placeholder must not drop the removal along with it.
+            val rest: Slot? = next?.remove(target)
             if (key() != null) {
-                next = next!!.remove(target)
+                // The key is still reachable, so it can still be handed to
+                // next(), and this placeholder has to stay to answer it.
+                next = rest
                 return this
-            } else {
-                return (next)!!
             }
+            return rest
         }
 
         override fun relink(rest: Slot?): Slot? {

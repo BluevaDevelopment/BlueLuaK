@@ -577,7 +577,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         pc += (i ushr 14) - 0x1ffff
                         if (a > 0) {
                             --a
-                            if (tbc != null) closeToBeClosed(tbc, stack, a, NIL)
+                            if (tbc != null) closeToBeClosed(tbc, stack, a, null)?.let { throw it }
                             if (openups == null) {
                                 ++pc
                                 continue
@@ -678,7 +678,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         }
                     }
 
-                    Lua.OP_TAILCALL -> when (i and Lua.MASK_B) {
+                    Lua.OP_TAILCALL -> {
+                        // A tail call leaves this frame before it is made, so
+                        // anything that cannot be called has to be reported
+                        // here while the instruction is still known.
+                        val target: LuaValue = stack[a]
+                        if (!target.isfunction() && target.metatag(LuaValue.CALL).isnil()) {
+                            error("attempt to call a " + target.objtypename() + " value")
+                        }
+                        when (i and Lua.MASK_B) {
                         (1 shl Lua.POS_B) -> return TailcallVarargs(stack[a], NONE)
                         (2 shl Lua.POS_B) -> return TailcallVarargs(stack[a], stack[a + 1])
                         (3 shl Lua.POS_B) -> return TailcallVarargs(stack[a], varargsOf(stack[a + 1], stack[a + 2]))
@@ -693,13 +701,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                 varargsOf(stack, a + 1, top - v.narg() - (a + 1), v) // from prev top
                             return TailcallVarargs(stack[a], v)
                         }
+                        }
                     }
 
                     Lua.OP_RETURN -> {
                         b = i ushr 23
                         // Before the results are read off the stack, as upstream
                         // closes at the return rather than after it.
-                        if (tbc != null) closeToBeClosed(tbc, stack, 0, NIL)
+                        if (tbc != null) closeToBeClosed(tbc, stack, 0, null)?.let { throw it }
                         when (b) {
                             0 -> return varargsOf(stack, a, top - v.narg() - a, v)
                             1 -> return NONE
@@ -709,29 +718,38 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_FORLOOP -> {
-                        val limit: LuaValue? = stack[a + 1]
                         val step: LuaValue = stack[a + 2]
-                        val idx: LuaValue = stack[a].add(step)
-                        if (if (step.gt_b(0)) idx.lteq_b((limit)!!) else idx.gteq_b((limit)!!)) {
-                            stack[a] = idx
-                            stack[a + 3] = idx
-                            pc += (i ushr 14) - 0x1ffff
+                        if (step is LuaInteger) {
+                            // Read as unsigned: only the test against zero and
+                            // the decrement matter, and both are the same bits.
+                            val remaining: Long = stack[a + 1].tolong()
+                            if (remaining != 0L) {
+                                stack[a + 1] = LuaValue.valueOf(remaining - 1L)
+                                val next: LuaValue = LuaValue.valueOf(stack[a].tolong() + step.tolong())
+                                stack[a] = next
+                                stack[a + 3] = next
+                                pc += (i ushr 14) - 0x1ffff
+                            }
+                        } else {
+                            val by: Double = step.todouble()
+                            val next: Double = stack[a].todouble() + by
+                            val limit: Double = stack[a + 1].todouble()
+                            if (if (by > 0.0) next <= limit else limit <= next) {
+                                val value: LuaValue = LuaValue.valueOf(next)
+                                stack[a] = value
+                                stack[a + 3] = value
+                                pc += (i ushr 14) - 0x1ffff
+                            }
                         }
                         ++pc
                         continue
                     }
 
                     Lua.OP_FORPREP -> {
-                        // Checked in upstream's order - limit, step, then the
-                        // initial value - so a loop with more than one bad
-                        // bound names the same one Lua would.
-                        val limit: LuaValue = forNumber(stack[a + 1], "limit")
-                        val step: LuaValue = forNumber(stack[a + 2], "step")
-                        val init: LuaValue = forNumber(stack[a], "initial value")
-                        stack[a] = init.sub(step)
-                        stack[a + 1] = limit
-                        stack[a + 2] = step
-                        pc += (i ushr 14) - 0x1ffff
+                        // The jump goes past the loop's own closing
+                        // instruction; a loop that does run falls through into
+                        // its body with the control variable already set.
+                        if (forPrep(stack, a)) pc += (i ushr 14) - 0x1ffff + 1
                         ++pc
                         continue
                     }
@@ -845,21 +863,29 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         } catch (le: LuaError) {
             // Unwinding past a to-be-closed variable still closes it, and the
             // handler is told which error it is unwinding from.
-            if (tbc != null) closeToBeClosed(tbc, stack, 0, le.messageObject ?: NIL)
-            if (le.traceback == null) {
-                enrichArgError(le, p, pc, stack)
-                enrichOperandError(le, p, pc, stack)
-                enrichCallError(le, p, pc)
-                enrichIndexError(le, p, pc)
-                processErrorHooks(le, p, pc)
+            // A closer that raises replaces the error being unwound, so what
+            // leaves here is not always what arrived.
+            val outgoing: LuaError = if (tbc == null) {
+                le
+            } else if (debuglib != null) {
+                debuglib.withoutTopFrame { closeToBeClosed(tbc, stack, 0, le) } ?: le
+            } else {
+                closeToBeClosed(tbc, stack, 0, le) ?: le
             }
-            throw le
+            if (outgoing.traceback == null) {
+                enrichArgError(outgoing, p, pc, stack)
+                enrichOperandError(outgoing, p, pc, stack)
+                enrichCallError(outgoing, p, pc)
+                enrichIndexError(outgoing, p, pc)
+                processErrorHooks(outgoing, p, pc)
+            }
+            throw outgoing
         } catch (e: Exception) {
             val le: LuaError = LuaError(e)
             processErrorHooks(le, p, pc)
             throw le
         } finally {
-            if (tbc != null) closeToBeClosed(tbc, stack, 0, NIL)
+            if (tbc != null) closeToBeClosed(tbc, stack, 0, null)?.let { throw it }
             if (openups != null) {
                 var u = openups.size
                 while (--u >= 0) {
@@ -1092,11 +1118,93 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         le.traceback = errorHook(le.message, le.level)
     }
 
+    /**
+     * Prepares a numeric `for`, upstream's `forprep`.
+     *
+     * An integer loop works out how many passes it has before it starts and
+     * keeps the count where the limit was: adding the step to the index can
+     * wrap around, but a count cannot, so a loop that walks the whole integer
+     * range still ends.
+     *
+     * @return true when the loop does not run at all
+     */
+    private fun forPrep(stack: Array<LuaValue>, a: Int): Boolean {
+        // Checked in upstream's order - limit, step, then the initial value -
+        // so a loop with more than one bad bound names the same one Lua would.
+        val limit: LuaValue = forNumber(stack[a + 1], "limit")
+        val step: LuaValue = forNumber(stack[a + 2], "step")
+        val init: LuaValue = forNumber(stack[a], "initial value")
+        if (init is LuaInteger && step is LuaInteger) {
+            val start: Long = init.tolong()
+            val by: Long = step.tolong()
+            if (by == 0L) LuaValue.error("'for' step is zero")
+            val bound: Long = forLimit(limit, start, by) ?: return true
+            val passes: ULong = if (by > 0L) {
+                val span: ULong = bound.toULong() - start.toULong()
+                if (by == 1L) span else span / by.toULong()
+            } else {
+                val span: ULong = start.toULong() - bound.toULong()
+                // Negating math.mininteger would overflow, so the magnitude is
+                // built from '-(by + 1)' instead.
+                span / ((-(by + 1L)).toULong() + 1uL)
+            }
+            stack[a] = init
+            stack[a + 1] = LuaValue.valueOf(passes.toLong())
+            stack[a + 2] = step
+            stack[a + 3] = init
+            return false
+        }
+        // A float loop has no count to work out and compares against the limit
+        // on every pass instead.
+        val start: Double = init.todouble()
+        val by: Double = step.todouble()
+        val bound: Double = limit.todouble()
+        if (by == 0.0) LuaValue.error("'for' step is zero")
+        if (if (by > 0.0) start > bound else start < bound) return true
+        val first: LuaValue = LuaValue.valueOf(start)
+        stack[a] = first
+        stack[a + 1] = LuaValue.valueOf(bound)
+        stack[a + 2] = LuaValue.valueOf(by)
+        stack[a + 3] = first
+        return false
+    }
+
+    /**
+     * The integer a `for` loop counts up or down to, upstream's `forlimit`.
+     *
+     * A float limit is rounded towards the loop's direction; one beyond the
+     * integer range is either the far end of it or, when it lies the wrong way
+     * round, a loop that never runs.
+     *
+     * @return the limit, or null when the loop does not run at all
+     */
+    private fun forLimit(limit: LuaValue, init: Long, step: Long): Long? {
+        val bound: Long
+        if (limit is LuaInteger) {
+            bound = limit.tolong()
+        } else {
+            val value: Double = limit.todouble()
+            val rounded: Double =
+                if (step < 0L) kotlin.math.ceil(value) else kotlin.math.floor(value)
+            if (rounded >= -9223372036854775808.0 && rounded < 9223372036854775808.0) {
+                bound = rounded.toLong()
+            } else if (rounded > 0.0) {
+                // Too large to reach; a descending loop never gets there.
+                if (step < 0L) return null
+                bound = Long.MAX_VALUE
+            } else {
+                if (step > 0L) return null
+                bound = Long.MIN_VALUE
+            }
+        }
+        return if (if (step > 0L) init > bound else init < bound) null else bound
+    }
+
     /** One bound of a numeric `for`, or the error Lua reports for a bad one. */
     private fun forNumber(value: LuaValue, what: String): LuaValue {
         val number: LuaValue = value.tonumber()
         if (number.isnil()) {
-            LuaValue.error("bad 'for' " + what + " (number expected, got " + value.typename() + ")")
+            LuaValue.error("bad 'for' " + what + " (number expected, got " + value.objtypename() + ")")
         }
         return number
     }
@@ -1191,22 +1299,45 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * `finally` after an error has already unwound one - does not close it
      * twice.
      *
-     * @param error the error being propagated, or nil on an ordinary exit
+     * A handler that raises does not stop the ones outside it: its error
+     * becomes what they are told about, and the last one raised is what
+     * leaves here.
+     *
+     * @param error the error being unwound from, or null on an ordinary exit
+     * @return the error to carry on with, or null if none is outstanding
      */
     private fun closeToBeClosed(
         list: ArrayList<Int>,
         stack: Array<LuaValue>,
         level: Int,
-        error: LuaValue,
-    ) {
+        error: LuaError?,
+    ): LuaError? {
+        var pending: LuaError? = error
         var index = list.size
         while (--index >= 0) {
             val slot: Int = list[index]
-            if (slot < level) return
+            if (slot < level) break
             list.removeAt(index)
             val value: LuaValue = stack[slot]
-            value.metatag(LuaValue.CLOSE).call(value, error)
+            val close: LuaValue = value.metatag(LuaValue.CLOSE)
+            // The handler may have been taken away since the variable was
+            // marked, so what is there now still has to be callable.
+            value.checkcallable(LuaValue.CLOSE, close)
+            try {
+                // With no error to report the handler is called with the value
+                // alone: a trailing nil would be an argument the language does
+                // not pass, and '...' inside the handler would count it.
+                val raised: LuaError? = pending
+                if (raised == null) {
+                    close.call(value)
+                } else {
+                    close.call(value, raised.messageObject ?: NIL)
+                }
+            } catch (failure: LuaError) {
+                pending = failure
+            }
         }
+        return pending
     }
 
     private fun findupval(stack: Array<LuaValue>, idx: Short, openups: Array<UpValue?>): UpValue? {

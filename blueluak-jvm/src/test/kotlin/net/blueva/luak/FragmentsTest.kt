@@ -398,13 +398,19 @@ object FragmentsTest : TestSuite() {
             )
         }
 
+        /**
+         * A loop variable captured by a closure inside the loop.
+         *
+         * The captured value is a copy: since Lua 5.5 the loop's own variable
+         * is a constant and cannot be assigned to.
+         */
         fun testNumericForUpvalues() {
             runFragment(
                 LuaValue.valueOf(8),
                 "for i = 3,4 do\n" +
-                        "	i = i + 5\n" +
+                        "	local j = i + 5\n" +
                         "	local a = function()\n" +
-                        "		return i\n" +
+                        "		return j\n" +
                         "	end\n" +
                         "	return a()\n" +
                         "end\n"
@@ -708,11 +714,12 @@ object FragmentsTest : TestSuite() {
             )
         }
 
+        /** Only a string error object gets a position, so a number stays one. */
         fun testErrorArgIsNumber() {
             runFragment(
                 LuaValue.varargsOf(
-                    net.blueva.luak.LuaValue.valueOf("string"),
-                    net.blueva.luak.LuaValue.valueOf("1")
+                    net.blueva.luak.LuaValue.valueOf("number"),
+                    net.blueva.luak.LuaValue.valueOf(1L)
                 )!!,
                 "a,b = pcall(error, 1); return type(b), b\n"
             )

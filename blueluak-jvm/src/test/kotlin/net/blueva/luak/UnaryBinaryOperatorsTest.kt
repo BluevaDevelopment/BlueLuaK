@@ -329,11 +329,13 @@ class UnaryBinaryOperatorsTest : TestCase() {
             assertEquals(nilb, tbl2.eq(tbl))
             assertEquals(nilb, uda.eq(uda2))
             assertEquals(nilb, uda2.eq(uda))
-            // same type, different metatag ops.  not comparable
-            assertEquals(fal, tbl.eq(tbl3))
-            assertEquals(fal, tbl3.eq(tbl))
-            assertEquals(fal, uda.eq(uda3))
-            assertEquals(fal, uda3.eq(uda))
+            // Same type, different metatag ops: since Lua 5.3 the two
+            // metatables no longer have to agree, and the left operand's
+            // handler is the one that answers.
+            assertEquals(nilb, tbl.eq(tbl3))
+            assertEquals(oneb, tbl3.eq(tbl))
+            assertEquals(nilb, uda.eq(uda3))
+            assertEquals(oneb, uda3.eq(uda))
 
             // always use right argument
             LuaBoolean.s_metatable = LuaValue.tableOf(arrayOf<LuaValue>(LuaValue.EQ, RETURN_ONE))
@@ -384,11 +386,12 @@ class UnaryBinaryOperatorsTest : TestCase() {
             assertEquals(oneb, tbl2.eq(tbl))
             assertEquals(oneb, uda.eq(uda2))
             assertEquals(oneb, uda2.eq(uda))
-            // same type, different metatag ops.  not comparable
-            assertEquals(fal, tbl.eq(tbl3))
-            assertEquals(fal, tbl3.eq(tbl))
-            assertEquals(fal, uda.eq(uda3))
-            assertEquals(fal, uda3.eq(uda))
+            // Same type, different metatag ops: the left operand's handler
+            // answers, so the two directions now disagree.
+            assertEquals(oneb, tbl.eq(tbl3))
+            assertEquals(nilb, tbl3.eq(tbl))
+            assertEquals(oneb, uda.eq(uda3))
+            assertEquals(nilb, uda3.eq(uda))
         } finally {
             LuaBoolean.s_metatable = null
             LuaNumber.s_metatable = null
@@ -564,7 +567,12 @@ class UnaryBinaryOperatorsTest : TestCase() {
             for (j in vals.indices) {
                 for (k in numerics.indices) {
                     checkArithError(vals[j]!!, numerics[k]!!, ops[i]!!, vals[j]!!.typename()!!)
-                    checkArithError(numerics[k]!!, vals[j]!!, ops[i]!!, vals[j]!!.typename()!!)
+                    // Lua blames the left operand whenever it is not a number,
+                    // and a numeral written as a string is not one: the string
+                    // metatable is what makes "22.125" + 1 work, so without it
+                    // the string is the operand at fault.
+                    val blamed: LuaValue = if (numerics[k] is LuaString) numerics[k]!! else vals[j]!!
+                    checkArithError(numerics[k]!!, vals[j]!!, ops[i]!!, blamed.typename()!!)
                 }
             }
         }

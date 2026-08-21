@@ -296,76 +296,86 @@ class LuaString private constructor(
         return if (numeral.isnil()) arithmtwith(MOD, (lhs).toDouble()) else valueOf(lhs).mod(numeral)
     }
 
-    // relational operators, these only work with other strings
+    // Relational operators only work between two strings: a number is a
+    // string as far as 'isstring' is concerned, but ordering one against a
+    // string is an error rather than a coercion.
     override fun lt(rhs: LuaValue): LuaValue {
-        return (if (rhs.isstring()) (if (rhs.strcmp(this) > 0) LuaValue.TRUE else FALSE) else super.lt(rhs))!!
+        return (if (rhs is LuaString) (if (rhs.strcmp(this) > 0) LuaValue.TRUE else FALSE) else super.lt(rhs))!!
     }
 
     override fun lt_b(rhs: LuaValue): Boolean {
-        return if (rhs.isstring()) rhs.strcmp(this) > 0 else super.lt_b(rhs)
+        return if (rhs is LuaString) rhs.strcmp(this) > 0 else super.lt_b(rhs)
     }
 
     override fun lt_b(rhs: Long): Boolean {
-        typerror("attempt to compare string with number")
+        LuaValue.error("attempt to compare string with number")
         return false
     }
 
     override fun lt_b(rhs: Double): Boolean {
-        typerror("attempt to compare string with number")
+        LuaValue.error("attempt to compare string with number")
         return false
     }
 
     override fun lteq(rhs: LuaValue): LuaValue {
-        return (if (rhs.isstring()) (if (rhs.strcmp(this) >= 0) LuaValue.TRUE else FALSE) else super.lteq(rhs))!!
+        return (if (rhs is LuaString) (if (rhs.strcmp(this) >= 0) LuaValue.TRUE else FALSE) else super.lteq(rhs))!!
     }
 
     override fun lteq_b(rhs: LuaValue): Boolean {
-        return if (rhs.isstring()) rhs.strcmp(this) >= 0 else super.lteq_b(rhs)
+        return if (rhs is LuaString) rhs.strcmp(this) >= 0 else super.lteq_b(rhs)
     }
 
     override fun lteq_b(rhs: Long): Boolean {
-        typerror("attempt to compare string with number")
+        LuaValue.error("attempt to compare string with number")
         return false
     }
 
     override fun lteq_b(rhs: Double): Boolean {
-        typerror("attempt to compare string with number")
+        LuaValue.error("attempt to compare string with number")
         return false
     }
 
     override fun gt(rhs: LuaValue): LuaValue {
-        return (if (rhs.isstring()) (if (rhs.strcmp(this) < 0) LuaValue.TRUE else FALSE) else super.gt(rhs))!!
+        return (if (rhs is LuaString) (if (rhs.strcmp(this) < 0) LuaValue.TRUE else FALSE) else super.gt(rhs))!!
     }
 
     override fun gt_b(rhs: LuaValue): Boolean {
-        return if (rhs.isstring()) rhs.strcmp(this) < 0 else super.gt_b(rhs)
+        return if (rhs is LuaString) rhs.strcmp(this) < 0 else super.gt_b(rhs)
     }
 
     override fun gt_b(rhs: Long): Boolean {
-        typerror("attempt to compare string with number")
+        // The compiler turns 'a > b' into 'b < a', so the number is the one
+        // named first.
+        LuaValue.error("attempt to compare number with string")
         return false
     }
 
     override fun gt_b(rhs: Double): Boolean {
-        typerror("attempt to compare string with number")
+        // The compiler turns 'a > b' into 'b < a', so the number is the one
+        // named first.
+        LuaValue.error("attempt to compare number with string")
         return false
     }
 
     override fun gteq(rhs: LuaValue): LuaValue {
-        return (if (rhs.isstring()) (if (rhs.strcmp(this) <= 0) LuaValue.TRUE else FALSE) else super.gteq(rhs))!!
+        return (if (rhs is LuaString) (if (rhs.strcmp(this) <= 0) LuaValue.TRUE else FALSE) else super.gteq(rhs))!!
     }
 
     override fun gteq_b(rhs: LuaValue): Boolean {
-        return if (rhs.isstring()) rhs.strcmp(this) <= 0 else super.gteq_b(rhs)
+        return if (rhs is LuaString) rhs.strcmp(this) <= 0 else super.gteq_b(rhs)
     }
 
     override fun gteq_b(rhs: Long): Boolean {
-        typerror("attempt to compare string with number")
+        // The compiler turns 'a > b' into 'b < a', so the number is the one
+        // named first.
+        LuaValue.error("attempt to compare number with string")
         return false
     }
 
     override fun gteq_b(rhs: Double): Boolean {
-        typerror("attempt to compare string with number")
+        // The compiler turns 'a > b' into 'b < a', so the number is the one
+        // named first.
+        LuaValue.error("attempt to compare number with string")
         return false
     }
 

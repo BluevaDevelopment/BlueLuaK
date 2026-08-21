@@ -35,6 +35,14 @@ internal class FuncState internal constructor() : Constants() {
         var firstgoto: Short = 0 /* index of first pending goto in this block */
         var nactvar: Short = 0 /* # active locals outside the breakable structure */
         var upval: Boolean = false /* true if some variable in the block is an upvalue */
+
+        /**
+         * True inside the scope of a to-be-closed variable.
+         *
+         * A return from here cannot be a tail call: the frame has to stay
+         * around long enough to run the pending `__close` handlers.
+         */
+        var insidetbc: Boolean = false
         var isloop: Boolean = false /* true if `block' is a loop */
     }
 
@@ -196,6 +204,7 @@ internal class FuncState internal constructor() : Constants() {
         bl.firstlabel = ls!!.dyd.n_label.toShort()
         bl.firstgoto = ls!!.dyd.n_gt.toShort()
         bl.upval = false
+        bl.insidetbc = this.bl?.insidetbc ?: false
         bl.previous = this.bl
         this.bl = bl
         _assert(this.freereg == this.nactvar)
@@ -254,17 +263,21 @@ internal class FuncState internal constructor() : Constants() {
      */
     fun markblocktobeclosed() {
         this.bl!!.upval = true
+        this.bl!!.insidetbc = true
     }
 
     fun leaveblock() {
         val bl: BlockCnt = this.bl!!
+        // The break label goes in first, so a 'break' lands on the closing
+        // jump rather than past it: leaving a loop early still closes what the
+        // block was holding.
+        if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
         if (bl.previous != null && bl.upval) {
             /* create a 'jump to here' to close upvalues */
             val j = this.jump()
             this.patchclose(j, bl.nactvar.toInt())
             this.patchtohere(j)
         }
-        if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
         while (globals.size > bl.firstglobal) globals.removeAt(globals.size - 1)
         this.bl = bl.previous
         this.removevars(bl.nactvar.toInt())

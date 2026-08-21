@@ -132,42 +132,9 @@ class Prototype {
      * `[string "..."]` and cut at the first newline so a message stays on one
      * line.
      */
-    fun shortsource(): String {
-        val name: String = source?.tojstring() ?: "?"
-        if (name.isEmpty()) return "?"
-        var budget = MAX_SOURCE_LENGTH
-        when (name[0]) {
-            '=' -> {
-                val body = name.substring(1)
-                return if (body.length + 1 <= budget) body else body.substring(0, budget - 1)
-            }
-
-            '@' -> {
-                val body = name.substring(1)
-                if (body.length + 1 <= budget) return body
-                // One character of the budget goes to the terminator upstream
-                // reserves, so the ellipsis and the tail together come to 59.
-                budget -= ELLIPSIS.length + 1
-                return ELLIPSIS + body.substring(body.length - budget)
-            }
-
-            else -> {
-                val newline = name.indexOf('\n')
-                budget -= PREFIX.length + ELLIPSIS.length + SUFFIX.length + 1
-                if (newline < 0 && name.length < budget) return PREFIX + name + SUFFIX
-                val end = if (newline >= 0) minOf(newline, budget) else budget
-                return PREFIX + name.substring(0, end) + ELLIPSIS + SUFFIX
-            }
-        }
-    }
+    fun shortsource(): String = Lua.chunkid(source?.tojstring() ?: "=?")
 
     companion object {
-        /** Upstream's `LUA_IDSIZE`: the room a source name gets in a message. */
-        private const val MAX_SOURCE_LENGTH = 60
-        private const val ELLIPSIS = "..."
-        private const val PREFIX = "[string \""
-        private const val SUFFIX = "\"]"
-
         private val NOUPVALUES: Array<Upvaldesc?> = arrayOf<Upvaldesc?>()
         private val NOSUBPROTOS = arrayOf<Prototype?>()
     }

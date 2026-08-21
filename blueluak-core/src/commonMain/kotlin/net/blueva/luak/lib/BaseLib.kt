@@ -276,6 +276,20 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             ) else loadFile(args.checkjstring(1), "bt", globals)
             return (if (v.isnil(1)) error(v.tojstring(2)) else v.arg1()!!.invoke())!!
         }
+
+        // The chunk runs as part of this call, so a yield inside it has to
+        // pass through; see BaseLib.pcall.invokeSuspend().
+        override suspend fun invokeSuspend(args: Varargs): Varargs {
+            args.argcheck(args.isstring(1) || args.isnil(1), 1, "filename must be string or nil")
+            val filename: String? = if (args.isstring(1)) args.tojstring(1) else null
+            val v: Varargs = if (filename == null) loadStream(
+                globals!!.STDIN,
+                "=stdin",
+                "bt",
+                globals
+            ) else loadFile(args.checkjstring(1), "bt", globals)
+            return (if (v.isnil(1)) error(v.tojstring(2)) else v.arg1()!!.invokeSuspend(NONE!!))!!
+        }
     }
 
     /**
@@ -378,7 +392,13 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             // handler always has something to report.
             if (arg1!!.isnil()) throw LuaError(valueOf("<no error object>"))
             val level: Int = arg2!!.optint(1)
-            if (!arg1.isstring()) throw LuaError(arg1)
+            if (arg1.type() != LuaValue.TSTRING) {
+                // Only a string ever gets a position: anything else is the
+                // error object itself and has to reach the handler untouched.
+                val failure = LuaError(arg1)
+                failure.level = 0
+                throw failure
+            }
             if (level == 0) {
                 // Level 0 asks for the message exactly as written, with no
                 // position added to it - not even by the interpreter's own
@@ -662,10 +682,12 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 } catch (e: Exception) {
                     val m: String? = e.message
                     return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
-                } catch (t: Throwable) {
+                } catch (overflow: Throwable) {
                     // See pcall: a host stack overflow becomes a Lua error here.
-                    if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
-                    return (varargsOf(FALSE, valueOf("stack overflow")))!!
+                    if (!net.blueva.luak.platformIsStackOverflow(overflow)) throw overflow
+                    // The stack has unwound by the time this is reached, so
+                    // there is room to run the handler over it.
+                    return (varargsOf(FALSE, runMessageHandler(t, valueOf("stack overflow"))))!!
                 } finally {
                     if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
@@ -694,10 +716,12 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 } catch (e: Exception) {
                     val m: String? = e.message
                     return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
-                } catch (t: Throwable) {
+                } catch (overflow: Throwable) {
                     // See pcall: a host stack overflow becomes a Lua error here.
-                    if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
-                    return (varargsOf(FALSE, valueOf("stack overflow")))!!
+                    if (!net.blueva.luak.platformIsStackOverflow(overflow)) throw overflow
+                    // The stack has unwound by the time this is reached, so
+                    // there is room to run the handler over it.
+                    return (varargsOf(FALSE, runMessageHandler(t, valueOf("stack overflow"))))!!
                 } finally {
                     if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
@@ -719,11 +743,30 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         }
     }
 
-    // "pairs" (t) -> iter-func, t, nil
+    // "pairs" (t) -> iter-func, t, nil, closing
     internal class pairs(val next: BaseLib.next) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            return varargsOf(next, args.checktable(1), NIL)
+            val self: LuaValue = args.checkvalue(1)!!
+            val handler: LuaValue = self.metatag(LuaValue.PAIRS)
+            if (handler.isnil()) return varargsOf(next, args.checktable(1), NIL)
+            // A __pairs metamethod supplies the whole loop, four values and no
+            // more: the fourth is what the generic for closes when it ends.
+            return four(handler.invoke(self))
         }
+
+        // The metamethod may yield, so a coroutine's 'for' can be driven from
+        // inside it; see BaseLib.pcall.invokeSuspend().
+        override suspend fun invokeSuspend(args: Varargs): Varargs {
+            val self: LuaValue = args.checkvalue(1)!!
+            val handler: LuaValue = self.metatag(LuaValue.PAIRS)
+            if (handler.isnil()) return varargsOf(next, args.checktable(1), NIL)
+            return four(handler.invokeSuspend(self))
+        }
+
+        /** The first four of [supplied], padded with nil, as Lua asks for. */
+        private fun four(supplied: Varargs): Varargs = varargsOf(
+            arrayOf(supplied.arg(1), supplied.arg(2), supplied.arg(3), supplied.arg(4)),
+        )!!
     }
 
     // // "ipairs", // (t) -> iter-func, t, 0

@@ -164,6 +164,10 @@ class LuaDouble
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs + v))!!
     }
 
+    override fun add(rhs: Long): LuaValue {
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(rhs + v))!!
+    }
+
     override fun sub(rhs: LuaValue): LuaValue {
         return rhs.subFrom(v)
     }
@@ -177,6 +181,10 @@ class LuaDouble
     }
 
     override fun subFrom(lhs: Double): LuaValue {
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v))!!
+    }
+
+    override fun subFrom(lhs: Long): LuaValue {
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v))!!
     }
 
