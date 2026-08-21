@@ -43,6 +43,7 @@ kotlin {
         nodejs()
     }
     linuxX64()
+    linuxArm64()
     mingwX64()
     macosX64()
     macosArm64()
@@ -85,6 +86,9 @@ kotlin {
         // 64-bit file offsets: fseek/ftell use C `long`, which is 32 bits on
         // Windows and 64 elsewhere, so the two families get their own actual.
         linuxX64Main {
+            kotlin.srcDir("src/nativePosixMain/kotlin")
+        }
+        linuxArm64Main {
             kotlin.srcDir("src/nativePosixMain/kotlin")
         }
         macosX64Main {

@@ -134,7 +134,7 @@ Add the `repo.blueva.net/releases` repository shown above at the project level, 
 | JavaScript IR | `js { nodejs() }` | `jsMain` | Node.js |
 | WebAssembly | `wasmJs { nodejs() }` | `wasmJsMain` | Node.js |
 | WebAssembly (WASI) | `wasmWasi { nodejs() }` | `wasmWasiMain` | Node.js's experimental `node:wasi` |
-| Kotlin/Native | `linuxX64()`, `mingwX64()`, `macosX64()`, `macosArm64()` | `linuxX64Main`, `mingwX64Main`, `macosX64Main`, `macosArm64Main` | Matching GitHub Actions runners in CI |
+| Kotlin/Native | `linuxX64()`, `linuxArm64()`, `mingwX64()`, `macosX64()`, `macosArm64()` | `linuxX64Main`, `linuxArm64Main`, `mingwX64Main`, `macosX64Main`, `macosArm64Main` | Matching GitHub Actions runners in CI |
 
 ```kotlin
 repositories {
@@ -146,6 +146,7 @@ kotlin {
     wasmJs { nodejs() }
     wasmWasi { nodejs() }
     linuxX64()
+    linuxArm64()
     macosArm64()
 
     sourceSets {
