@@ -193,7 +193,7 @@ class TableLib : TwoArgFunction() {
             // The first free slot. A length of math.maxinteger leaves no room
             // for one more, and the count wraps round rather than overflowing,
             // which is what Lua does here.
-            val empty: Long = list.len().checklong() + 1L
+            val empty: Long = lengthofValue(list) + 1L
             val pos: Long
             when (args.narg()) {
                 2 -> pos = empty
@@ -308,4 +308,22 @@ private fun checkindexable(args: Varargs, writable: Boolean = false): LuaValue {
     }
     args.checktable(1) // raises "bad argument #1 ... (table expected, got X)"
     return list
+}
+
+/**
+ * How long [list] says it is, as a whole number.
+ *
+ * A `__len` handler may answer anything at all; what it answers has to be a
+ * count for a library function to work from, and Lua says so plainly rather
+ * than complaining about an argument.
+ */
+private fun lengthofValue(list: LuaValue): Long {
+    val length: LuaValue = list.len()
+    if (length.isnumber()) {
+        val value: Double = length.todouble()
+        val whole: Long = value.toLong()
+        if (whole.toDouble() == value) return whole
+    }
+    LuaValue.error("object length is not an integer")
+    return 0L
 }

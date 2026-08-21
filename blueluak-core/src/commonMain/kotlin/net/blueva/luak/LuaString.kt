@@ -96,6 +96,7 @@ class LuaString private constructor(
      */
     init {
         this.m_hashcode = net.blueva.luak.LuaString.Companion.hashCode(m_bytes, m_offset, m_length)
+        Memory.account(Memory.STRING + m_length)
     }
 
     override fun isstring(): Boolean {

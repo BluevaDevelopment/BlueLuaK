@@ -88,7 +88,13 @@ class DumpState(w: OutputStream?, strip: Boolean) {
     }
 
     @kotlin.Throws(IOException::class)
-    fun dumpString(s: LuaString) {
+    fun dumpString(s: LuaString?) {
+        // A chunk that was loaded without debug information has nothing to
+        // say here, and a length of zero is how the format says so.
+        if (s == null) {
+            dumpInt(0)
+            return
+        }
         val len: Int = s.len().toint()
         dumpInt(len + 1)
         s.write((writer)!!, 0, len)
@@ -176,7 +182,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpFunction((f.p!![i])!!)
+            dumpFunction((f.p!![i])!!, f.source)
             i++
         }
     }
@@ -195,8 +201,6 @@ class DumpState(w: OutputStream?, strip: Boolean) {
     fun dumpDebug(f: Prototype) {
         var i: Int
         var n: Int
-        if (strip) dumpInt(0)
-        else dumpString((f.source)!!)
         n = if (strip) 0 else f.lineinfo!!.size
         dumpInt(n)
         i = 0
@@ -209,7 +213,7 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         i = 0
         while (i < n) {
             val lvi: LocVars = f.locvars[i]!!
-            dumpString((lvi.varname)!!)
+            dumpString(lvi.varname)
             dumpInt(lvi.startpc)
             dumpInt(lvi.endpc)
             i++
@@ -218,13 +222,21 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         dumpInt(n)
         i = 0
         while (i < n) {
-            dumpString((f.upvalues!![i]!!.name)!!)
+            dumpString(f.upvalues!![i]!!.name)
             i++
         }
     }
 
     @kotlin.Throws(IOException::class)
-    fun dumpFunction(f: Prototype) {
+    @kotlin.jvm.JvmOverloads
+    fun dumpFunction(f: Prototype, psource: LuaString? = null) {
+        // Written before anything else, so that a nested function can be given
+        // it as it is read. A nested function almost always came from the same
+        // text as the one around it, and a chunk of any size would otherwise
+        // carry the same name once per function in it: nothing written here
+        // means "the same as the function this one is inside".
+        if (strip || f.source == psource) dumpInt(0)
+        else dumpString(f.source)
         dumpInt(f.linedefined)
         dumpInt(f.lastlinedefined)
         dumpChar(f.numparams)

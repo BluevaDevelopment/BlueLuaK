@@ -20,6 +20,12 @@ internal actual fun currentTimeMillis(): Long = kotlin.time.Clock.System.now().t
 internal actual fun platformProperty(name: String): String? = null
 internal actual fun platformExit(code: Int) = Unit
 internal actual fun platformCollectGarbage() = Unit
+
+// Nothing here can bring back an object the host is reclaiming, so an object
+// is never handed to its `__gc` handler and the handler never runs.
+internal actual fun watchForFinalization(target: LuaValue, pending: MutableList<LuaValue>): Any? = null
+
+internal actual fun takeFinalized(pending: MutableList<LuaValue>): List<LuaValue> = emptyList()
 internal actual fun platformUsedMemory(): Long = 0L
 internal actual fun platformLoadLibrary(className: String, globals: Globals): LuaValue? = null
 internal actual fun platformTypeName(type: KClass<*>): String = type.simpleName ?: "userdata"

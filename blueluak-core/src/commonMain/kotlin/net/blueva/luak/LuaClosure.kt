@@ -28,6 +28,14 @@ import kotlin.coroutines.startCoroutine
  * called from a library function like `table.sort`'s comparator calls
  * `coroutine.yield()` - that correctly surfaces as a boundary error, exactly
  * like real Lua's C-call boundary restriction. */
+/**
+ * How many frames a host stack overflow unwinds before it is reported.
+ *
+ * Enough room for a message handler - `debug.traceback` above all - to run in
+ * without running out of stack all over again.
+ */
+private const val STACK_UNWIND_HEADROOM: Int = 64
+
 internal fun <T> runLuaSync(block: suspend () -> T): T {
     var outcome: Result<T>? = null
     block.startCoroutine(Continuation(EmptyCoroutineContext) { outcome = it })
@@ -319,6 +327,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             val produced: LuaValue? = callFixedArityValues(stack, i, a)
             if (traced && produced != null) debuglib!!.onResults(produced)
             return produced != null
+        } catch (le: LuaError) {
+            // Still standing on the frame that raised, which is the last
+            // chance a coroutine has to write its stack down.
+            if (traced) debuglib!!.notestack(le)
+            throw le
         } finally {
             if (traced) debuglib!!.onReturn()
         }
@@ -752,6 +765,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             } finally {
                 if (debuglib != null && tbc != null) debuglib.showtopframe()
             }
+            if (debuglib != null) debuglib.notestack(outgoing)
             if (outgoing.traceback == null) {
                 enrichArgError(outgoing, p, pc, stack)
                 enrichOperandError(outgoing, p, pc, stack)
@@ -764,6 +778,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             val le: LuaError = LuaError(e)
             processErrorHooks(le, p, pc)
             throw le
+        } catch (t: Throwable) {
+            // The host running out of stack, and nothing else: a coroutine
+            // being closed travels as an Error too and has to pass through.
+            val le: LuaError = overflow(t) ?: throw t
+            processErrorHooks(le, p, pc)
+            throw le
         } finally {
             if (tbc != null) runLuaSync { closeToBeClosed(tbc, stack, 0, null) }?.let { throw it }
             if (openups != null) {
@@ -774,6 +794,27 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
             if (debuglib != null) debuglib.onReturn()
         }
+    }
+
+    /**
+     * Turns a host stack overflow into the Lua error it stands for.
+     *
+     * Reported only once the unwinding is a little way back from the edge:
+     * where it was noticed there is no room left to build a message in, let
+     * alone run a handler that walks the stack. The frames given up to make
+     * that room are gone from the traceback, which is a report of a stack too
+     * deep to print whole in any case.
+     *
+     * @return the error to raise, or null to let [t] carry on unwinding
+     */
+    private fun overflow(t: Throwable): LuaError? {
+        if (!platformIsStackOverflow(t)) return null
+        val state: LuaThread.State? = globals?.running?.state
+        if (state != null) {
+            if (++state.unwinding < STACK_UNWIND_HEADROOM) return null
+            state.unwinding = 0
+        }
+        return LuaError("stack overflow")
     }
 
     /**
@@ -893,8 +934,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         if (pc < 0 || pc >= code.size) return
         val instr: Int = code[pc]
         val opcode: Int = Lua.GET_OPCODE(instr)
-        if (opcode != Lua.OP_CALL && opcode != Lua.OP_TAILCALL) return
-        val found = net.blueva.luak.lib.DebugLib.getobjname(p, pc, Lua.GETARG_A(instr)) ?: return
+        val found = when (opcode) {
+            Lua.OP_CALL, Lua.OP_TAILCALL ->
+                net.blueva.luak.lib.DebugLib.getobjname(p, pc, Lua.GETARG_A(instr))
+            // The one other instruction that calls: a generic `for` steps its
+            // iterator, and Lua names that as what it is.
+            Lua.OP_TFORCALL -> net.blueva.luak.lib.DebugLib.NameWhat("for iterator", "for iterator")
+            else -> return
+        } ?: return
         le.argMessageOverride = m + " (" + found.namewhat + " '" + found.name + "')"
     }
 
@@ -1004,6 +1051,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
     private fun processErrorHooks(le: LuaError, p: Prototype, pc: Int) {
+        // Done once, where the error was raised: every function it unwinds
+        // through afterwards would count its levels from itself and answer
+        // with its own line. See [LuaError.positioned].
+        if (le.positioned) return
+        le.positioned = true
         // A level of zero says the message is complete as it stands, which is
         // what `error(msg, 0)` asks for.
         if (le.level <= 0) {
@@ -1145,6 +1197,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             // What it hands back, so a return hook can read the results.
             debuglib.onResults(results)
             return results
+        } catch (le: LuaError) {
+            debuglib.notestack(le)
+            throw le
         } finally {
             debuglib.onReturn()
         }
@@ -1208,7 +1263,26 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
             Lua.OP_GETUPVAL -> stack[a] = upValues[i ushr 23]!!.getValue()!!
             Lua.OP_SETUPVAL -> upValues[i ushr 23]!!.setValue(stack[a])
-            else -> stack[a] = LuaTable(i ushr 23, (i shr 14) and 0x1ff)
+            else -> {
+                stack[a] = LuaTable(i ushr 23, (i shr 14) and 0x1ff)
+                // Allocating is where Lua runs a step of its collector, and so
+                // where anything waiting to be finalized gets its turn.
+                val g: Globals? = globals
+                if (g != null && g.marksfinalizers) {
+                    // This instruction always writes to the first free
+                    // register, so nothing above it is live any more. Lua's
+                    // collector reaches the same conclusion by only looking at
+                    // a stack up to its top; here the registers are emptied,
+                    // so that what a finished statement left behind stops
+                    // holding an object that is due to be finalized.
+                    var slot: Int = a + 1
+                    while (slot < stack.size) {
+                        stack[slot] = LuaValue.NIL
+                        slot++
+                    }
+                    g.runfinalizers()
+                }
+            }
         }
     }
 
@@ -1517,9 +1591,13 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      */
     private fun buildVarargTable(varargs: Varargs, p: Prototype, stack: Array<LuaValue>) {
         val count: Int = varargs.narg()
+        val before: Long = Memory.accounted
         val table = LuaTable(count, 1)
         for (i in 1..count) table.set(i, varargs.arg(i)!!)
         table.set("n", count)
+        // The arguments of a call are not an allocation of the program's; see
+        // Memory.uncount.
+        Memory.uncount(Memory.accounted - before)
         stack[p.numparams] = table
     }
 

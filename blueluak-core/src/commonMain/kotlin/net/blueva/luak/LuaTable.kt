@@ -62,6 +62,9 @@ import net.blueva.luak.WeakReference
  * @see LuaValue
  */
 open class LuaTable : LuaValue, Metatable {
+    /** See [LuaValue.gckeeper]; a table is one of the two kinds that can have one. */
+    internal override var gckeeper: Any? = null
+
     /** the array values  */
     protected lateinit var array: Array<LuaValue?>
 
@@ -78,6 +81,7 @@ open class LuaTable : LuaValue, Metatable {
     constructor() {
         array = NOVALS
         hash = net.blueva.luak.LuaTable.Companion.NOBUCKETS
+        Memory.account(Memory.TABLE)
     }
 
     /**
@@ -156,12 +160,23 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun presize(narray: Int) {
-        if (narray > array.size) array =
-            net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
+        if (narray > MAX_PART) LuaValue.error("table overflow")
+        if (narray > array.size) {
+            val was: Int = array.size
+            array =
+                net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
+            Memory.account(Memory.SLOT * (array.size - was))
+        }
     }
 
     fun presize(narray: Int, nhash: Int) {
         var nhash = nhash
+        // Rounded up to a power of two below, which is where a size close to
+        // the largest a host array can be would wrap around into a negative
+        // one. Lua refuses the same way.
+        if (narray > MAX_PART || nhash > MAX_PART) LuaValue.error("table overflow")
+        // Counted here rather than in each constructor, since every one of
+        // them that asks for room of its own comes through here.
         if (nhash > 0 && nhash < net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY) nhash =
             net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY
         // Size of both parts must be a power of two.
@@ -170,6 +185,7 @@ open class LuaTable : LuaValue, Metatable {
         hash =
             (if (nhash > 0) arrayOfNulls<Slot>(1 shl net.blueva.luak.LuaTable.Companion.log2(nhash)) else net.blueva.luak.LuaTable.Companion.NOBUCKETS)
         hashEntries = 0
+        Memory.account(Memory.TABLE + Memory.SLOT * array.size + Memory.NODE * hash.size)
     }
 
     protected val arrayLengthValue: Int
@@ -743,9 +759,15 @@ open class LuaTable : LuaValue, Metatable {
             }
         }
 
+        val wasarray: Int = array.size
+        val washash: Int = hash.size
         hash = newHash
         array = newArray
         hashEntries -= movingToArray
+        // Only what the table grew by: what it gave up is for the host to
+        // reclaim, and the tally does not go down until a collection ends.
+        if (array.size > wasarray) Memory.account(Memory.SLOT * (array.size - wasarray))
+        if (hash.size > washash) Memory.account(Memory.NODE * (hash.size - washash))
     }
 
     override fun entry(key: LuaValue?, value: LuaValue?): Slot? {
@@ -767,36 +789,77 @@ open class LuaTable : LuaValue, Metatable {
             dropWeakArrayValues()
         }
         val n = length()
-        if (n > 1) heapSort(n, if (comparator.isnil()) null else comparator)
+        if (n > 1) auxsort(1, n, if (comparator.isnil()) null else comparator)
     }
 
-    private fun heapSort(count: Int, cmpfunc: LuaValue?) {
-        heapify(count, cmpfunc)
-        var end = count
-        while (end > 1) {
-            val a: LuaValue = get(end) // swap(end, 1)
-            set(end, get(1))
-            set(1, a)
-            siftDown(1, --end, cmpfunc)
+    /**
+     * The quicksort Lua sorts with, over `1..n` of this table.
+     *
+     * Written as Lua writes it, down to the median of three it takes its
+     * pivot from and the two ends it walks towards each other, because that
+     * is what lets it notice an order function that contradicts itself: a
+     * walk that runs past the pivot can only mean the answers it was given
+     * cannot all be true, and Lua says so rather than reading past the part
+     * of the table it was given.
+     *
+     * The larger half is looped on rather than recursed into, so what is on
+     * the host stack stays within the logarithm of the size.
+     */
+    private fun auxsort(from: Int, to: Int, cmpfunc: LuaValue?) {
+        var lo = from
+        var up = to
+        while (lo < up) {
+            /* sort elements 'lo', 'p', and 'up' */
+            if (compare(up, lo, cmpfunc)) swap(lo, up)
+            if (up - lo == 1) return /* only 2 elements */
+            var p: Int = lo + (up - lo) / 2 /* middle point */
+            if (compare(p, lo, cmpfunc)) swap(p, lo)
+            else if (compare(up, p, cmpfunc)) swap(p, up)
+            if (up - lo == 2) return /* only 3 elements */
+            swap(p, up - 1) /* the pivot goes next to the end */
+            p = partition(lo, up, cmpfunc)
+            /* a[lo .. p - 1] <= a[p] <= a[p + 1 .. up] */
+            if (p - lo < up - p) {
+                auxsort(lo, p - 1, cmpfunc)
+                lo = p + 1
+            } else {
+                auxsort(p + 1, up, cmpfunc)
+                up = p - 1
+            }
         }
     }
 
-    private fun heapify(count: Int, cmpfunc: LuaValue?) {
-        for (start in count / 2 downTo 1) siftDown(start, count, cmpfunc)
+    /**
+     * Puts everything below the pivot before it and everything above after.
+     *
+     * The pivot is at `up - 1` when this starts, and at the index answered
+     * when it ends.
+     */
+    private fun partition(lo: Int, up: Int, cmpfunc: LuaValue?): Int {
+        val pivot: Int = up - 1
+        var i: Int = lo
+        var j: Int = up - 1
+        while (true) {
+            /* repeat ++i while a[i] < P */
+            while (compare(++i, pivot, cmpfunc)) {
+                if (i == up - 1) LuaValue.error("invalid order function for sorting")
+            }
+            /* repeat --j while P < a[j] */
+            while (compare(pivot, --j, cmpfunc)) {
+                if (j < i) LuaValue.error("invalid order function for sorting")
+            }
+            if (j < i) {
+                swap(up - 1, i) /* the pivot takes its place */
+                return i
+            }
+            swap(i, j)
+        }
     }
 
-    private fun siftDown(start: Int, end: Int, cmpfunc: LuaValue?) {
-        var root = start
-        while (root * 2 <= end) {
-            var child = root * 2
-            if (child < end && compare(child, child + 1, cmpfunc)) ++child
-            if (compare(root, child, cmpfunc)) {
-                val a: LuaValue = get(root) // swap(root, child)
-                set(root, get(child))
-                set(child, a)
-                root = child
-            } else return
-        }
+    private fun swap(i: Int, j: Int) {
+        val held: LuaValue = get(i)
+        set(i, get(j))
+        set(j, held)
     }
 
     private fun compare(i: Int, j: Int, cmpfunc: LuaValue?): Boolean {
@@ -1348,6 +1411,9 @@ open class LuaTable : LuaValue, Metatable {
 
     companion object {
         private const val MIN_HASH_CAPACITY = 2
+
+        /** The largest either part of a table can be asked for. */
+        internal const val MAX_PART: Int = 1 shl 30
         private val N: LuaString? = valueOf("n")
 
         /** Resize the table  */

@@ -19,6 +19,9 @@ package net.blueva.luak
 import kotlin.reflect.KClass
 
 open class LuaUserdata : LuaValue {
+    /** See [LuaValue.gckeeper]; a userdata is one of the two kinds that can have one. */
+    internal override var gckeeper: Any? = null
+
     var m_instance: Any
     var m_metatable: LuaValue? = null
 

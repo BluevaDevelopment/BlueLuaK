@@ -557,7 +557,13 @@ class DebugLib : TwoArgFunction() {
             if (frame != null && frame.reachedNewLine()) {
                 val newline: Int = frame.currentline()
                 s.lastline = newline
-                callHook(s, net.blueva.luak.lib.DebugLib.Companion.LINE, LuaValue.valueOf(newline))
+                // Code with no line information has no line to report, and
+                // nil is what Lua hands the hook in its place.
+                callHook(
+                    s,
+                    net.blueva.luak.lib.DebugLib.Companion.LINE,
+                    if (newline >= 0) LuaValue.valueOf(newline) else NIL,
+                )
             }
         }
     }
@@ -592,6 +598,11 @@ class DebugLib : TwoArgFunction() {
 
     /** Marks the frame just pushed as the hook's own, when it is one. */
     private fun markhookframe(s: LuaThread.State) {
+        if (s.finalizerframepending) {
+            s.finalizerframepending = false
+            val frames: CallStack = callstack()
+            if (frames.calls > 0) frames.frame!![frames.calls - 1]!!.finalizer = true
+        }
         if (!s.hookframepending) return
         s.hookframepending = false
         val frames: CallStack = callstack()
@@ -672,6 +683,54 @@ class DebugLib : TwoArgFunction() {
         return callstack().traceback(level)
     }
 
+    /**
+     * The name [f] answers to in the loaded libraries, or null.
+     *
+     * A function of the library's own has no name of its own to give: what a
+     * traceback calls it is where it is kept, so `print` is "print" and
+     * `string.rep` is "string.rep". Only what a library table holds directly
+     * is looked at, which is as far as Lua looks.
+     */
+    fun globalfuncname(f: LuaValue?): String? {
+        if (f == null || globals == null) return null
+        val loaded: LuaValue = globals!!.get("package")?.get("loaded") ?: return null
+        if (!loaded.istable()) return null
+        var key: LuaValue = NIL
+        while (true) {
+            val entry: Varargs = loaded.next(key) ?: return null
+            key = entry.arg1() ?: return null
+            if (key.isnil()) return null
+            if (key.type() != LuaValue.TSTRING) continue
+            val module: LuaValue = entry.arg(2) ?: continue
+            if (module === f) return key.tojstring()
+            if (!module.istable()) continue
+            var field: LuaValue = NIL
+            while (true) {
+                val held: Varargs = module.next(field) ?: break
+                field = held.arg1() ?: break
+                if (field.isnil()) break
+                if (field.type() != LuaValue.TSTRING) continue
+                if (held.arg(2) !== f) continue
+                val name: String = key.tojstring() + "." + field.tojstring()
+                // The globals are kept under "_G", which nobody writes.
+                return if (name.startsWith("_G.")) name.substring(3) else name
+            }
+        }
+    }
+
+    /**
+     * Writes down the stack [le] was raised on, if it is worth keeping.
+     *
+     * Called where the error is still standing on it. Only a coroutine's is
+     * kept, and only the first time: the frames are popped as the error
+     * unwinds, and after that the only way to show them is from here.
+     */
+    fun notestack(le: LuaError) {
+        if (le.luastack != null) return
+        if (globals!!.running.isMainThread) return
+        le.luastack = callstack().tracebacklines(0)
+    }
+
     fun getCallFrame(level: Int): CallFrame? {
         return callstack().getCallFrame(level)
     }
@@ -700,6 +759,7 @@ class DebugLib : TwoArgFunction() {
         if (t.callstack == null) {
             val made = net.blueva.luak.lib.DebugLib.CallStack()
             made.main = t.isMainThread
+            made.owner = this
             t.callstack = made
         }
         return t.callstack as CallStack
@@ -752,6 +812,12 @@ class DebugLib : TwoArgFunction() {
     }
 
     class CallStack internal constructor() {
+        /** How many innermost levels a traceback writes before leaving a gap. */
+        private val LEVELS1: Int = 10
+
+        /** How many outermost levels it writes after the gap. */
+        private val LEVELS2: Int = 11
+
         var frame: Array<CallFrame?>? = net.blueva.luak.lib.DebugLib.CallStack.Companion.EMPTY
         var calls: Int = 0
 
@@ -762,6 +828,15 @@ class DebugLib : TwoArgFunction() {
          * ends with; a coroutine's stack ends where its body does.
          */
         var main: Boolean = false
+
+        /**
+         * The stack of a coroutine that died of an error, kept for a later
+         * traceback; see [LuaError.luastack].
+         */
+        var frozen: List<String>? = null
+
+        /** The debug library this stack belongs to, for the names it knows. */
+        var owner: DebugLib? = null
 
                 fun currentline(): Int {
             return if (calls > 0) frame!![calls - 1]!!.currentline() else -1
@@ -802,38 +877,84 @@ class DebugLib : TwoArgFunction() {
          * @return String containing the traceback.
          */
                 fun traceback(level: Int): String {
-            var level = level
             val sb: StringBuilder = StringBuilder()
             sb.append("stack traceback:")
-            var c: CallFrame?
-            while ((getCallFrame(level++).also { c = it }) != null) {
+            for (line in tracebacklines(level)) {
                 sb.append("\n\t")
-                sb.append(c!!.shortsource())
+                sb.append(line)
+            }
+            return sb.toString()
+        }
+
+        /**
+         * One entry per frame from [level] down, as [traceback] writes them.
+         *
+         * A stack deeper than the two parts together is written with its
+         * middle left out, since a traceback is read by a person: the
+         * outermost frames say where the trouble is and the innermost say
+         * where it came from, and a note stands in for everything between.
+         */
+        fun tracebacklines(level: Int): List<String> {
+            frozen?.let { return if (level <= 0) it else it.drop(level) }
+            val lines: ArrayList<String> = ArrayList()
+            // Counted the way Lua counts it: the host below the main thread is
+            // a level of its own, and is where the last line comes from.
+            val last: Int = calls - 1 + (if (main) 1 else 0)
+            var level = level
+            var show: Int = if (last - level > LEVELS1 + LEVELS2) LEVELS1 else -1
+            while (level <= last) {
+                val here: Int = level
+                level++
+                if (show-- == 0) {
+                    val skipped: Int = last - level - LEVELS2 + 1
+                    lines.add("...\t(skipping " + skipped + " levels)")
+                    level += skipped
+                    continue
+                }
+                val c: CallFrame? = getCallFrame(here)
+                if (c == null) {
+                    // Below the main thread is the host that started it, which
+                    // is where a reference build shows its own C entry point.
+                    lines.add("[C]: in ?")
+                    continue
+                }
+                val sb: StringBuilder = StringBuilder()
+                sb.append(c.shortsource())
                 sb.append(':')
                 if (c.currentline() > 0) sb.append(c.currentline().toString() + ":")
                 sb.append(" in ")
+                // Named the way Lua names one, in that order: how the code
+                // reached it, then the main chunk, then where a library keeps
+                // it, then where it was written, then nothing at all.
                 val ar = auxgetinfo("n", c.f, c)
-                if (c.linedefined() == 0) sb.append("main chunk")
-                else if (ar.name != null) {
-                    // How the name was reached comes first, as Lua writes it:
-                    // "global 'error'", "upvalue 'f'", "metamethod 'close'".
-                    val namewhat: String = ar.namewhat.orEmpty()
-                    sb.append(if (namewhat.isEmpty()) "function" else namewhat)
+                val namewhat: String = ar.namewhat.orEmpty()
+                val known: String? = owner?.globalfuncname(c.f)
+                if (ar.name != null && namewhat.isNotEmpty()) {
+                    sb.append(namewhat)
                     sb.append(" '")
                     sb.append(ar.name)
                     sb.append('\'')
-                } else {
+                } else if (c.f!!.isclosure() && c.linedefined() == 0) {
+                    sb.append("main chunk")
+                } else if (known != null) {
+                    sb.append("function '")
+                    sb.append(known)
+                    sb.append('\'')
+                } else if (c.f!!.isclosure()) {
                     sb.append("function <")
                     sb.append(c.shortsource())
                     sb.append(':')
                     sb.append(c.linedefined())
                     sb.append('>')
+                } else {
+                    sb.append('?')
                 }
+                lines.add(sb.toString())
+                // A tail call left no frame of its own behind, and the gap it
+                // leaves is where Lua says so.
+                if (c.istailcall) lines.add("(...tail calls...)")
             }
-            // Below the main thread is the host that started it, which is
-            // where a reference build shows its own C entry point.
-            if (main) sb.append("\n\t[C]: in ?")
-            return sb.toString()
+            return lines
         }
 
                 fun getCallFrame(level: Int): CallFrame? {
@@ -892,6 +1013,11 @@ class DebugLib : TwoArgFunction() {
                         if (ci != null && ci.hooked) {
                             ar.name = "?"
                             ar.namewhat = "hook"
+                        } else if (ci != null && ci.finalizer) {
+                            // The collector called it, and Lua names it after
+                            // the metamethod that put it there.
+                            ar.name = "__gc"
+                            ar.namewhat = "metamethod"
                         } else if (ci != null && ci.previous != null) {
                             if (ci.previous!!.f!!.isclosure()) {
                                 val nw: NameWhat? = net.blueva.luak.lib.DebugLib.Companion.getfuncname(ci.previous!!)
@@ -943,6 +1069,12 @@ class DebugLib : TwoArgFunction() {
         /** True when this frame is a hook the runtime called, not a Lua call. */
         var hooked: Boolean = false
 
+        /**
+         * True for the frame of a `__gc` handler, which no instruction called
+         * and which therefore has no call site to be named from.
+         */
+        var finalizer: Boolean = false
+
         /** True when a tail call made this frame, taking its caller's place. */
         var istailcall: Boolean = false
 
@@ -989,6 +1121,7 @@ class DebugLib : TwoArgFunction() {
             this.oldpc = 0
             this.args = null
             this.hooked = false
+            this.finalizer = false
             this.istailcall = false
             this.extraargs = 0
             this.ftransfer = 0
@@ -1106,9 +1239,13 @@ class DebugLib : TwoArgFunction() {
          */
         internal fun reachedNewLine(): Boolean {
             if (!f!!.isclosure()) return false
+            // Asked before the line numbers are, since it is also true of the
+            // first instruction of a call: a chunk loaded without debug
+            // information has no lines to change, and this is the one report
+            // it still makes.
+            if (pc <= oldpc) return true
             val li: IntArray = f!!.checkclosure()!!.p.lineinfo ?: return false
             if (pc < 0 || pc >= li.size) return false
-            if (pc <= oldpc) return true
             return oldpc < 0 || oldpc >= li.size || li[pc] != li[oldpc]
         }
 
@@ -1182,11 +1319,19 @@ class DebugLib : TwoArgFunction() {
 
         fun findupvalue(c: LuaClosure, up: Int): LuaString? {
             if (c.upValues != null && up > 0 && up <= c.upValues.size) {
-                if (c.p.upvalues != null && up <= c.p.upvalues!!.size) return c.p.upvalues!![up - 1]!!.name
+                if (c.p.upvalues != null && up <= c.p.upvalues!!.size) {
+                    // A chunk loaded without debug information still has its
+                    // upvalues, it just cannot say what they were called, and
+                    // Lua answers that in so many words.
+                    return c.p.upvalues!![up - 1]!!.name ?: NO_NAME
+                }
                 else return LuaString.valueOf("." + up)
             }
             return null
         }
+
+        /** What an upvalue is called where the name was stripped out. */
+        private val NO_NAME: LuaString = LuaString.valueOf("(no name)")
 
         fun lua_assert(x: Boolean) {
             if (!x) throw RuntimeException("lua_assert failed")
@@ -1206,7 +1351,9 @@ class DebugLib : TwoArgFunction() {
                     Lua.GETARG_A(i)
                 )
 
-                Lua.OP_TFORCALL -> return net.blueva.luak.lib.DebugLib.NameWhat("(for iterator)", "(for iterator")
+                // Both halves read the same, which is how Lua names the
+                // function a generic `for` is stepping.
+                Lua.OP_TFORCALL -> return net.blueva.luak.lib.DebugLib.NameWhat("for iterator", "for iterator")
                 Lua.OP_SELF, Lua.OP_GETTABUP, Lua.OP_GETTABLE -> tm = LuaValue.INDEX
                 Lua.OP_SETTABUP, Lua.OP_SETTABLE -> tm = LuaValue.NEWINDEX
                 Lua.OP_EQ -> tm = LuaValue.EQ
@@ -1214,6 +1361,13 @@ class DebugLib : TwoArgFunction() {
                 Lua.OP_SUB -> tm = LuaValue.SUB
                 Lua.OP_MUL -> tm = LuaValue.MUL
                 Lua.OP_DIV -> tm = LuaValue.DIV
+                Lua.OP_IDIV -> tm = LuaValue.IDIV
+                Lua.OP_BAND -> tm = LuaValue.BAND
+                Lua.OP_BOR -> tm = LuaValue.BOR
+                Lua.OP_BXOR -> tm = LuaValue.BXOR
+                Lua.OP_SHL -> tm = LuaValue.SHL
+                Lua.OP_SHR -> tm = LuaValue.SHR
+                Lua.OP_BNOT -> tm = LuaValue.BNOT
                 Lua.OP_MOD -> tm = LuaValue.MOD
                 Lua.OP_POW -> tm = LuaValue.POW
                 Lua.OP_UNM -> tm = LuaValue.UNM

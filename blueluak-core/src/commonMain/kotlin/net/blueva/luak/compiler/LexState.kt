@@ -789,6 +789,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     /* semantic error */
     fun semerror(msg: String?) {
         t.token = 0 /* remove 'near to' from final message */
+        // Something already read is what is wrong, not whatever the lexer has
+        // gone on to look at: a complaint about the end of a statement belongs
+        // on the line the statement is on.
+        linenumber = lastline
         syntaxerror(msg)
     }
 
@@ -1334,8 +1338,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
-    internal fun funcargs(f: expdesc, line: Int) {
+    internal fun funcargs(f: expdesc) {
         val fs: FuncState = this.fs!!
+        // Where the arguments start, which is the line a call reports itself
+        // on: a call written over several lines is the one at its '(', not the
+        // one where the expression naming the function began.
+        val line: Int = linenumber
         val args: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val base: Int
         val nparams: Int
@@ -1416,7 +1424,6 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun suffixedexp(v: expdesc) {
         /* suffixedexp ->
        	primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
-        val line = linenumber
         primaryexp(v)
         while (true) {
             when (t.token) {
@@ -1439,13 +1446,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     this.next()
                     this.checkname(key)
                     fs!!.self(v, key)
-                    this.funcargs(v, line)
+                    this.funcargs(v)
                 }
 
                 '('.code, net.blueva.luak.compiler.LexState.Companion.TK_STRING, '{'.code -> {
                     /* funcargs */
                     fs!!.exp2nextreg(v)
-                    this.funcargs(v, line)
+                    this.funcargs(v)
                 }
 
                 else -> return
@@ -1742,8 +1749,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun labelstat(label: LuaString?, line: Int) {
         /* label -> '::' NAME '::' */
         val l: Int /* index of new label being created */
-        fs!!.checkrepeated(dyd.label, dyd.n_label, (label)!!) /* check for repeated labels */
         checknext(net.blueva.luak.compiler.LexState.Companion.TK_DBCOLON) /* skip double colon */
+        // Read before the label is checked or entered: a run of labels one
+        // after another is a single no-op, and the one that ends up entered is
+        // the last of them.
+        skipnoopstat() /* skip other no-op statements */
+        fs!!.checkrepeated(dyd.label, dyd.n_label, (label)!!) /* check for repeated labels */
         /* create new entry for this label */
         l = newlabelentry(
             grow(dyd.label, dyd.n_label + 1).also { dyd.label = it },
@@ -1752,7 +1763,6 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             line,
             fs!!.getlabel()
         )
-        skipnoopstat() /* skip other no-op statements */
         if (block_follow(false)) {  /* label is last no-op statement in the block? */
             /* assume that locals are already out of scope */
             dyd.label[l]!!.nactvar = fs!!.bl!!.nactvar

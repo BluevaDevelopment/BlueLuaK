@@ -101,6 +101,18 @@ import kotlin.reflect.KClass
  */
 abstract
 open class LuaValue : Varargs() {
+    /**
+     * What keeps this value watched for finalization, or null.
+     *
+     * Only a table or a userdata can have a `__gc` handler, so only those keep
+     * one; everything else answers null and ignores what it is given. Holding
+     * it here is the point: the keeper has to live exactly as long as the
+     * value does. See [Globals.markforfinalization].
+     */
+    internal open var gckeeper: Any?
+        get() = null
+        set(value) {}
+
     // type
     /** Get the enumeration value for the type of this value.
      * @return value for this type, one of
@@ -4146,6 +4158,12 @@ open class LuaValue : Varargs() {
         /** LuaString constant with value "__unm" for use as metatag  */
         val UNM: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__unm")
+
+        /* see gckeeper */
+
+        /** LuaString constant with value "__gc" for use as metatag  */
+        val GC: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__gc")
 
         /** LuaString constant with value "__close" for use as metatag  */
         val CLOSE: LuaString

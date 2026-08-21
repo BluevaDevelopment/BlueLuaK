@@ -135,6 +135,67 @@ class Globals : LuaTable() {
     /** The DebugLib instance loaded into this Globals, or null if debugging is not enabled  */
     var debuglib: DebugLib? = null
 
+    /**
+     * Objects the host has reclaimed whose `__gc` handler has still to run.
+     *
+     * Filled by the host, off whatever thread it reclaims on, and emptied here
+     * where Lua code can safely be run - which is what [runfinalizers] does.
+     */
+    internal val finalized: MutableList<LuaValue> = ArrayList()
+
+    /** True once anything at all has been marked for finalization. */
+    internal var marksfinalizers: Boolean = false
+
+    /** True while a finalizer runs, so that one cannot set off another. */
+    private var finalizing: Boolean = false
+
+    /**
+     * Marks [target] to have its `__gc` handler run once it is unreachable.
+     *
+     * As in Lua this happens when the metatable is set, and only then: a
+     * `__gc` added to a metatable that is already in use has no effect on
+     * objects that were given it earlier.
+     */
+    internal fun markforfinalization(target: LuaValue) {
+        if (target.gckeeper != null) return
+        val keeper: Any? = watchForFinalization(target, finalized)
+        if (keeper == null) return // a host that cannot finalize at all
+        target.gckeeper = keeper
+        marksfinalizers = true
+    }
+
+    /**
+     * Runs the `__gc` handler of everything the host has reclaimed.
+     *
+     * Called where the interpreter allocates, which is where Lua runs a step
+     * of its own collector, and again whenever `collectgarbage` is asked to
+     * collect. A handler that raises is reported as a warning and does not
+     * disturb what was running, which is what Lua does with one.
+     */
+    internal fun runfinalizers() {
+        if (!marksfinalizers || finalizing) return
+        val due: List<LuaValue> = takeFinalized(finalized)
+        if (due.isEmpty()) return
+        finalizing = true
+        try {
+            for (target in due) {
+                val handler: LuaValue = target.metatag(LuaValue.GC)
+                if (handler.isnil()) continue
+                val state: LuaThread.State = running.state
+                state.finalizerframepending = true
+                try {
+                    handler.call(target)
+                } catch (failure: LuaError) {
+                    baselib?.warning("error in __gc metamethod (" + failure.message + ")")
+                } finally {
+                    state.finalizerframepending = false
+                }
+            }
+        } finally {
+            finalizing = false
+        }
+    }
+
     /** Interface for module that converts a Prototype into a LuaFunction with an environment.  */
     interface Loader {
         /** Convert the prototype into a LuaFunction with the supplied environment.  */

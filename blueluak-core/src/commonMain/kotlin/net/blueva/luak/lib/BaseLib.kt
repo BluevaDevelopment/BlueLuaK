@@ -89,6 +89,18 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     /** Whether `warn` currently emits anything; warnings start switched off. */
     internal var warningsOn: Boolean = false
 
+    /**
+     * Emits [text] as a warning, the way `warn` would.
+     *
+     * The runtime reports what it cannot raise - an error inside a `__gc`
+     * handler, which has no caller to raise to - and, like `warn`, says
+     * nothing at all until warnings have been switched on.
+     */
+    internal fun warning(text: String) {
+        if (!warningsOn) return
+        globals!!.STDERR!!.println("Lua warning: " + text)
+    }
+
 
     /** Perform one-time initialization on the library by adding base functions
      * to the supplied environment, and returning it as the return value.
@@ -103,7 +115,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         env!!.set("_G", env)
         env!!.set("_VERSION", Lua._VERSION)
         env!!.set("assert", net.blueva.luak.lib.BaseLib._assert())
-        env!!.set("collectgarbage", net.blueva.luak.lib.BaseLib.collectgarbage())
+        env!!.set("collectgarbage", net.blueva.luak.lib.BaseLib.collectgarbage(this))
         env!!.set("warn", warn(this))
         env!!.set("dofile", dofile())
         env!!.set("error", net.blueva.luak.lib.BaseLib.error())
@@ -117,7 +129,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         env!!.set("rawlen", net.blueva.luak.lib.BaseLib.rawlen())
         env!!.set("rawset", net.blueva.luak.lib.BaseLib.rawset())
         env!!.set("select", net.blueva.luak.lib.BaseLib.select())
-        env!!.set("setmetatable", net.blueva.luak.lib.BaseLib.setmetatable())
+        env!!.set("setmetatable", net.blueva.luak.lib.BaseLib.setmetatable(this))
         env!!.set("tonumber", net.blueva.luak.lib.BaseLib.tonumber())
         env!!.set("tostring", net.blueva.luak.lib.BaseLib.tostring())
         env!!.set("type", net.blueva.luak.lib.BaseLib.type())
@@ -207,10 +219,16 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         }
     }
 
-    internal class collectgarbage : VarArgFunction() {
+    internal class collectgarbage(private val baselib: BaseLib) : VarArgFunction() {
         companion object {
             /** The collector mode last asked for; 5.5 starts generational. */
             var mode: String = "generational"
+
+            /** How much of a cycle the steps asked for so far add up to. */
+            var stepped: Int = 0
+
+            /** What a cycle's worth of steps comes to. */
+            const val CYCLE: Int = 100
 
             /** The tunables and their Lua 5.5 defaults. */
             val parameters: MutableMap<String, Long> = mutableMapOf(
@@ -226,18 +244,36 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             val s: String? = args.optjstring(1, "collect")
             if ("collect".equals(s)) {
                 platformCollectGarbage()
+                baselib.globals!!.runfinalizers()
+                net.blueva.luak.Memory.collected()
                 return (ZERO)!!
             } else if ("count".equals(s)) {
-                val used: Long = platformUsedMemory()
+                val used: Long = net.blueva.luak.Memory.used()
                 return (varargsOf(valueOf(used / 1024.0), valueOf((used % 1024).toInt())))!!
             } else if ("step".equals(s)) {
+                // A step of the size asked for, and the answer says whether it
+                // was the one that finished a cycle. The host collector runs
+                // whole cycles of its own, so what is stepped through here is
+                // the debt Lua would have worked off before running one.
                 platformCollectGarbage()
+                baselib.globals!!.runfinalizers()
+                val size: Int = args.optint(2, 0)
+                net.blueva.luak.lib.BaseLib.collectgarbage.stepped += if (size > 0) size else 1
+                if (net.blueva.luak.lib.BaseLib.collectgarbage.stepped <
+                    net.blueva.luak.lib.BaseLib.collectgarbage.CYCLE
+                ) {
+                    return (LuaValue.FALSE)!!
+                }
+                net.blueva.luak.lib.BaseLib.collectgarbage.stepped = 0
+                net.blueva.luak.Memory.collected()
                 return (LuaValue.TRUE)!!
             } else if ("isrunning".equals(s)) {
-                // The host collector is always on; there is no way to stop it
-                // from here, so "stop" and "restart" are accepted and ignored.
-                return (LuaValue.TRUE)!!
-            } else if ("stop".equals(s) || "restart".equals(s)) {
+                return (valueOf(net.blueva.luak.Memory.running))!!
+            } else if ("stop".equals(s)) {
+                net.blueva.luak.Memory.running = false
+                return (ZERO)!!
+            } else if ("restart".equals(s)) {
+                net.blueva.luak.Memory.running = true
                 return (ZERO)!!
             } else if ("param".equals(s)) {
                 // The host collector is not tunable from here, so a parameter
@@ -613,7 +649,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     }
 
     // "setmetatable", // (table, metatable) -> table
-    internal class setmetatable : TableLibFunction() {
+    internal class setmetatable(private val baselib: BaseLib) : TableLibFunction() {
         override fun call(table: LuaValue?): LuaValue? {
             // What it was given is looked at first, as Lua looks at it: being
             // handed something that is not a table is the more useful thing to
@@ -625,7 +661,12 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun call(table: LuaValue?, metatable: LuaValue?): LuaValue? {
             val mt0: LuaValue? = table!!.checktable()!!.getmetatable()
             if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
-            return (table!!.setmetatable(if (metatable!!.isnil()) null else metatable!!.checktable()))!!
+            val mt: LuaValue? = if (metatable!!.isnil()) null else metatable!!.checktable()
+            val answer: LuaValue = table!!.setmetatable(mt)!!
+            // Setting the metatable is where Lua decides an object is to be
+            // finalized, and the only place it decides it.
+            if (mt != null && !mt.rawget(GC).isnil()) baselib.globals!!.markforfinalization(table)
+            return answer
         }
     }
 
@@ -875,23 +916,41 @@ private fun protectedCall(t: LuaThread?, f: LuaValue, args: Varargs): Varargs {
     // A protected call is where the tally goes back to what it was, however
     // the call ends; see LuaClosure.enterforeign.
     val outer: Int = state.foreigncalls
+    val debuglib: DebugLib? = frameFor(t, f)
+    if (debuglib != null) debuglib.onCall(f as net.blueva.luak.LuaFunction)
     try {
         enterForeign(state)
         return f.invoke(args)
     } finally {
         state.foreigncalls = outer
+        if (debuglib != null) debuglib.onReturn()
     }
 }
 
 private suspend fun protectedCallSuspend(t: LuaThread?, f: LuaValue, args: Varargs): Varargs {
     val state: LuaThread.State = t?.state ?: return f.invokeSuspend(args)
     val outer: Int = state.foreigncalls
+    val debuglib: DebugLib? = frameFor(t, f)
+    if (debuglib != null) debuglib.onCall(f as net.blueva.luak.LuaFunction)
     try {
         enterForeign(state)
         return f.invokeSuspend(args)
     } finally {
         state.foreigncalls = outer
+        if (debuglib != null) debuglib.onReturn()
     }
+}
+
+/**
+ * The debug library to push a frame on for [f], or null for none.
+ *
+ * A function written in Lua pushes its own frame as it starts; one of the
+ * library's own has none, so whoever calls it pushes one for it. Without that
+ * the levels a traceback counts would skip it.
+ */
+private fun frameFor(t: LuaThread?, f: LuaValue): DebugLib? {
+    if (f !is net.blueva.luak.LuaFunction || f is net.blueva.luak.LuaClosure) return null
+    return t?.globals?.debuglib
 }
 
 private fun enterForeign(state: LuaThread.State) {

@@ -52,6 +52,12 @@ internal actual fun platformCollectGarbage() {
 internal actual fun platformUsedMemory(): Long =
     GC.lastGCInfo?.memoryUsageAfter?.values?.sumOf { it.totalObjectsSizeBytes } ?: 0L
 
+// Nothing here can bring back an object the host is reclaiming, so an object
+// is never handed to its `__gc` handler and the handler never runs.
+internal actual fun watchForFinalization(target: LuaValue, pending: MutableList<LuaValue>): Any? = null
+
+internal actual fun takeFinalized(pending: MutableList<LuaValue>): List<LuaValue> = emptyList()
+
 internal actual fun platformLoadLibrary(className: String, globals: Globals): LuaValue? = null
 internal actual fun platformTypeName(type: KClass<*>): String = type.simpleName ?: "userdata"
 

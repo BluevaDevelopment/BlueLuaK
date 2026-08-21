@@ -222,7 +222,6 @@ class LoadState private constructor(
      */
     @kotlin.Throws(IOException::class)
     fun loadDebug(f: Prototype) {
-        f.source = loadString()
         f.lineinfo = loadIntArray()
         var n = loadInt()
         f.locvars = if (n > 0) arrayOfNulls<LocVars>(n) else net.blueva.luak.LoadState.Companion.NOLOCVARS
@@ -246,10 +245,10 @@ class LoadState private constructor(
     @kotlin.Throws(IOException::class)
     fun loadFunction(p: LuaString?): Prototype {
         val f: Prototype = Prototype()
-        ////		this.L.push(f);
-//		f.source = loadString();
-//		if ( f.source == null )
-//			f.source = p;
+        // Nothing written for the source means the function came from the same
+        // text as the one around it; see DumpState.dumpFunction.
+        f.source = loadString()
+        if (f.source == null) f.source = p
         f.linedefined = loadInt()
         f.lastlinedefined = loadInt()
         f.numparams = `is`.readUnsignedByte()
@@ -415,7 +414,11 @@ class LoadState private constructor(
                 net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES, net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_INTS_ONLY, net.blueva.luak.LoadState.Companion.NUMBER_FORMAT_NUM_PATCH_INT32 -> {}
                 else -> throw LuaError("unsupported int size")
             }
-            return s.loadFunction(LuaString.valueOf(sname!!))
+            // A binary chunk carries its own source, and where it does not -
+            // a chunk dumped without debug information - it stays without one:
+            // the name this was loaded under says where the bytes came from,
+            // not where the code was written.
+            return s.loadFunction(null)
         }
 
         /**

@@ -44,6 +44,26 @@ class LuaError : RuntimeException {
     internal var traceback: String? = null
 
     /**
+     * True once the error has been given the place it was raised.
+     *
+     * Only the first function the error unwinds through decides that, since it
+     * is the only one still standing on the whole stack the level counts
+     * from; every function after it would answer with itself.
+     */
+    internal var positioned: Boolean = false
+
+    /**
+     * The stack this error was raised on, one entry per frame.
+     *
+     * A coroutine keeps the stack it died on so a later
+     * `debug.traceback(co)` can still show it; by the time the error reaches
+     * whoever resumed the coroutine the frames themselves are gone, so they
+     * are written down here on the way out. Only errors leaving a coroutine
+     * carry this: nothing can look at the main thread's stack after the fact.
+     */
+    internal var luastack: List<String>? = null
+
+    /**
      * Get the cause, if any.
      */
     override var cause: Throwable? = null

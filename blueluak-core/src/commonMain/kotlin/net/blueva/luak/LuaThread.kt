@@ -190,6 +190,23 @@ class LuaThread : LuaValue {
         /** True while a hook has been entered but its frame is not on yet. */
         var hookframepending: Boolean = false
 
+        /**
+         * How many frames a host stack overflow has unwound so far.
+         *
+         * The interpreter runs on the host's own stack, so an overflow is
+         * noticed with no room left to report it in. Counting the frames it
+         * unwinds through lets it be turned into an ordinary Lua error a
+         * little way back from the edge, where there is room again for a
+         * message handler to run.
+         */
+        var unwinding: Int = 0
+
+        /**
+         * Set while a `__gc` handler is being called, so the frame it pushes
+         * can be marked as a finalizer's; see [DebugLib.CallFrame.finalizer].
+         */
+        var finalizerframepending: Boolean = false
+
         /** The `__call` chain length the next frame pushed should report. */
         var pendingextraargs: Int = 0
 
@@ -299,6 +316,12 @@ class LuaThread : LuaValue {
                         if (err is ClosedCoroutine) LuaValue.TRUE!!
                         else {
                             deadError = err
+                            // The stack it died on outlives the frames
+                            // themselves, so a traceback can still show it.
+                            new_thread.callstack?.let { stack ->
+                                (stack as net.blueva.luak.lib.DebugLib.CallStack).frozen =
+                                    (err as? LuaError)?.luastack
+                            }
                             LuaValue.varargsOf(LuaValue.FALSE, errorObject(err))!!
                         }
                     }
