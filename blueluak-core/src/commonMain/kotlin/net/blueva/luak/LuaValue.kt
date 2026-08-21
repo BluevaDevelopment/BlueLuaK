@@ -1500,7 +1500,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(): LuaValue? {
-        return callmt().call(this)
+        return invoke(net.blueva.luak.LuaValue.Companion.NONE!!).arg1()!!
     }
 
     /** Call `this` with 1 argument, including metatag processing,
@@ -1531,7 +1531,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(arg: LuaValue?): LuaValue? {
-        return callmt().call(this, arg)
+        return invoke(arg!!).arg1()!!
     }
 
     /** Convenience function which calls a luavalue with a single, string argument.
@@ -1572,7 +1572,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
-        return callmt().call(this, arg1, arg2)
+        return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg1, arg2!!)).arg1()!!
     }
 
     /** Call `this` with 3 arguments, including metatag processing,
@@ -1605,7 +1605,9 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
-        return (callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1())!!
+        return invoke(
+            net.blueva.luak.LuaValue.Companion.varargsOf(arrayOf<LuaValue?>(arg1, arg2, arg3)),
+        ).arg1()!!
     }
 
     /** Suspending counterpart to the `call`/`invoke`/`onInvoke` family, used by
@@ -1881,7 +1883,13 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(args: Varargs): Varargs {
-        return callmt().invoke(this, args)
+        val prefix: ArrayList<LuaValue> = ArrayList()
+        val target: LuaValue = resolvecall(prefix)
+        // Prepended outermost first, so the innermost handler's own value
+        // ends up in front: Lua hands them over in the order it walked them.
+        var all: Varargs = args
+        for (self in prefix) all = net.blueva.luak.LuaValue.Companion.varargsOf(self, all)
+        return target.invoke(all)
     }
 
     /** Suspending counterpart to [.invoke]; see [.callSuspend] for why this
@@ -2227,6 +2235,31 @@ open class LuaValue : Varargs() {
      * @return [LuaValue] value if metatag is defined
      * @throws LuaError if [.CALL] metatag is not defined.
      */
+    /**
+     * The function a call on this value really reaches, through `__call`.
+     *
+     * Each handler on the way takes the value it was found on as its first
+     * argument, so [prefix] collects them in order. The chain is bounded: Lua
+     * allows a fixed number of handlers between the value that was written and
+     * the function that runs, and refuses a longer one rather than following
+     * it forever.
+     */
+    internal fun resolvecall(prefix: ArrayList<LuaValue>): LuaValue {
+        var target: LuaValue = this
+        var depth = 0
+        while (target !is LuaFunction) {
+            val handler: LuaValue = target.metatag(net.blueva.luak.LuaValue.Companion.CALL)
+            // Nothing to call: reported against the value as it was written.
+            if (handler.isnil()) target.callmt()
+            if (++depth > net.blueva.luak.LuaValue.Companion.MAX_CALL_CHAIN) {
+                net.blueva.luak.LuaValue.Companion.error("'__call' chain too long")
+            }
+            prefix.add(target)
+            target = handler
+        }
+        return target
+    }
+
     protected fun callmt(): LuaValue {
         return checkmetatag(net.blueva.luak.LuaValue.Companion.CALL, "attempt to call ")
     }
@@ -4412,6 +4445,9 @@ open class LuaValue : Varargs() {
 
         /** Constant limiting metatag loop processing  */
         private const val MAXTAGLOOP = 100
+
+        /** As many `__call` handlers as Lua follows before refusing the chain. */
+        const val MAX_CALL_CHAIN: Int = 15
 
         /**
          * Return value for field reference including metatag processing, or [NIL] if it doesn't exist.

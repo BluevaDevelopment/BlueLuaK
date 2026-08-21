@@ -161,7 +161,11 @@ class LuaThread : LuaValue {
         }
         if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING) {
             if (this.isMainThread) LuaValue.error("cannot close main thread")
-            LuaValue.error("cannot close a running coroutine")
+            // A coroutine closing itself is ended on the spot: this never
+            // returns, so nothing written after the call runs. Its pending
+            // to-be-closed variables are handled on the way out, by the
+            // `finally` blocks the unwinding passes through.
+            throw ClosedCoroutine()
         }
         return s.lua_close(this)
     }
@@ -182,6 +186,20 @@ class LuaThread : LuaValue {
         var hookrtrn: Boolean = false
         var hookcount: Int = 0
         var inhook: Boolean = false
+
+        /** True while a hook has been entered but its frame is not on yet. */
+        var hookframepending: Boolean = false
+
+        /** The `__call` chain length the next frame pushed should report. */
+        var pendingextraargs: Int = 0
+
+        /**
+         * How many library calls into Lua code are in progress on this thread.
+         *
+         * While any of them is, there is nowhere for a yield to suspend to and
+         * the coroutine reports itself as not yieldable.
+         */
+        var noyield: Int = 0
         var lastline: Int = 0
         var bytecodes: Int = 0
 
@@ -242,11 +260,15 @@ class LuaThread : LuaValue {
                     val r = finalResult!!
                     val err = r.exceptionOrNull()
                     if (err != null) {
-                        // A host error may carry no message of its own, and a
-                        // resume still has to answer with something.
-                        val text: String = err.message
-                            ?: if (platformIsStackOverflow(err)) "stack overflow" else err.toString()
-                        LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(text))!!
+                        // The coroutine died: what it failed with is kept, so a
+                        // later coroutine.close can report it once.
+                        // A coroutine that closed itself did not fail: it
+                        // ended, and a resume sees an ordinary empty return.
+                        if (err is ClosedCoroutine) LuaValue.TRUE!!
+                        else {
+                            deadError = err
+                            LuaValue.varargsOf(LuaValue.FALSE, errorObject(err))!!
+                        }
                     }
                     else LuaValue.varargsOf(LuaValue.TRUE, r.getOrThrow())!!
                 } else {
@@ -261,6 +283,30 @@ class LuaThread : LuaValue {
             }
         }
 
+        /**
+         * What a coroutine died of, until a `coroutine.close` reports it.
+         *
+         * Lua hands the error back once more when the dead coroutine is
+         * closed, and answers plainly the next time it is asked.
+         */
+        private var deadError: Throwable? = null
+
+        /**
+         * The value a failure should be reported as.
+         *
+         * A Lua error carries its own object, which may be any value; anything
+         * else can only be described by its text.
+         */
+        private fun errorObject(err: Throwable): LuaValue {
+            if (err is LuaError) {
+                val message: LuaValue? = err.messageObject
+                if (message != null) return message
+            }
+            val text: String = err.message
+                ?: if (platformIsStackOverflow(err)) "stack overflow" else err.toString()
+            return LuaValue.valueOf(text)!!
+        }
+
         /** Unwinds a suspended coroutine so its pending closers run. */
         fun lua_close(closing: LuaThread): Varargs {
             val continuation = yieldContinuation
@@ -268,6 +314,13 @@ class LuaThread : LuaValue {
             if (continuation == null) {
                 // Never started, or already finished: nothing is on its stack.
                 status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
+                // A coroutine that died of an error reports it once more here,
+                // and nothing on any close after that.
+                val died: Throwable? = deadError
+                deadError = null
+                if (died != null) {
+                    return LuaValue.varargsOf(LuaValue.FALSE, errorObject(died))!!
+                }
                 return LuaValue.TRUE!!
             }
             val previous_thread: LuaThread = globals.running
@@ -290,7 +343,7 @@ class LuaThread : LuaValue {
             finalResult = null
             val failure: Throwable? = result?.exceptionOrNull()
             if (failure == null || failure is ClosedCoroutine) return LuaValue.TRUE!!
-            return LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(failure.message))!!
+            return LuaValue.varargsOf(LuaValue.FALSE, errorObject(failure))!!
         }
 
         suspend fun lua_yield(args: Varargs?): Varargs {

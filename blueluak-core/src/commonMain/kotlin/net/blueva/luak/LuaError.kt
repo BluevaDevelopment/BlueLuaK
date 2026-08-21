@@ -74,6 +74,18 @@ class LuaError : RuntimeException {
             return m
         }
 
+    /**
+     * Replaces what this error carries with what a message handler answered.
+     *
+     * The handler's result is the error from here on, whatever its type, so
+     * nothing that described the old one is kept.
+     */
+    internal fun replaceMessage(value: LuaValue) {
+        this.`object` = value
+        this.argMessageOverride = null
+        this.fileline = null
+    }
+
     val messageObject: LuaValue?
         /** Get the LuaValue that was provided in the constructor, or
          * a LuaString containing the message if it was a string error argument.

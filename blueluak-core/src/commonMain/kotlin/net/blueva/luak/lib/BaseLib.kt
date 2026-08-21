@@ -464,7 +464,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     internal inner class pcall : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val func: LuaValue = args.checkvalue(1)!!
-            if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
             // Shadow any outer xpcall's message handler while this pcall's own
             // protected region is active: an error raised in here belongs to
             // THIS pcall, not to an unrelated, further-out xpcall, matching
@@ -494,7 +493,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 return (varargsOf(FALSE, valueOf("stack overflow")))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
-                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }
 
@@ -504,7 +502,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         // instead of hitting the C-call boundary error.
         override suspend fun invokeSuspend(args: Varargs): Varargs {
             val func: LuaValue = args.checkvalue(1)!!
-            if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
             // See the non-suspend invoke() above for why errorfunc is shadowed.
             val t: LuaThread? = globals?.running
             val preverror: LuaValue? = t?.errorfunc
@@ -528,7 +525,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 return (varargsOf(FALSE, valueOf("stack overflow")))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
-                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
             }
         }
     }
@@ -664,7 +660,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             val preverror: LuaValue? = t.errorfunc
             t.errorfunc = args.checkvalue(2)
             try {
-                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
@@ -688,8 +683,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                     // The stack has unwound by the time this is reached, so
                     // there is room to run the handler over it.
                     return (varargsOf(FALSE, runMessageHandler(t, valueOf("stack overflow"))))!!
-                } finally {
-                    if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
             } finally {
                 t.errorfunc = preverror
@@ -704,7 +697,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             val preverror: LuaValue? = t.errorfunc
             t.errorfunc = args.checkvalue(2)
             try {
-                if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onCall(this)
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invokeSuspend((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
@@ -722,8 +714,6 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                     // The stack has unwound by the time this is reached, so
                     // there is room to run the handler over it.
                     return (varargsOf(FALSE, runMessageHandler(t, valueOf("stack overflow"))))!!
-                } finally {
-                    if (globals != null && globals!!.debuglib != null) globals!!.debuglib!!.onReturn()
                 }
             } finally {
                 t.errorfunc = preverror

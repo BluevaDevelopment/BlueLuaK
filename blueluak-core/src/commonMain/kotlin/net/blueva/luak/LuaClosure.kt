@@ -209,14 +209,32 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         return execute(stack, (if (p.is_vararg !== 0) varargs.subargs(p.numparams + 1) else NONE)!!)
     }
 
-    override fun call(): LuaValue = runLuaSync { call0() }
-    override fun call(arg: LuaValue?): LuaValue = runLuaSync { call1(arg) }
-    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue = runLuaSync { call2(arg1, arg2) }
-    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue =
-        runLuaSync { call3(arg1, arg2, arg3) }
+    /**
+     * Runs [block], with yielding shut off while it does.
+     *
+     * These are the entry points a library function reaches Lua code through,
+     * and there is nowhere for a yield inside one to suspend to: it is the
+     * C-call boundary, and the coroutine counts as non-yieldable while the
+     * call is in progress.
+     */
+    private fun <T> runAcrossBoundary(block: suspend () -> T): T {
+        val state: LuaThread.State = globals?.running?.state ?: return runLuaSync(block)
+        state.noyield++
+        try {
+            return runLuaSync(block)
+        } finally {
+            state.noyield--
+        }
+    }
 
-    override fun invoke(varargs: Varargs): Varargs = runLuaSync { onInvokeImpl(varargs)!!.evalSuspend() }
-    override fun onInvoke(varargs: Varargs): Varargs? = runLuaSync { onInvokeImpl(varargs) }
+    override fun call(): LuaValue = runAcrossBoundary { call0() }
+    override fun call(arg: LuaValue?): LuaValue = runAcrossBoundary { call1(arg) }
+    override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue = runAcrossBoundary { call2(arg1, arg2) }
+    override fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue =
+        runAcrossBoundary { call3(arg1, arg2, arg3) }
+
+    override fun invoke(varargs: Varargs): Varargs = runAcrossBoundary { onInvokeImpl(varargs)!!.evalSuspend() }
+    override fun onInvoke(varargs: Varargs): Varargs? = runAcrossBoundary { onInvokeImpl(varargs) }
 
     override suspend fun callSuspend(): LuaValue? = call0()
     override suspend fun callSuspend(arg: LuaValue?): LuaValue? = call1(arg)
@@ -236,7 +254,30 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * wholesale. Returns false for the multiple-result and vararg shapes, which
      * [execute] keeps because they also update its `v` and `top`.
      */
-    private suspend fun callFixedArity(stack: Array<LuaValue>, i: Int, a: Int): Boolean {
+    private suspend fun callFixedArity(
+        stack: Array<LuaValue>,
+        i: Int,
+        a: Int,
+        debuglib: DebugLib?,
+    ): Boolean {
+        // A library function has no frame of its own to push, so the caller
+        // pushes one for it: without that a traceback would not name it and
+        // the call and return hooks would never fire for it.
+        // Only a function of the library's own gets a frame pushed for it
+        // here: a Lua closure pushes its own, and anything reached through
+        // __call is not what ends up running.
+        val callee: LuaValue = stack[a]
+        val traced: Boolean = debuglib != null && callee is LuaFunction && callee !is LuaClosure
+        if (traced) debuglib!!.onCall(callee as LuaFunction)
+        try {
+            return callFixedArityValues(stack, i, a)
+        } finally {
+            if (traced) debuglib!!.onReturn()
+        }
+    }
+
+    /** The call shapes themselves, without the bookkeeping around them. */
+    private suspend fun callFixedArityValues(stack: Array<LuaValue>, i: Int, a: Int): Boolean {
         when (i and (Lua.MASK_B or Lua.MASK_C)) {
             (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend()
             (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1])
@@ -293,18 +334,26 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // null for the overwhelming majority of functions, which declare none.
         var tbc: ArrayList<Int>? = null
 
-        // A named vararg parameter is a table over the extra arguments, built
-        // once here so that it and '...' read the same storage.
-        if (p.is_vararg and Lua.VARARG_NAMED != 0) buildVarargTable(varargs, p, stack)
-
-
         // Resolved once per frame rather than per instruction: the per-opcode
         // "globals != null && globals.debuglib != null" reload was two field
         // loads and two branches on the hottest path in the interpreter.
         val debuglib: DebugLib? = globals?.debuglib
 
+        // With the debug library watching a vararg function, the arguments get
+        // storage of their own so debug.setlocal can write through to what
+        // '...' reads. Nothing else pays for it.
+        val tracked: Array<LuaValue?>? =
+            if (debuglib != null && p.is_vararg != 0) copyArgs(varargs) else null
+        // ArrayVarargs directly rather than varargsOf, which for one or two
+        // values hands back something that no longer shares the array.
+        val args: Varargs = if (tracked != null) Varargs.ArrayVarargs(tracked, NONE!!) else varargs
+
+        // A named vararg parameter is a table over the extra arguments, built
+        // once here so that it and '...' read the same storage.
+        if (p.is_vararg and Lua.VARARG_NAMED != 0) buildVarargTable(args, p, stack)
+
         // allow for debug hooks
-        if (debuglib != null) debuglib.onCall(this, varargs, stack as Array<LuaValue?>)
+        if (debuglib != null) debuglib.onCall(this, args, stack as Array<LuaValue?>, tracked)
 
         // process instructions
         try {
@@ -637,16 +686,20 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         continue
                     }
 
-                    Lua.OP_CALL -> when (i and (Lua.MASK_B or Lua.MASK_C)) {
+                    Lua.OP_CALL -> {
+                        // How many __call handlers stand between here and what
+                        // actually runs, so its frame can report them.
+                        if (debuglib != null) debuglib.notecallchain(stack[a])
+                        when (i and (Lua.MASK_B or Lua.MASK_C)) {
                         (1 shl Lua.POS_B) or (0 shl Lua.POS_C) -> {
-                            v = stack[a].invokeSuspend((NONE)!!)
+                            v = invokeTraced(stack[a], (NONE)!!, debuglib)
                             top = a + v.narg()
                             ++pc
                             continue
                         }
 
                         (2 shl Lua.POS_B) or (0 shl Lua.POS_C) -> {
-                            v = stack[a].invokeSuspend(stack[a + 1])
+                            v = invokeTraced(stack[a], stack[a + 1], debuglib)
                             top = a + v.narg()
                             ++pc
                             continue
@@ -656,15 +709,17 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             // The fixed-arity shapes touch nothing but stack[a], so
                             // they live in callFixedArity() to keep this method under
                             // the JVM's 8000-bytecode JIT limit - see execute()'s doc.
-                            if (callFixedArity(stack, i, a)) {
+                            if (callFixedArity(stack, i, a, debuglib)) {
                                 ++pc
                                 continue
                             }
                             b = i ushr 23
                             c = (i shr 14) and 0x1ff
-                            v = stack[a].invokeSuspend(
+                            v = invokeTraced(
+                                stack[a],
                                 if (b > 0) varargsOf(stack, a + 1, b - 1) else  // exact arg count
-                                    varargsOf(stack, a + 1, top - v.narg() - (a + 1), v)
+                                    varargsOf(stack, a + 1, top - v.narg() - (a + 1), v),
+                                debuglib,
                             ) // from prev top
                             if (c > 0) {
                                 v.copyto(stack as Array<LuaValue?>, a, c - 1)
@@ -677,31 +732,38 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                             continue
                         }
                     }
+                    }
 
                     Lua.OP_TAILCALL -> {
+                        val args: Varargs = when (i and Lua.MASK_B) {
+                            (1 shl Lua.POS_B) -> NONE!!
+                            (2 shl Lua.POS_B) -> stack[a + 1]
+                            (3 shl Lua.POS_B) -> varargsOf(stack[a + 1], stack[a + 2])
+                            (4 shl Lua.POS_B) -> varargsOf(stack[a + 1], stack[a + 2], stack[a + 3])
+                            else -> {
+                                b = i ushr 23
+                                if (b > 0) varargsOf(stack, a + 1, b - 1) // exact arg count
+                                else varargsOf(stack, a + 1, top - v.narg() - (a + 1), v)
+                            }
+                        }
                         // A tail call leaves this frame before it is made, so
                         // anything that cannot be called has to be reported
-                        // here while the instruction is still known.
-                        val target: LuaValue = stack[a]
-                        if (!target.isfunction() && target.metatag(LuaValue.CALL).isnil()) {
-                            error("attempt to call a " + target.objtypename() + " value")
-                        }
-                        when (i and Lua.MASK_B) {
-                        (1 shl Lua.POS_B) -> return TailcallVarargs(stack[a], NONE)
-                        (2 shl Lua.POS_B) -> return TailcallVarargs(stack[a], stack[a + 1])
-                        (3 shl Lua.POS_B) -> return TailcallVarargs(stack[a], varargsOf(stack[a + 1], stack[a + 2]))
-                        (4 shl Lua.POS_B) -> return TailcallVarargs(
-                            stack[a],
-                            varargsOf(stack[a + 1], stack[a + 2], stack[a + 3])
-                        )
-
-                        else -> {
-                            b = i ushr 23
-                            v = if (b > 0) varargsOf(stack, a + 1, b - 1) else  // exact arg count
-                                varargsOf(stack, a + 1, top - v.narg() - (a + 1), v) // from prev top
-                            return TailcallVarargs(stack[a], v)
-                        }
-                        }
+                        // here while the instruction is still known, and a
+                        // chain of __call handlers is followed here rather
+                        // than by nesting one call inside the next.
+                        if (debuglib != null) debuglib.notecallchain(stack[a])
+                        val prefix: ArrayList<LuaValue> = ArrayList()
+                        val target: LuaValue = resolveTailcall(stack, a, prefix)
+                        // See LuaValue.invoke: outermost first, so the
+                        // innermost handler's own value leads the arguments.
+                        var callArgs: Varargs = args
+                        for (self in prefix) callArgs = varargsOf(self, callArgs)
+                        // A library function is called from here rather than
+                        // handed back as a tail call: it has no frame of its
+                        // own to reuse, and calling it here is what gives it
+                        // one for a traceback to name.
+                        if (target !is LuaClosure) return invokeTraced(target, callArgs, debuglib)
+                        return TailcallVarargs(target, callArgs)
                     }
 
                     Lua.OP_RETURN -> {
@@ -825,7 +887,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_VARARG -> {
-                        val source: Varargs = varargSource(varargs, p, stack)
+                        val source: Varargs = varargSource(args, p, stack)
                         b = i ushr 23
                         if (b == 0) {
                             b = source.narg()
@@ -900,24 +962,38 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * Run the error hook if there is one
      * @param msg the message to use in error hook processing.
      */
-    fun errorHook(msg: String?, level: Int): String? {
-        if (globals == null) return msg
+    /**
+     * Runs the message handler an `xpcall` installed, if there is one.
+     *
+     * The handler is shown the error object as it stands - a table stays a
+     * table - and whatever it answers becomes the error from here on. Without
+     * a handler nothing happens: Lua only builds a traceback when one asks for
+     * it, as `xpcall(f, debug.traceback)` does, and putting one into the
+     * message a plain `pcall` hands back is not what the caller asked for.
+     */
+    fun errorHook(le: LuaError) {
+        if (globals == null) return
         val r: LuaThread = globals.running
-        // No message handler means no traceback. Lua only builds one when a
-        // handler asks for it, as `xpcall(f, debug.traceback)` does; appending
-        // it here would put a traceback inside the message a plain `pcall`
-        // hands back, which is not what the caller asked for and not what
-        // upstream returns.
-        if (r.errorfunc == null) return msg
+        if (r.errorfunc == null) return
         val e: LuaValue = r.errorfunc!!
         r.errorfunc = null
-        try {
-            return e.call(LuaValue.valueOf(msg))!!.tojstring()
+        // A handler written in Lua pushes its own frame; one from the library,
+        // debug.traceback most of all, needs one pushed for it so the levels it
+        // counts line up with what a Lua handler would see.
+        val debuglib: net.blueva.luak.lib.DebugLib? =
+            if (e !is LuaClosure) globals.debuglib else null
+        if (debuglib != null) debuglib.onCall(e as? LuaFunction)
+        val handled: LuaValue = try {
+            e.call(le.messageObject ?: NIL)!!
         } catch (t: Throwable) {
-            return "error in error handling"
+            LuaValue.valueOf("error in error handling")!!
         } finally {
+            if (debuglib != null) debuglib.onReturn()
             r.errorfunc = e
         }
+        le.replaceMessage(handled)
+        // Doubles as the mark that the handler has already run.
+        le.traceback = handled.tojstring()
     }
 
     /**
@@ -1092,7 +1168,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // A level of zero says the message is complete as it stands, which is
         // what `error(msg, 0)` asks for.
         if (le.level <= 0) {
-            le.traceback = errorHook(le.message, le.level)
+            errorHook(le)
             return
         }
         var file: String? = "?"
@@ -1100,7 +1176,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         run {
             var frame: CallFrame? = null
             if (globals != null && globals.debuglib != null) {
-                frame = globals.debuglib!!.getCallFrame(le.level)
+                // The library function that raised has already been popped, so
+                // level 1 - the function the error is reported against - is
+                // the frame at the top from here.
+                frame = globals.debuglib!!.getCallFrame(le.level - 1)
                 if (frame != null) {
                     val src: String? = frame.shortsource()
                     file = if (src != null) src else "?"
@@ -1115,7 +1194,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
         }
         le.fileline = file.toString() + ":" + line
-        le.traceback = errorHook(le.message, le.level)
+        errorHook(le)
     }
 
     /**
@@ -1198,6 +1277,41 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
         }
         return if (if (step > 0L) init > bound else init < bound) null else bound
+    }
+
+    /**
+     * The function a tail call really reaches, following `__call` handlers.
+     *
+     * Following the chain here rather than letting each handler call the next
+     * keeps a tail call flat, so a loop written as `return t()` over a
+     * `__call` table runs as long as one written over a function.
+     */
+    private fun resolveTailcall(stack: Array<LuaValue>, a: Int, prefix: ArrayList<LuaValue>): LuaValue =
+        stack[a].resolvecall(prefix)
+
+    /**
+     * Calls [f], giving a library function a frame of its own while it runs.
+     *
+     * A Lua function pushes its own on the way in; anything else has none, and
+     * without one a traceback would not name it and the call and return hooks
+     * would never fire for it.
+     */
+    private suspend fun invokeTraced(f: LuaValue, args: Varargs, debuglib: DebugLib?): Varargs {
+        if (debuglib == null || f !is LuaFunction || f is LuaClosure) return f.invokeSuspend(args)
+        debuglib.onCall(f)
+        try {
+            return f.invokeSuspend(args)
+        } finally {
+            debuglib.onReturn()
+        }
+    }
+
+    /** The call's arguments in an array of their own, so they can be written to. */
+    private fun copyArgs(varargs: Varargs): Array<LuaValue?> {
+        val n: Int = varargs.narg()
+        val values: Array<LuaValue?> = arrayOfNulls(n)
+        for (index in 0..<n) values[index] = varargs.arg(index + 1)
+        return values
     }
 
     /** One bound of a numeric `for`, or the error Lua reports for a bad one. */
@@ -1328,6 +1442,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 // alone: a trailing nil would be an argument the language does
                 // not pass, and '...' inside the handler would count it.
                 val raised: LuaError? = pending
+                // Not suspending: making this a suspension point costs the
+                // interpreter loop about a kilobyte of spill code at each of
+                // the four places it closes from, which is enough to push
+                // execute() past the JIT's method-size limit. A handler that
+                // yields is refused for that reason - see execute()'s doc.
                 if (raised == null) {
                     close.call(value)
                 } else {

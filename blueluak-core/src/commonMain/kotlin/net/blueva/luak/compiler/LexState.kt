@@ -822,13 +822,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         if (!testnext(what)) {
             if (where == linenumber) error_expected(what)
             else {
+                // token2str already quotes what it names, so nothing is
+                // added around it here.
                 syntaxerror(
                     L!!.pushfstring(
-                        (net.blueva.luak.compiler.LexState.Companion.LUA_QS(token2str(what))
-                            .toString() + " expected " + "(to close " + net.blueva.luak.compiler.LexState.Companion.LUA_QS(
-                            token2str(who)
-                        )
-                                + " at line " + where + ")")
+                        token2str(what) + " expected (to close " + token2str(who) +
+                            " at line " + where + ")",
                     )
                 )
             }

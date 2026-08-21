@@ -270,7 +270,10 @@ class TableLib : TwoArgFunction() {
             val last: Long = if (args.isnoneornil(3)) list.length().toLong() else args.checklong(3)
             if (last < first) return NONE!!
             val count: Long = last - first + 1
-            if (count <= 0 || count > MAX_UNPACK) LuaValue.error("too many results to unpack")
+            // The cap is the stack size Lua allows, and asking for exactly
+            // that many leaves no room for the call itself, so it is refused
+            // too.
+            if (count <= 0 || count >= MAX_UNPACK) LuaValue.error("too many results to unpack")
             val out: Array<LuaValue?> = arrayOfNulls(count.toInt())
             for (offset in 0..<count.toInt()) {
                 out[offset] = list.get(LuaValue.valueOf(first + offset))

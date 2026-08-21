@@ -197,10 +197,26 @@ open class LuaTable : LuaValue, Metatable {
         if ((hadWeakKeys != (m_metatable != null && m_metatable!!.useWeakKeys())) ||
             (hadWeakValues != (m_metatable != null && m_metatable!!.useWeakValues()))
         ) {
-            // force a rehash
-            rehash(0)
+            // How weakly an entry is held is decided when it is stored, so the
+            // entries already there have to go in again to be held the new way.
+            restore()
         }
         return this
+    }
+
+    /** Puts every entry back in, so each is held the way the metatable asks. */
+    private fun restore() {
+        val keys: ArrayList<LuaValue> = ArrayList()
+        val values: ArrayList<LuaValue> = ArrayList()
+        var entry: Varargs = next(NIL)
+        while (!entry.arg1()!!.isnil()) {
+            val key: LuaValue = entry.arg1()!!
+            keys.add(key)
+            values.add(entry.arg(2)!!)
+            entry = next(key)
+        }
+        presize(keys.size, keys.size)
+        for (index in keys.indices) rawset(keys[index], values[index])
     }
 
     override fun get(key: Int): LuaValue {
