@@ -178,19 +178,26 @@ class PackageLib : TwoArgFunction() {
      * If there is any error loading or running the module, or if it cannot find any loader for the module,
      * then require raises an error.
      */
-    inner class require : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            val name: LuaString? = arg!!.checkstring()
+    inner class require : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val arg: LuaValue = args.checkvalue(1)!!
+            val name: LuaString? = arg.checkstring()
             val loaded: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._LOADED)!!)
             var result: LuaValue = loaded.get((name)!!)
             if (result.toboolean()) {
                 if (result === net.blueva.luak.lib.PackageLib.Companion._SENTINEL) error("loop or previous error loading module '" + name + "'")
+                // Already loaded: the module and nothing else, since there was
+                // no search this time to say where it came from.
                 return result
             }
 
 
             /* else must load it; iterate over available loaders */
-            val tbl: LuaTable = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!).checktable()!!
+            val searchers: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHERS)!!)
+            // Where the searchers are is set up by whoever built the state, so
+            // this is a fault in that rather than in the module being asked for.
+            if (!searchers.istable()) LuaValue.error("'package.searchers' must be a table")
+            val tbl: LuaTable = searchers.checktable()!!
             val sb: StringBuilder = StringBuilder()
             var loader: Varargs? = null
             var i = 1
@@ -222,7 +229,10 @@ class PackageLib : TwoArgFunction() {
             else if ((loaded.get((name)!!)
                     .also { result = it }) === net.blueva.luak.lib.PackageLib.Companion._SENTINEL
             ) loaded.set(name, LuaValue.TRUE!!.also { result = it })
-            return result
+            // What the search found alongside the loader - the file it came
+            // from - is handed back with it, which is what lets a module say
+            // where it was loaded from.
+            return varargsOf(result, loader!!.arg(2)!!)!!
         }
     }
 
@@ -237,7 +247,10 @@ class PackageLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val name: LuaString? = args.checkstring(1)
             val `val`: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._PRELOAD)!!).get((name)!!)
-            return if (`val`.isnil()) valueOf("\n\tno field package.preload['" + name + "']") else `val`
+            if (`val`.isnil()) return valueOf("\n\tno field package.preload['" + name + "']")!!
+            // Where it came from, for a module that wants to know: nowhere in
+            // particular, which Lua says in so many words.
+            return varargsOf(`val`, valueOf(":preload:"))!!
         }
     }
 
@@ -248,7 +261,10 @@ class PackageLib : TwoArgFunction() {
 
             // get package path
             val path: LuaValue = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._PATH)!!)
-            if (!path.isstring()) return valueOf("package.path is not a string")
+            // Not something to look in, so nothing was looked in: this is a
+            // fault in how the search was set up rather than a module that
+            // could not be found.
+            if (!path.isstring()) LuaValue.error("'package.path' must be a string")
 
 
             // get the searchpath function.
@@ -263,13 +279,24 @@ class PackageLib : TwoArgFunction() {
 
 
             // Try to load the file.
-            v = globals!!.loadfile(filename.tojstring())!!
-            if (v.arg1().isfunction()) return (LuaValue.varargsOf(v.arg1(), filename))!!
+            val loaded: Varargs = try {
+                globals!!.loadfile(filename.tojstring()) ?: NIL
+            } catch (le: net.blueva.luak.LuaError) {
+                badmodule(name, filename, le.message)
+            }
+            if (loaded.arg1().isfunction()) return (LuaValue.varargsOf(loaded.arg1(), filename))!!
 
-
-            // report error
-            return (varargsOf(NIL, valueOf("'" + filename + "': " + v.arg(2)!!.tojstring())))!!
+            // A file that is there but cannot be loaded is not a module that
+            // was not found: the search is over and this is what went wrong.
+            badmodule(name, filename, loaded.arg(2)!!.tojstring())
         }
+    }
+
+    /** Refuses a module that is there but cannot be loaded, as Lua words it. */
+    private fun badmodule(name: LuaString?, filename: LuaString, why: String?): Nothing {
+        throw net.blueva.luak.LuaError(
+            "error loading module '" + name + "' from file '" + filename + "':\n\t" + why
+        )
     }
 
     inner class searchpath : VarArgFunction() {
@@ -284,7 +311,9 @@ class PackageLib : TwoArgFunction() {
             var e = -1
             val n: Int = path.length
             var sb: StringBuilder? = null
-            name = name.replace(sep[0], rep[0])
+            // The separator is a piece of text, not a character: what is
+            // replaced is every run of it, and an empty one replaces nothing.
+            if (sep.isNotEmpty() && name.contains(sep)) name = name.replace(sep, rep)
             while (e < n) {
                 // find next template
 
@@ -321,18 +350,38 @@ class PackageLib : TwoArgFunction() {
         }
     }
 
+    /**
+     * The searcher for a module that is not written in Lua.
+     *
+     * A reference build looks for a library to load through `package.cpath`;
+     * there is none to load here, so what stands in its place is a class of
+     * the host's, looked up by the module's name. The places `package.cpath`
+     * names are still walked and still reported, so a module that is nowhere
+     * to be found says where it was looked for in the words Lua uses.
+     */
     inner class java_searcher : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val className = toClassname(args.checkjstring(1))!!
-            return try {
+            val name: String = args.checkjstring(1)
+            val className = toClassname(name)!!
+            try {
                 val value = platformLoadLibrary(className, globals!!)
-                    ?: return valueOf("\n\tno class '$className'")
-                varargsOf(value, globals!!)!!
+                if (value != null) return varargsOf(value, globals!!)!!
             } catch (error: Throwable) {
-                // Reported the way the other searchers report, so a failed
-                // require reads as a list of places that were looked in.
-                valueOf("\n\tno class '$className'")
+                // Nothing of the host's under that name either; fall through
+                // to reporting where it was looked for.
             }
+            val cpath: LuaValue = package_!!.get("cpath")!!
+            if (!cpath.isstring()) LuaValue.error("'package.cpath' must be a string")
+            val found: Varargs = package_!!.get((net.blueva.luak.lib.PackageLib.Companion._SEARCHPATH)!!)
+                .invoke((varargsOf(valueOf(name), cpath))!!)
+            // A file that is there is still not something that can be loaded,
+            // so what comes back is only ever the list of places looked in.
+            if (found.isstring(1)) {
+                return valueOf("\n\tno file '" + found.arg1()!!.tojstring() + "'")
+            }
+            val why: LuaValue = found.arg(2)!!
+            if (why.isnil()) return valueOf("\n\tno class '$className'")
+            return valueOf("\n\t" + why.tojstring())
         }
     }
 

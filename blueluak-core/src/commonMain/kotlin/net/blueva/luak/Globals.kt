@@ -246,6 +246,10 @@ class Globals : LuaTable() {
         try {
             val stream = finder?.findResource(filename) ?: throw LuaError("load $filename: no resource")
             return load(stream, "@" + filename, "bt", this)
+        } catch (l: LuaError) {
+            // Already says what is wrong in Lua's own words - where in the
+            // file, and what about it - so nothing is added to it here.
+            throw l
         } catch (e: Exception) {
             return error("load " + filename + ": " + e)
         }
