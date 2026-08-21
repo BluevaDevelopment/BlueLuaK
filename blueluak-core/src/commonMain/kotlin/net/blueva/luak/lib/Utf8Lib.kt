@@ -161,7 +161,18 @@ class Utf8Lib : TwoArgFunction() {
         }
 
         private fun span(s: LuaString, start: Int, length: Int): Varargs {
-            val end: Int = if (start > length) start else start + sequenceLength(s, start) - 1
+            // Landing on a continuation byte means the walk went past the start
+            // of the string and there is no character here to report.
+            if (start in 1..length && isContinuation(s, start)) {
+                LuaValue.error("initial position is a continuation byte")
+            }
+            // The end is found by following the continuation bytes that are
+            // actually there, not by trusting the length the lead byte claims:
+            // a truncated sequence reports what the string does contain.
+            var end: Int = start
+            if (start <= length) {
+                while (end + 1 <= length && isContinuation(s, end + 1)) end++
+            }
             return LuaValue.varargsOf(LuaValue.valueOf(start.toLong()), LuaValue.valueOf(end.toLong()))!!
         }
     }

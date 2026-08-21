@@ -126,6 +126,16 @@ open class IoLib : TwoArgFunction() {
             return filemethods!!.get(key)
         }
 
+        /**
+         * The table of file methods, which doubles as the handle's metatable.
+         *
+         * A script reads the type's name back from `getmetatable(f).__name`,
+         * and that is where Lua keeps it.
+         */
+        override fun getmetatable(): LuaValue? {
+            return filemethods
+        }
+
         // essentially a userdata instance
         override fun type(): Int {
             return LuaValue.TUSERDATA
@@ -135,9 +145,24 @@ open class IoLib : TwoArgFunction() {
             return "userdata"
         }
 
-        // displays as "file" type
+        /**
+         * How a file handle prints, which says whether it is still open.
+         *
+         * A closed one has no identity worth showing, so Lua prints the word
+         * instead of an address.
+         */
         override fun tojstring(): String {
-            return "file: " + hashCode().toString(16)
+            return if (isclosed()) "file (closed)" else "file (0x" + hashCode().toString(16) + ")"
+        }
+
+        /**
+         * The handle's own rendering, so `tostring` uses it.
+         *
+         * Without this the generic conversion would fall back to the type's
+         * `__name` and print "FILE*: file (...)".
+         */
+        override fun tostring(): LuaValue {
+            return valueOf(tojstring())
         }
 
         fun finalize() {
@@ -240,7 +265,8 @@ open class IoLib : TwoArgFunction() {
 
         // Identity, not the path: two handles on the same file are two distinct
         // Lua values and must not share a tostring().
-        override fun tojstring(): String = "file (" + (if (closed) "closed" else hashCode().toString()) + ")"
+        override fun tojstring(): String =
+            "file (" + (if (closed) "closed" else "0x" + hashCode().toString(16)) + ")"
 
         override fun isstdfile(): Boolean = false
         override fun isclosed(): Boolean = closed
@@ -310,7 +336,7 @@ open class IoLib : TwoArgFunction() {
 
     /** `io.stdout` / `io.stderr`, writing through the [Globals] streams. */
     private inner class StandardOutputFile(private val fileType: Int) : File() {
-        override fun tojstring(): String = "file (" + hashCode().toString() + ")"
+        override fun tojstring(): String = "file (0x" + hashCode().toString(16) + ")"
 
         private fun stream() = if (fileType == FTYPE_STDERR) globals?.STDERR else globals?.STDOUT
 
@@ -335,7 +361,15 @@ open class IoLib : TwoArgFunction() {
         override fun isclosed(): Boolean = false
 
         @kotlin.Throws(IOException::class)
-        override fun seek(option: String?, bytecount: Int): Int = 0
+        /**
+         * Always fails: a standard stream has no position to move.
+         *
+         * The exception becomes the `nil, message, code` an io function
+         * answers a failure with.
+         */
+        override fun seek(option: String?, bytecount: Int): Int {
+            throw IOException("Illegal seek")
+        }
 
         override fun setvbuf(mode: String?, size: Int) = Unit
 
@@ -359,7 +393,7 @@ open class IoLib : TwoArgFunction() {
     private inner class StandardInputFile : File() {
         private var pushback = -1
 
-        override fun tojstring(): String = "file (" + hashCode().toString() + ")"
+        override fun tojstring(): String = "file (0x" + hashCode().toString(16) + ")"
 
         private fun stream(): InputStream? = globals?.STDIN ?: platformStandardInput()
 
@@ -379,7 +413,15 @@ open class IoLib : TwoArgFunction() {
         override fun isclosed(): Boolean = false
 
         @kotlin.Throws(IOException::class)
-        override fun seek(option: String?, bytecount: Int): Int = 0
+        /**
+         * Always fails: a standard stream has no position to move.
+         *
+         * The exception becomes the `nil, message, code` an io function
+         * answers a failure with.
+         */
+        override fun seek(option: String?, bytecount: Int): Int {
+            throw IOException("Illegal seek")
+        }
 
         override fun setvbuf(mode: String?, size: Int) = Unit
 
@@ -459,6 +501,13 @@ open class IoLib : TwoArgFunction() {
         // all functions link to library instance
         setLibInstance(t)
         setLibInstance((filemethods)!!)
+        // Lua names the file handle type, which is what a script reads back
+        // from getmetatable(f).__name. Set after the binding pass, which walks
+        // the table expecting every value to be one of the library functions.
+        filemethods!!.set("__name", "FILE*")
+        // A file handle is closable, so `local f <close> = io.open(...)` closes
+        // it on the way out of the block whichever way the block is left.
+        filemethods!!.set("__close", filemethods!!.get("close")!!)
         setLibInstance(mt)
 
 
@@ -894,6 +943,9 @@ open class IoLib : TwoArgFunction() {
         private val STDOUT: LuaValue? = valueOf("stdout")
         private val STDERR: LuaValue? = valueOf("stderr")
         private val FILE: LuaValue? = valueOf("file")
+
+        /** C's ENOENT: no such file or directory. */
+        private const val ENOENT: Int = 2
         private val CLOSED_FILE: LuaValue? = valueOf("closed file")
 
         private const val IO_CLOSE = 0
@@ -958,11 +1010,22 @@ open class IoLib : TwoArgFunction() {
 
         fun errorresult(ioe: Exception): Varargs {
             val s: String? = ioe.message
-            return net.blueva.luak.lib.IoLib.Companion.errorresult("io error: " + (if (s != null) s else ioe.toString()))
+            // nil, message, errno - the shape every io function answers with,
+            // so a caller can branch on the number without parsing the text.
+            return net.blueva.luak.lib.IoLib.Companion.errorresult(
+                if (s != null) s else ioe.toString(),
+            )
         }
 
+        /**
+         * The `nil, message, errno` an io function answers a failure with.
+         *
+         * There is no errno to read from a host exception here, so the number
+         * is the one C uses for a file that is not there - which is what a
+         * caller branching on it is almost always looking for.
+         */
         private fun errorresult(errortext: String?): Varargs {
-            return (varargsOf(NIL, valueOf(errortext)))!!
+            return (varargsOf(NIL, valueOf(errortext), valueOf(ENOENT)))!!
         }
 
         @kotlin.Throws(IOException::class)
@@ -978,7 +1041,12 @@ open class IoLib : TwoArgFunction() {
 
         private fun checkfile(`val`: LuaValue?): File {
             val f: File? = net.blueva.luak.lib.IoLib.Companion.optfile(`val`)
-            if (f == null) argerror(1, "file")
+            // Worded the way Lua words it, including what was there instead,
+            // since calling a file method with no self is the usual mistake.
+            if (f == null) {
+                val got: String = if (`val` == null || `val`.isnil()) "no value" else `val`.typename()!!
+                argerror(1, "FILE* expected, got " + got)
+            }
             net.blueva.luak.lib.IoLib.Companion.checkopen((f)!!)
             return f!!
         }

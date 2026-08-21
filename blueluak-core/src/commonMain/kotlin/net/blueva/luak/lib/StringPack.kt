@@ -60,7 +60,8 @@ internal object StringPack {
     }
 
     /** One classified option, with the size and padding it asks for. */
-    private class Option(val kind: Kind, val size: Int, val toalign: Int)
+    /** A classified option. [size] is a Long because `c` may ask for any count. */
+    private class Option(val kind: Kind, val size: Long, val toalign: Int)
 
     /** A cursor over the format string, so options can consume their numerals. */
     private class Format(val text: LuaString) {
@@ -99,26 +100,33 @@ internal object StringPack {
         var total = 0L
         while (!format.atEnd()) {
             val option: Option = details(header, total, format)
+            // The running total is checked as it grows, so a format that could
+            // never be built is refused before any of it is.
+            if (option.size > Int.MAX_VALUE.toLong() - total - option.toalign) {
+                args.argcheck(false, 1, "result too long")
+            }
             total += option.toalign + option.size
             out.pad(option.toalign)
             arg++
             when (option.kind) {
                 Kind.INT -> {
+                    val width: Int = option.size.toInt()
                     val n: Long = args.checklong(arg)
-                    if (option.size < LUA_INTEGER_SIZE) {
-                        val limit: Long = 1L shl (option.size * 8 - 1)
+                    if (width < LUA_INTEGER_SIZE) {
+                        val limit: Long = 1L shl (width * 8 - 1)
                         args.argcheck(-limit <= n && n < limit, arg, "integer overflow")
                     }
-                    packInteger(out, n, header.little, option.size, n < 0)
+                    packInteger(out, n, header.little, width, n < 0)
                 }
 
                 Kind.UINT -> {
+                    val width: Int = option.size.toInt()
                     val n: Long = args.checklong(arg)
-                    if (option.size < LUA_INTEGER_SIZE) {
-                        val limit: Long = 1L shl (option.size * 8)
+                    if (width < LUA_INTEGER_SIZE) {
+                        val limit: Long = 1L shl (width * 8)
                         args.argcheck(n >= 0 && n < limit, arg, "unsigned overflow")
                     }
-                    packInteger(out, n, header.little, option.size, false)
+                    packInteger(out, n, header.little, width, false)
                 }
 
                 Kind.FLOAT -> packBits(
@@ -134,19 +142,23 @@ internal object StringPack {
                 Kind.CHAR -> {
                     val s: LuaString = args.checkstring(arg)!!
                     args.argcheck(s.length() <= option.size, arg, "string longer than given size")
+                    // A size no buffer could hold is refused before anything is
+                    // written, rather than after trying to pad to it.
+                    args.argcheck(option.size <= Int.MAX_VALUE.toLong(), 1, "result too long")
                     out.add(s)
-                    out.pad(option.size - s.length())
+                    out.pad((option.size - s.length()).toInt())
                 }
 
                 Kind.STRING -> {
                     val s: LuaString = args.checkstring(arg)!!
+                    val width: Int = option.size.toInt()
                     args.argcheck(
-                        option.size >= LUA_INTEGER_SIZE ||
-                            s.length().toLong() < (1L shl (option.size * 8)),
+                        width >= LUA_INTEGER_SIZE ||
+                            s.length().toLong() < (1L shl (width * 8)),
                         arg,
                         "string length does not fit in given size",
                     )
-                    packInteger(out, s.length().toLong(), header.little, option.size, false)
+                    packInteger(out, s.length().toLong(), header.little, width, false)
                     out.add(s)
                     total += s.length()
                 }
@@ -181,6 +193,11 @@ internal object StringPack {
                 1,
                 "variable-length format",
             )
+            // The total is checked as it grows: two sizes that each fit can
+            // still add up to something no size can name.
+            if (option.size > Long.MAX_VALUE - total - option.toalign) {
+                args.argcheck(false, 1, "format result too large")
+            }
             total += option.toalign + option.size
         }
         return LuaValue.valueOf(total)
@@ -202,10 +219,11 @@ internal object StringPack {
                 "data string too short",
             )
             position += option.toalign
+            val width: Int = if (option.size <= Int.MAX_VALUE.toLong()) option.size.toInt() else 0
             when (option.kind) {
                 Kind.INT, Kind.UINT -> results.add(
                     LuaValue.valueOf(
-                        unpackInteger(data, position, header.little, option.size, option.kind == Kind.INT),
+                        unpackInteger(data, position, header.little, width, option.kind == Kind.INT),
                     ),
                 )
 
@@ -219,16 +237,16 @@ internal object StringPack {
                     LuaValue.valueOf(Double.fromBits(unpackBits(data, position, header.little, 8))),
                 )
 
-                Kind.CHAR -> results.add(data.substring(position, position + option.size))
+                Kind.CHAR -> results.add(data.substring(position, position + width))
 
                 Kind.STRING -> {
-                    val size: Long = unpackInteger(data, position, header.little, option.size, false)
+                    val size: Long = unpackInteger(data, position, header.little, width, false)
                     args.argcheck(
-                        size >= 0 && size <= (length - position - option.size).toLong(),
+                        size >= 0 && size <= (length - position - width).toLong(),
                         2,
                         "data string too short",
                     )
-                    val start: Int = position + option.size
+                    val start: Int = position + width
                     results.add(data.substring(start, start + size.toInt()))
                     position += size.toInt()
                 }
@@ -242,7 +260,7 @@ internal object StringPack {
 
                 Kind.PADDALIGN, Kind.PADDING, Kind.NOP -> {}
             }
-            position += option.size
+            position += width
         }
         results.add(LuaValue.valueOf((position + 1).toLong()))
         return LuaValue.varargsOf(results.toTypedArray())!!
@@ -257,102 +275,106 @@ internal object StringPack {
 
     /** Classifies the next option and works out the padding it needs. */
     private fun details(header: Header, total: Long, format: Format): Option {
-        val classified: Pair<Kind, Int> = option(header, format)
+        val classified: Pair<Kind, Long> = option(header, format)
         val kind: Kind = classified.first
-        val size: Int = classified.second
-        var align = size
+        val size: Long = classified.second
+        var align: Long = size
         if (kind == Kind.PADDALIGN) {
             // 'X' has no size of its own: it takes its alignment from whatever
             // option comes next, which is then discarded.
             if (format.atEnd()) LuaValue.Companion.argerror(1, "invalid next option for option 'X'")
-            val following: Pair<Kind, Int> = option(header, format)
+            val following: Pair<Kind, Long> = option(header, format)
             align = following.second
-            if (following.first == Kind.CHAR || align == 0) {
+            if (following.first == Kind.CHAR || align == 0L) {
                 LuaValue.Companion.argerror(1, "invalid next option for option 'X'")
             }
         }
         if (align <= 1 || kind == Kind.CHAR) return Option(kind, size, 0)
-        if (align > header.maxalign) align = header.maxalign
-        if (align and (align - 1) != 0) {
+        if (align > header.maxalign) align = header.maxalign.toLong()
+        if (align and (align - 1) != 0L) {
             LuaValue.Companion.argerror(1, "format asks for alignment not power of 2")
         }
-        val over: Int = (total and (align - 1).toLong()).toInt()
-        return Option(kind, size, (align - over) and (align - 1))
+        val over: Long = total and (align - 1)
+        return Option(kind, size, ((align - over) and (align - 1)).toInt())
     }
 
     /** Reads one option letter and whatever size numeral follows it. */
-    private fun option(header: Header, format: Format): Pair<Kind, Int> {
+    private fun option(header: Header, format: Format): Pair<Kind, Long> {
         when (format.next()) {
-            'b'.code -> return Pair(Kind.INT, 1)
-            'B'.code -> return Pair(Kind.UINT, 1)
-            'h'.code -> return Pair(Kind.INT, 2)
-            'H'.code -> return Pair(Kind.UINT, 2)
-            'l'.code, 'j'.code -> return Pair(Kind.INT, 8)
-            'L'.code, 'J'.code, 'T'.code -> return Pair(Kind.UINT, 8)
-            'f'.code -> return Pair(Kind.FLOAT, 4)
-            'n'.code -> return Pair(Kind.NUMBER, 8)
-            'd'.code -> return Pair(Kind.DOUBLE, 8)
-            'i'.code -> return Pair(Kind.INT, limitedNumeral(format, 4))
-            'I'.code -> return Pair(Kind.UINT, limitedNumeral(format, 4))
-            's'.code -> return Pair(Kind.STRING, limitedNumeral(format, 8))
+            'b'.code -> return Pair(Kind.INT, 1L)
+            'B'.code -> return Pair(Kind.UINT, 1L)
+            'h'.code -> return Pair(Kind.INT, 2L)
+            'H'.code -> return Pair(Kind.UINT, 2L)
+            'l'.code, 'j'.code -> return Pair(Kind.INT, 8L)
+            'L'.code, 'J'.code, 'T'.code -> return Pair(Kind.UINT, 8L)
+            'f'.code -> return Pair(Kind.FLOAT, 4L)
+            'n'.code -> return Pair(Kind.NUMBER, 8L)
+            'd'.code -> return Pair(Kind.DOUBLE, 8L)
+            'i'.code -> return Pair(Kind.INT, limitedNumeral(format, 4).toLong())
+            'I'.code -> return Pair(Kind.UINT, limitedNumeral(format, 4).toLong())
+            's'.code -> return Pair(Kind.STRING, limitedNumeral(format, 8).toLong())
             'c'.code -> {
-                val size: Int = numeral(format, -1)
+                val size: Long = numeral(format, -1L)
                 if (size < 0) LuaValue.Companion.error("missing size for format option 'c'")
                 return Pair(Kind.CHAR, size)
             }
 
-            'z'.code -> return Pair(Kind.ZSTR, 0)
-            'x'.code -> return Pair(Kind.PADDING, 1)
-            'X'.code -> return Pair(Kind.PADDALIGN, 0)
-            ' '.code -> return Pair(Kind.NOP, 0)
+            'z'.code -> return Pair(Kind.ZSTR, 0L)
+            'x'.code -> return Pair(Kind.PADDING, 1L)
+            'X'.code -> return Pair(Kind.PADDALIGN, 0L)
+            ' '.code -> return Pair(Kind.NOP, 0L)
             '<'.code -> {
                 header.little = true
-                return Pair(Kind.NOP, 0)
+                return Pair(Kind.NOP, 0L)
             }
 
             '>'.code -> {
                 header.little = false
-                return Pair(Kind.NOP, 0)
+                return Pair(Kind.NOP, 0L)
             }
 
             '='.code -> {
                 header.little = true
-                return Pair(Kind.NOP, 0)
+                return Pair(Kind.NOP, 0L)
             }
 
             '!'.code -> {
                 header.maxalign = limitedNumeral(format, MAX_ALIGNMENT)
-                return Pair(Kind.NOP, 0)
+                return Pair(Kind.NOP, 0L)
             }
 
             else -> {
                 val letter: Char = format.text.luaByte(format.index - 1).toChar()
                 LuaValue.Companion.error("invalid format option '" + letter + "'")
-                return Pair(Kind.NOP, 0)
+                return Pair(Kind.NOP, 0L)
             }
         }
     }
 
     /** A decimal numeral in the format string, or [default] if there is none. */
-    private fun numeral(format: Format, default: Int): Int {
+    private fun numeral(format: Format, default: Long): Long {
         if (format.peek() < '0'.code || format.peek() > '9'.code) return default
-        var value = 0
+        var value = 0L
         while (!format.atEnd() && format.peek() >= '0'.code && format.peek() <= '9'.code) {
-            value = value * 10 + (format.next() - '0'.code)
-            if (value > MAX_INTEGER_SIZE * 100) break // stop well before overflow
+            val digit: Int = format.next() - '0'.code
+            value = value * 10 + digit
+            // Stops once another digit could not fit, leaving the rest of the
+            // numeral in the format - where it is read as an option and
+            // reported as the invalid one it is.
+            if (value > (Long.MAX_VALUE - 9) / 10) break
         }
         return value
     }
 
     /** A numeral that names an integer width, which has a hard upper bound. */
     private fun limitedNumeral(format: Format, default: Int): Int {
-        val size: Int = numeral(format, default)
+        val size: Long = numeral(format, default.toLong())
         if (size < 1 || size > MAX_INTEGER_SIZE) {
             LuaValue.Companion.error(
                 "integral size (" + size + ") out of limits [1," + MAX_INTEGER_SIZE + "]",
             )
         }
-        return size
+        return size.toInt()
     }
 
     /** Writes [n] over [size] bytes, sign-extending past a Lua integer. */

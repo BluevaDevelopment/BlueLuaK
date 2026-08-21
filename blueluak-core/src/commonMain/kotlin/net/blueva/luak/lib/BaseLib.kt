@@ -412,6 +412,8 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             }
             val source: String? = args.optjstring(2, if (ld.isstring()) ld.tojstring() else "=(load)")
             val mode: String? = args.optjstring(3, "bt")
+            // 'B' asks for a fixed buffer, which only the C API can supply.
+            if (mode != null && mode.indexOf('B') >= 0) argerror(3, "invalid mode")
             val env: LuaValue? = args.optvalue(4, globals)
             return loadStream(
                 if (ld.isstring()) ld.strvalue()

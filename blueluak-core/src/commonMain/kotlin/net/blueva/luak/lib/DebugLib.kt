@@ -164,7 +164,8 @@ class DebugLib : TwoArgFunction() {
             val ar = callstack.auxgetinfo(what, func as LuaFunction?, frame)
             val info: LuaTable = LuaTable()
             if (what.indexOf('S') >= 0) {
-                info.set(net.blueva.luak.lib.DebugLib.Companion.WHAT, net.blueva.luak.lib.DebugLib.Companion.LUA)
+                // What the function actually is, rather than always "Lua".
+                info.set(net.blueva.luak.lib.DebugLib.Companion.WHAT, valueOf(ar.what))
                 info.set(net.blueva.luak.lib.DebugLib.Companion.SOURCE, valueOf(ar.source))
                 info.set(net.blueva.luak.lib.DebugLib.Companion.SHORT_SRC, valueOf(ar.short_src))
                 info.set(net.blueva.luak.lib.DebugLib.Companion.LINEDEFINED, valueOf(ar.linedefined))
@@ -188,7 +189,8 @@ class DebugLib : TwoArgFunction() {
             if (what.indexOf('t') >= 0) {
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ISTAILCALL, ZERO)
             }
-            if (what.indexOf('L') >= 0) {
+            // A function that is not written in Lua has no lines to report.
+            if (what.indexOf('L') >= 0 && func != null && func.isclosure()) {
                 val lines: LuaTable = LuaTable()
                 info.set(net.blueva.luak.lib.DebugLib.Companion.ACTIVELINES, lines)
                 var cf: CallFrame?
@@ -475,11 +477,16 @@ class DebugLib : TwoArgFunction() {
                 this.what = if (this.linedefined == 0) "main" else "Lua"
                 this.short_src = p.shortsource()
             } else {
-                this.source = "=[Java]"
+                // Reported as Lua reports a function that is not written in
+                // Lua. Saying "Java" would be more literal but no portable
+                // script looks for it, and every one of them looks for "C".
+                this.source = "=[C]"
                 this.linedefined = -1
                 this.lastlinedefined = -1
-                this.what = "Java"
-                this.short_src = f.name()
+                this.what = "C"
+                // The source of a function that is not written in Lua is the
+                // runtime itself, which Lua names "[C]" whatever the host is.
+                this.short_src = "[C]"
             }
         }
     }
@@ -630,7 +637,7 @@ class DebugLib : TwoArgFunction() {
         }
 
         fun shortsource(): String? {
-            return if (f!!.isclosure()) f!!.checkclosure()!!.p.shortsource() else "[Java]"
+            return if (f!!.isclosure()) f!!.checkclosure()!!.p.shortsource() else "[C]"
         }
 
         fun set(function: LuaFunction?) {

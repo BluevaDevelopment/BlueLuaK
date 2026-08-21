@@ -92,7 +92,7 @@ internal object DecimalFormat {
      * reach for when a value has to survive being written out and read back -
      * which is what `string.format("%q", x)` needs.
      */
-    fun hex(value: Double, upper: Boolean): String {
+    fun hex(value: Double, upper: Boolean, precision: Int = -1): String {
         if (value.isNaN() || value.isInfinite()) return nonFinite(value, upper)
         val bits: Long = value.toRawBits()
         val negative: Boolean = bits < 0
@@ -108,7 +108,21 @@ internal object DecimalFormat {
             lead = 1
             exponent = exponentField - 1023
         }
-        var fraction: String = mantissaField.toString(16).padStart(13, '0').trimEnd('0')
+        var fraction: String = mantissaField.toString(16).padStart(13, '0')
+        if (precision >= 0) {
+            // A precision on %a counts hexadecimal digits after the point.
+            if (precision < fraction.length) {
+                val cut: Char = fraction[precision]
+                fraction = fraction.substring(0, precision)
+                if (cut >= '8' && fraction.isNotEmpty()) {
+                    fraction = incrementHex(fraction)
+                }
+            } else {
+                fraction = fraction.padEnd(precision, '0')
+            }
+        } else {
+            fraction = fraction.trimEnd('0')
+        }
         val body: String = buildString {
             if (negative) append('-')
             append("0x")
@@ -122,6 +136,27 @@ internal object DecimalFormat {
             append(exponent)
         }
         return if (upper) body.uppercase() else body
+    }
+
+    /** Adds one to a hexadecimal string, keeping its length. */
+    private fun incrementHex(digits: String): String {
+        val out = digits.toCharArray()
+        var index = out.size - 1
+        while (index >= 0) {
+            val value: Int = hexValue(out[index]) + 1
+            if (value < 16) {
+                out[index] = "0123456789abcdef"[value]
+                return out.concatToString()
+            }
+            out[index] = '0'
+            index--
+        }
+        return out.concatToString()
+    }
+
+    private fun hexValue(c: Char): Int = when {
+        c in '0'..'9' -> c - '0'
+        else -> c - 'a' + 10
     }
 
     /** C's `%.Pe`. */

@@ -285,7 +285,10 @@ class Globals : LuaTable() {
         if (mode.indexOf('t') >= 0) {
             return compilePrototype(`is`, chunkname)
         }
-        error("Failed to load prototype " + chunkname + " using mode '" + mode + "'")
+        // Which kind of chunk was refused, as Lua puts it: the caller asked
+        // for one form and the stream holds the other.
+        val kind: String = if (mode.indexOf('t') >= 0) "binary" else "text"
+        error("attempt to load a " + kind + " chunk (mode is '" + mode + "')")
         return null
     }
 

@@ -389,22 +389,43 @@ open class Lua {
     /* number of list items to accumulate before a SETLIST instruction */
     const val LFIELDS_PER_FLUSH: Int = 50
 
-    private const val MAXSRC = 80
+    /** Room for the identifier a chunk is named by, upstream's `LUA_IDSIZE`. */
+    private const val LUA_IDSIZE = 60
 
+    private const val CHUNKID_ELLIPSIS = "..."
+    private const val CHUNKID_PREFIX = "[string \""
+    private const val CHUNKID_SUFFIX = "\"]"
+
+    /**
+     * The name a chunk goes by in error messages, upstream's `luaO_chunkid`.
+     *
+     * A `=` source is taken literally, a `@` source is a file name and keeps
+     * its tail since the directories in front of it matter less, and anything
+     * else is source text, quoted and cut short at its first line.
+     */
     fun chunkid(source: String): String {
-        var source = source
-        if (source.startsWith("=")) return source.substring(1)
-        var end = ""
-        if (source.startsWith("@")) {
-            source = source.substring(1)
-        } else {
-            source = "[string \"" + source
-            end = "\"]"
+        val bufflen: Int = net.blueva.luak.Lua.LUA_IDSIZE
+        if (source.startsWith("=")) {
+            return if (source.length <= bufflen) source.substring(1) else source.substring(1, bufflen)
         }
-        val n: Int = source.length + end.length
-        if (n > net.blueva.luak.Lua.MAXSRC) source =
-            source.substring(0, net.blueva.luak.Lua.MAXSRC - end.length - 3) + "..."
-        return source + end
+        if (source.startsWith("@")) {
+            if (source.length <= bufflen) return source.substring(1)
+            return net.blueva.luak.Lua.CHUNKID_ELLIPSIS +
+                source.substring(1 + source.length - (bufflen - net.blueva.luak.Lua.CHUNKID_ELLIPSIS.length))
+        }
+        val newline: Int = source.indexOf('\n')
+        val room: Int = bufflen - (
+            net.blueva.luak.Lua.CHUNKID_PREFIX.length +
+                net.blueva.luak.Lua.CHUNKID_ELLIPSIS.length +
+                net.blueva.luak.Lua.CHUNKID_SUFFIX.length
+            ) - 1
+        if (source.length < room && newline < 0) {
+            return net.blueva.luak.Lua.CHUNKID_PREFIX + source + net.blueva.luak.Lua.CHUNKID_SUFFIX
+        }
+        var length: Int = if (newline >= 0) newline else source.length
+        if (length > room) length = room
+        return net.blueva.luak.Lua.CHUNKID_PREFIX + source.substring(0, length) +
+            net.blueva.luak.Lua.CHUNKID_ELLIPSIS + net.blueva.luak.Lua.CHUNKID_SUFFIX
     }
     }
 }

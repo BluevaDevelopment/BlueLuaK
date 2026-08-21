@@ -297,11 +297,16 @@ open class MathLib : TwoArgFunction() {
 
     internal class fmod : TwoArgFunction() {
         override fun call(xv: LuaValue?, yv: LuaValue?): LuaValue? {
-            if (xv!!.isinttype() && yv!!.isinttype() && yv!!.tolong() != 0L) {
+            if (xv!!.isinttype() && yv!!.isinttype()) {
+                // Two integers give an integer, and there is no integer answer
+                // to a division by zero - unlike the float case, which has NaN.
+                val y: Long = yv.tolong()
+                if (y == 0L) LuaValue.argerror(2, "zero")
+                if (y == -1L) return valueOf(0L) // avoids overflow on the minimum
                 // Long remainder already takes the sign of the dividend, like C fmod.
-                return valueOf(xv!!.tolong() % yv!!.tolong())
+                return valueOf(xv.tolong() % y)
             }
-            return valueOf(xv!!.checkdouble() % yv!!.checkdouble())
+            return valueOf(xv.checkdouble() % yv!!.checkdouble())
         }
     }
 
@@ -359,6 +364,9 @@ open class MathLib : TwoArgFunction() {
 
     internal class max : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            // With nothing to compare there is no answer, and the complaint is
+            // about the missing argument rather than about its type.
+            if (args.narg() < 1) LuaValue.argerror(1, "value expected")
             var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
@@ -373,6 +381,9 @@ open class MathLib : TwoArgFunction() {
 
     internal class min : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            // With nothing to compare there is no answer, and the complaint is
+            // about the missing argument rather than about its type.
+            if (args.narg() < 1) LuaValue.argerror(1, "value expected")
             var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
@@ -400,6 +411,56 @@ open class MathLib : TwoArgFunction() {
     }
 
     /**
+     * The generator Lua 5.5 uses: xoshiro256**.
+     *
+     * Reproduced exactly, seeding included, so a chunk that seeds the generator
+     * and records what came out gets the same sequence here as it would from
+     * the reference interpreter.
+     */
+    internal class Xoshiro256 {
+        private var s0: Long = 0
+        private var s1: Long = 0
+        private var s2: Long = 0
+        private var s3: Long = 0
+
+        init {
+            // Something varying, so an unseeded program does not repeat itself.
+            seed(Random.Default.nextLong(), Random.Default.nextLong())
+        }
+
+        fun seed(n1: Long, n2: Long) {
+            s0 = n1
+            s1 = 0xFF // never all-zero, which the generator cannot leave
+            s2 = n2
+            s3 = 0
+            // Discarded, to spread the seed through the whole state.
+            repeat(16) { next() }
+        }
+
+        fun next(): Long {
+            val result: Long = rotl(s1 * 5L, 7) * 9L
+            val t: Long = s1 shl 17
+            s2 = s2 xor s0
+            s3 = s3 xor s1
+            s1 = s1 xor s2
+            s0 = s0 xor s3
+            s2 = s2 xor t
+            s3 = rotl(s3, 45)
+            return result
+        }
+
+        /** A float in `[0,1)`, taking the top 53 bits - a double's whole mantissa. */
+        fun nextDouble(): Double = (next() ushr 11).toDouble() * SCALE
+
+        private fun rotl(x: Long, n: Int): Long = (x shl n) or (x ushr (64 - n))
+
+        private companion object {
+            /** 2^-53: one unit in the last place of the mantissa. */
+            const val SCALE: Double = 1.0 / 9007199254740992.0
+        }
+    }
+
+    /**
      * `math.random ([m [, n]])`.
      *
      * With no argument a float in `[0,1)`; with one, an integer in `[1,m]`;
@@ -408,18 +469,21 @@ open class MathLib : TwoArgFunction() {
      * integer with every bit drawn at random.
      */
     internal class random : VarArgFunction() {
-        var random: Random = Random.Default
+        var generator: Xoshiro256 = Xoshiro256()
 
         override fun invoke(args: Varargs): Varargs {
+            // Drawn before the arguments are examined, as upstream draws it, so
+            // the sequence does not depend on how the call was written.
+            val draw: Long = generator.next()
             val low: Long
             val high: Long
             when (args.narg()) {
-                0 -> return valueOf(random.nextDouble())!!
+                0 -> return valueOf((draw ushr 11).toDouble() * (1.0 / 9007199254740992.0))!!
                 1 -> {
                     val m: Long = args.checklong(1)
                     // random(0) is the one case that is not a range: it asks
                     // for an integer with all of its bits set at random.
-                    if (m == 0L) return valueOf(random.nextLong())!!
+                    if (m == 0L) return valueOf(draw)!!
                     low = 1L
                     high = m
                 }
@@ -432,7 +496,7 @@ open class MathLib : TwoArgFunction() {
                 else -> return LuaValue.error("wrong number of arguments")!!
             }
             args.argcheck(low <= high, 1, "interval is empty")
-            return valueOf(low + project(random.nextLong(), high - low))!!
+            return valueOf(low + project(draw, high - low))!!
         }
 
         /**
@@ -452,7 +516,7 @@ open class MathLib : TwoArgFunction() {
             limit = limit or (limit ushr 16)
             limit = limit or (limit ushr 32)
             var value = draw and limit
-            while (value.toULong() > span.toULong()) value = random.nextLong() and limit
+            while (value.toULong() > span.toULong()) value = generator.next() and limit
             return value
         }
     }
@@ -461,24 +525,20 @@ open class MathLib : TwoArgFunction() {
      * `math.randomseed ([x [, y]])`.
      *
      * Seeds the generator and answers the two halves of the seed it used, so a
-     * run that wants to be repeatable can record them. With no argument the
-     * seed comes from the clock, which is as unpredictable as this runtime can
-     * be without a platform entropy source.
+     * run that wants to be repeatable can record them.
      */
     internal class randomseed(val random: MathLib.random) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Long
             val y: Long
             if (args.isnoneornil(1)) {
-                // Kotlin's default generator is already seeded by the host, so
-                // it is the entropy source here.
                 x = Random.Default.nextLong()
-                y = Random.Default.nextLong()
+                y = random.generator.next()
             } else {
                 x = args.checklong(1)
                 y = args.optlong(2, 0L)
             }
-            random.random = kotlin.random.Random(x xor (y * 0x9E3779B97F4A7C15uL.toLong()))
+            random.generator.seed(x, y)
             return varargsOf(valueOf(x), valueOf(y))!!
         }
     }

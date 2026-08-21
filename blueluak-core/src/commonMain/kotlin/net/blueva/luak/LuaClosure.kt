@@ -850,6 +850,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 enrichArgError(le, p, pc, stack)
                 enrichOperandError(le, p, pc, stack)
                 enrichCallError(le, p, pc)
+                enrichIndexError(le, p, pc)
                 processErrorHooks(le, p, pc)
             }
             throw le
@@ -891,6 +892,51 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         } finally {
             r.errorfunc = e
         }
+    }
+
+    /**
+     * Says where the thing that could not be indexed came from.
+     *
+     * "attempt to index a nil value" becomes "... (field 'x')" once the
+     * instruction is read back to see which register or upvalue held it.
+     */
+    private fun enrichIndexError(le: LuaError, p: Prototype, pc: Int) {
+        if (le.argMessageOverride != null) return
+        val m: String = le.message ?: return
+        if (!Regex("^attempt to index a \\w+ value$").matches(m)) return
+        val code: IntArray = p.code ?: return
+        if (pc < 0 || pc >= code.size) return
+        val instr: Int = code[pc]
+        val kind: String
+        val name: String
+        when (Lua.GET_OPCODE(instr)) {
+            Lua.OP_GETTABLE, Lua.OP_SELF -> {
+                val found = net.blueva.luak.lib.DebugLib.getobjname(p, pc, Lua.GETARG_B(instr)) ?: return
+                kind = found.namewhat
+                name = found.name
+            }
+
+            Lua.OP_SETTABLE -> {
+                val found = net.blueva.luak.lib.DebugLib.getobjname(p, pc, Lua.GETARG_A(instr)) ?: return
+                kind = found.namewhat
+                name = found.name
+            }
+
+            Lua.OP_GETTABUP -> {
+                val up = p.upvalues?.getOrNull(Lua.GETARG_B(instr)) ?: return
+                kind = "upvalue"
+                name = up.name?.tojstring() ?: return
+            }
+
+            Lua.OP_SETTABUP -> {
+                val up = p.upvalues?.getOrNull(Lua.GETARG_A(instr)) ?: return
+                kind = "upvalue"
+                name = up.name?.tojstring() ?: return
+            }
+
+            else -> return
+        }
+        le.argMessageOverride = m + " (" + kind + " '" + name + "')"
     }
 
     /**

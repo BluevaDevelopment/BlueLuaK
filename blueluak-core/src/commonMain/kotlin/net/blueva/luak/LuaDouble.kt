@@ -487,7 +487,9 @@ class LuaDouble
          * @see .ddiv_d
          */
         fun ddiv(lhs: Double, rhs: Double): LuaValue? {
-            return if (rhs != 0.0) net.blueva.luak.LuaDouble.Companion.valueOf(lhs / rhs) else if (lhs > 0) net.blueva.luak.LuaDouble.Companion.POSINF else if (lhs == 0.0) net.blueva.luak.LuaDouble.Companion.NAN else net.blueva.luak.LuaDouble.Companion.NEGINF
+            // Plain IEEE division. Special-casing a zero divisor lost the sign
+            // of the zero, so 1/-0.0 came out positive.
+            return net.blueva.luak.LuaDouble.Companion.valueOf(lhs / rhs)
         }
 
         /** Divide two double numbers according to lua math, and return a double result.
@@ -497,7 +499,7 @@ class LuaDouble
          * @see .ddiv
          */
         fun ddiv_d(lhs: Double, rhs: Double): Double {
-            return if (rhs != 0.0) lhs / rhs else if (lhs > 0) Double.POSITIVE_INFINITY else if (lhs == 0.0) Double.NaN else Double.NEGATIVE_INFINITY
+            return lhs / rhs
         }
 
         /** Take modulo double numbers according to lua math, and return a [LuaValue] result.

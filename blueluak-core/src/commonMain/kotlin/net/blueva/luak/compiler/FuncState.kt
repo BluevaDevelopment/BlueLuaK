@@ -136,12 +136,20 @@ internal class FuncState internal constructor() : Constants() {
         return -1 /* not found */
     }
 
-    fun newupvalue(name: LuaString?, v: expdesc): Int {
+    fun newupvalue(name: LuaString?, v: expdesc, kind: Int = 0): Int {
         checklimit(nups + 1, LUAI_MAXUPVAL, "upvalues")
         if (f!!.upvalues == null || nups + 1 > f!!.upvalues!!.size) f!!.upvalues =
             realloc(f!!.upvalues, if (nups > 0) nups * 2 else 1)
-        f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
+        f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info, kind)
         return (nups++).toInt()
+    }
+
+    /** How the local at [index] of this function was declared. */
+    fun localkind(index: Int): Int {
+        val vars: Array<LexState.Vardesc?> = ls?.dyd?.actvar ?: return 0
+        val at: Int = firstlocal + index
+        if (at < 0 || at >= vars.size) return 0
+        return vars[at]?.kind ?: 0
     }
 
     fun searchvar(n: LuaString): Int {
@@ -200,7 +208,32 @@ internal class FuncState internal constructor() : Constants() {
      * every global at once. [readonly] comes from a `<const>` attribute and
      * makes assignment to the global a compile error.
      */
-    internal class Globaldesc(val name: LuaString?, val readonly: Boolean)
+    /**
+     * @param nactvar how many locals were in scope when this was declared, so
+     *   a declaration can be told apart from a local of the same name that came
+     *   before it - `local X` then `global X` means the global from there on
+     */
+    internal class Globaldesc(val name: LuaString?, val readonly: Boolean, val nactvar: Int = 0)
+
+    /**
+     * How far a name search has got, across the chain of enclosing functions.
+     *
+     * A `global` declaration is not confined to the function it appears
+     * in - an inner function sees the declarations around it - so the
+     * three things a search learns on the way have to survive the step
+     * from one [FuncState] to the next.
+     */
+    internal class Globalsearch {
+        /** The innermost `global *` seen, which declares every name. */
+        var collective: Globaldesc? = null
+
+        /** Whether a `global` named something other than what is sought. */
+        var named: Boolean = false
+
+        /** The declaration that names the variable, once one turns up. */
+        var found: Globaldesc? = null
+    }
+
 
     /**
      * The `global` declarations in scope, outermost first.
@@ -1115,27 +1148,69 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     companion object {
-        fun singlevaraux(fs: FuncState?, n: LuaString, `var`: expdesc, base: Int): Int {
+        /**
+         * Looks for [n] among one function's variables, innermost first.
+         *
+         * Locals and `global` declarations are walked together in the order
+         * they were written, since a `global x` after a `local x` refers to
+         * the global from there on and the other way round.
+         *
+         * @return [LexState.VLOCAL] when a local matched, -1 when nothing did;
+         *   a global declaration reports itself through [search] instead
+         */
+        private fun searchvaraux(fs: FuncState, n: LuaString, `var`: expdesc, search: Globalsearch): Int {
+            var globalIndex = fs.globals.size
+            var localIndex = fs.nactvar - 1
+            while (globalIndex > 0 || localIndex >= 0) {
+                // A declaration made when this many locals were in scope is
+                // the more recent of the two whenever the counts are level.
+                val takeGlobal: Boolean = globalIndex > 0 &&
+                    (localIndex < 0 || fs.globals[globalIndex - 1].nactvar >= localIndex + 1)
+                if (takeGlobal) {
+                    val declaration: Globaldesc = fs.globals[--globalIndex]
+                    val name: LuaString? = declaration.name
+                    if (name == null) {
+                        if (search.collective == null) search.collective = declaration
+                    } else if (name == n) {
+                        search.found = declaration
+                        return -1
+                    } else {
+                        search.named = true
+                    }
+                } else {
+                    if (n.eq_b(fs.getlocvar(localIndex).varname)) {
+                        `var`.init(LexState.VLOCAL, localIndex)
+                        return LexState.VLOCAL
+                    }
+                    localIndex--
+                }
+            }
+            return -1 /* not found */
+        }
+
+        fun singlevaraux(fs: FuncState?, n: LuaString, `var`: expdesc, base: Int, search: Globalsearch): Int {
             if (fs == null)  /* no more levels? */
                 return LexState.VVOID /* default is global */
-            val v = fs.searchvar(n) /* look up at current level */
+            val v = searchvaraux(fs, n, `var`, search) /* look up at current level */
+            if (search.found != null)  /* a global declaration names it? */
+                return LexState.VVOID
             if (v >= 0) {
-                `var`.init(LexState.VLOCAL, v)
-                if (base == 0) fs.markupval(v) /* local will be used as an upval */
+                if (base == 0) fs.markupval(`var`.u.info) /* local will be used as an upval */
                 return LexState.VLOCAL
             } else { /* not found at current level; try upvalues */
                 var idx = fs.searchupvalue(n) /* try existing upvalues */
                 if (idx < 0) {  /* not found? */
-                    if (net.blueva.luak.compiler.FuncState.Companion.singlevaraux(
-                            fs.prev,
-                            n,
-                            `var`,
-                            0
-                        ) == LexState.VVOID
-                    )  /* try upper levels */
+                    if (singlevaraux(fs.prev, n, `var`, 0, search) == LexState.VVOID)
                         return LexState.VVOID /* not found; is a global */
                     /* else was LOCAL or UPVAL */
-                    idx = fs.newupvalue(n, `var`) /* will be a new upvalue */
+                    // The declaration kind travels with the upvalue, so an
+                    // inner function still knows the variable is read-only.
+                    val kind: Int = if (`var`.k == LexState.VLOCAL) {
+                        fs.prev?.localkind(`var`.u.info) ?: 0
+                    } else {
+                        fs.prev?.f?.upvalues?.getOrNull(`var`.u.info)?.kind ?: 0
+                    }
+                    idx = fs.newupvalue(n, `var`, kind) /* will be a new upvalue */
                 }
                 `var`.init(LexState.VUPVAL, idx)
                 return LexState.VUPVAL

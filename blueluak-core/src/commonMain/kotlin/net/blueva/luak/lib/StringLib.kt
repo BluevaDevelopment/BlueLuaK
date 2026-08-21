@@ -329,33 +329,65 @@ open class StringLib
                             ++i
                             result.append(net.blueva.luak.lib.StringLib.Companion.L_ESC.toByte())
                         } else {
-                            arg++
-                            val fdsc: FormatDesc = FormatDesc(args, fmt, i)
+                            // A missing argument is reported before the
+                            // specification is even looked at, as upstream does.
+                            if (++arg > args.narg()) LuaValue.argerror(arg, "no value")
+                            val fdsc: FormatDesc = FormatDesc(fmt, i)
                             i += fdsc.length
                             when (fdsc.conversion) {
-                                'c'.code -> fdsc.format(result, args.checkint(arg).toByte())
-                                'i'.code, 'd'.code -> fdsc.format(result, args.checklong(arg))
-                                'o'.code, 'u'.code, 'x'.code, 'X'.code -> fdsc.format(result, args.checklong(arg))
-                                'e'.code, 'E'.code, 'f'.code, 'g'.code, 'G'.code -> fdsc.format(result, args.checkdouble(arg))
-                                'a'.code, 'A'.code -> fdsc.format(
-                                    result,
-                                    LuaString.valueOf(
-                                        net.blueva.luak.DecimalFormat.hex(
-                                            args.checkdouble(arg),
-                                            upper = fdsc.conversion == 'A'.code,
-                                        ),
-                                    ),
-                                )
+                                'c'.code -> {
+                                    fdsc.check(FLAGS_C, precision = false)
+                                    fdsc.format(result, args.checkint(arg).toByte())
+                                }
 
-                                'p'.code -> fdsc.format(
-                                    result,
-                                    net.blueva.luak.lib.StringLib.Companion.pointer(args.arg(arg)!!),
-                                )
+                                'i'.code, 'd'.code -> {
+                                    val value: Long = args.checklong(arg)
+                                    fdsc.check(FLAGS_I, precision = true)
+                                    fdsc.format(result, value)
+                                }
 
-                                'q'.code -> net.blueva.luak.lib.StringLib.Companion.addliteral(
-                                    result,
-                                    args.arg(arg)!!,
-                                )
+                                'u'.code -> {
+                                    val value: Long = args.checklong(arg)
+                                    fdsc.check(FLAGS_U, precision = true)
+                                    fdsc.format(result, value)
+                                }
+
+                                'o'.code, 'x'.code, 'X'.code -> {
+                                    val value: Long = args.checklong(arg)
+                                    fdsc.check(FLAGS_X, precision = true)
+                                    fdsc.format(result, value)
+                                }
+
+                                'e'.code, 'E'.code, 'f'.code, 'g'.code, 'G'.code -> {
+                                    val value: Double = args.checkdouble(arg)
+                                    fdsc.check(FLAGS_F, precision = true)
+                                    fdsc.format(result, value)
+                                }
+
+                                'a'.code, 'A'.code -> {
+                                    fdsc.check(FLAGS_F, precision = true)
+                                    fdsc.formathex(
+                                        result,
+                                        args.checkdouble(arg),
+                                        fdsc.conversion == 'A'.code,
+                                    )
+                                }
+
+                                'p'.code -> {
+                                    val text: LuaString =
+                                        net.blueva.luak.lib.StringLib.Companion.pointer(args.arg(arg)!!)
+                                    fdsc.check(FLAGS_C, precision = false)
+                                    fdsc.format(result, text)
+                                }
+
+                                'q'.code -> {
+                                    if (fdsc.hasmodifiers) error("specifier '%q' cannot have modifiers")
+                                    net.blueva.luak.lib.StringLib.Companion.addliteral(
+                                        result,
+                                        args.arg(arg)!!,
+                                    )
+                                }
+
                                 's'.code -> {
                                     // Lua's own conversion, so %s accepts a nil
                                     // or a table with __tostring.
@@ -371,11 +403,19 @@ open class StringLib
                                             arg,
                                             "string contains zeros",
                                         )
-                                        fdsc.format(result, s)
+                                        fdsc.check(FLAGS_C, precision = true)
+                                        // Without a precision there is nothing
+                                        // to truncate, and a long string is
+                                        // cheaper to pass through than to pad.
+                                        if (fdsc.precision < 0 && s.length() >= 100) {
+                                            result.append(s)
+                                        } else {
+                                            fdsc.format(result, s)
+                                        }
                                     }
                                 }
 
-                                else -> error("invalid option '%" + fdsc.conversion.toChar() + "' to 'format'")
+                                else -> error("invalid conversion '" + fdsc.src + "' to 'format'")
                             }
                         }
                     }
@@ -388,7 +428,28 @@ open class StringLib
         }
     }
 
-    internal inner class FormatDesc(args: Varargs?, strfrmt: LuaString, start: Int) {
+    /** As long as a conversion specification may be, upstream's `MAX_FORMAT`. */
+    private val MAX_FORMAT_LENGTH: Int = 32
+
+    /** Flags for `%a`, `%A`, `%e`, `%E`, `%f`, `%g` and `%G`. */
+    private val FLAGS_F: String = "-+#0 "
+
+    /** Flags for `%o`, `%x` and `%X`. */
+    private val FLAGS_X: String = "-#0"
+
+    /** Flags for `%d` and `%i`. */
+    private val FLAGS_I: String = "-+0 "
+
+    /** Flags for `%u`. */
+    private val FLAGS_U: String = "-0"
+
+    /** Flags for `%c`, `%p` and `%s`. */
+    private val FLAGS_C: String = "-"
+
+    /** ASCII only, since a conversion letter is never a byte above 127. */
+    private fun isAsciiLetter(c: Char): Boolean = c in 'a'..'z' || c in 'A'..'Z'
+
+    internal inner class FormatDesc(strfrmt: LuaString, start: Int) {
         private var leftAdjust = false
         private var zeroPad: Boolean = false
         private var explicitPlus = false
@@ -400,60 +461,98 @@ open class StringLib
         val conversion: Int
         val length: Int
 
-        val src: String?
+        /** The specification as written, `%` and conversion letter included. */
+        val src: String
 
         init {
-            var p = start
             val n: Int = strfrmt.length()
-            var c = 0
+            // Flags, width and precision are read as one span, exactly as
+            // upstream's 'getformat' reads them: nothing is judged here, so a
+            // malformed specification is still available to be quoted back.
+            var p = start
+            while (p < n && net.blueva.luak.lib.StringLib.Companion.isSpecSpan(strfrmt.luaByte(p))) p++
+            // Upstream counts the conversion letter itself, and over there the
+            // string is NUL-terminated, so a specification that runs off the
+            // end still counts one character.
+            if (p - start + 1 >= MAX_FORMAT_LENGTH - 10) error("invalid format (too long)")
+            conversion = if (p < n) strfrmt.luaByte(p) else 0
+            length = p - start + 1
+            src = "%" + strfrmt.substring(start, if (p < n) p + 1 else n).tojstring()
 
-            var moreFlags = true
-            while (moreFlags) {
-                when ((if (p < n) strfrmt.luaByte(p++) else 0).also { c = it }) {
+            var scan = start
+            var reading = true
+            while (reading && scan < p) {
+                when (strfrmt.luaByte(scan)) {
                     '-'.code -> leftAdjust = true
                     '+'.code -> explicitPlus = true
                     ' '.code -> space = true
                     '#'.code -> alternateForm = true
                     '0'.code -> zeroPad = true
-                    else -> moreFlags = false
+                    else -> reading = false
                 }
+                if (reading) scan++
             }
-            if (p - start > 5) error("invalid format (repeated flags)")
 
             width = -1
-            if (c.toChar().isDigit()) {
-                width = c - '0'.code
-                c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                if (c.toChar().isDigit()) {
-                    width = width * 10 + (c - '0'.code)
-                    c = (if (p < n) strfrmt.luaByte(p++) else 0)
+            if (scan < p && strfrmt.luaByte(scan).toChar() in '0'..'9') {
+                width = strfrmt.luaByte(scan++) - '0'.code
+                if (scan < p && strfrmt.luaByte(scan).toChar() in '0'..'9') {
+                    width = width * 10 + (strfrmt.luaByte(scan++) - '0'.code)
                 }
             }
 
             precision = -1
-            if (c == '.'.code) {
-                c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                if (c.toChar().isDigit()) {
-                    precision = c - '0'.code
-                    c = (if (p < n) strfrmt.luaByte(p++) else 0)
-                    if (c.toChar().isDigit()) {
-                        precision = precision * 10 + (c - '0'.code)
-                        c = (if (p < n) strfrmt.luaByte(p++) else 0)
+            if (scan < p && strfrmt.luaByte(scan) == '.'.code) {
+                scan++
+                // A bare '.' is a precision of zero, not an absent one.
+                precision = 0
+                if (scan < p && strfrmt.luaByte(scan).toChar() in '0'..'9') {
+                    precision = strfrmt.luaByte(scan++) - '0'.code
+                    if (scan < p && strfrmt.luaByte(scan).toChar() in '0'..'9') {
+                        precision = precision * 10 + (strfrmt.luaByte(scan++) - '0'.code)
                     }
                 }
             }
 
-            if (c.toChar().isDigit()) error("invalid format (width or precision too long)")
-
             zeroPad = zeroPad and !leftAdjust // '-' overrides '0'
-            conversion = c
-            length = p - start
-            src = strfrmt.substring(start - 1, p).tojstring()
+        }
+
+        /**
+         * Refuses a specification C's `printf` would not accept.
+         *
+         * [flags] are the ones this conversion takes and [precision] says
+         * whether it takes one at all; what is left over after them, a width of
+         * at most two digits and a precision of at most two more, has to be the
+         * conversion letter itself. A width cannot start with a zero, since
+         * that reads as the padding flag.
+         */
+        fun check(flags: String, precision: Boolean) {
+            var i = 1 // past the '%'
+            while (i < src.length && src[i] in flags) i++
+            if (i < src.length && src[i] != '0') {
+                i = twoDigits(i)
+                if (precision && i < src.length && src[i] == '.') i = twoDigits(i + 1)
+            }
+            if (i >= src.length || !isAsciiLetter(src[i])) {
+                error("invalid conversion specification: '" + src + "'")
+            }
+        }
+
+        private fun twoDigits(from: Int): Int {
+            var i = from
+            if (i < src.length && src[i] in '0'..'9') {
+                i++
+                if (i < src.length && src[i] in '0'..'9') i++
+            }
+            return i
         }
 
         fun format(buf: Buffer, c: Byte) {
-            // TODO: not clear that any of width, precision, or flags apply here.
+            // A width pads the single character, on whichever side the flags ask.
+            val padding: Int = width - 1
+            if (padding > 0 && !leftAdjust) pad(buf, ' ', padding)
             buf.append(c)
+            if (padding > 0 && leftAdjust) pad(buf, ' ', padding)
         }
 
         fun format(buf: Buffer, number: Long) {
@@ -463,28 +562,36 @@ open class StringLib
                 digits = ""
             } else {
                 val radix: Int
+                val unsigned: Boolean
                 when (conversion) {
-                    'x'.code, 'X'.code -> radix = 16
-                    'o'.code -> radix = 8
-                    else -> radix = 10
+                    'x'.code, 'X'.code -> { radix = 16; unsigned = true }
+                    'o'.code -> { radix = 8; unsigned = true }
+                    'u'.code -> { radix = 10; unsigned = true }
+                    else -> { radix = 10; unsigned = false }
                 }
                 // Hexadecimal and octal read the value as unsigned, the way C
                 // does, so -1 comes out as all ones rather than with a sign.
-                digits = if (radix == 10) {
-                    number.toString(10)
-                } else {
-                    number.toULong().toString(radix)
-                }
+                digits = if (unsigned) number.toULong().toString(radix) else number.toString(radix)
                 if (conversion == 'X'.code) digits = digits.uppercase()
+                // The '#' flag asks for the form a Lua numeral would take, so
+                // the base is spelled out: 0 for octal, 0x or 0X for hex.
+                if (alternateForm && number != 0L) {
+                    digits = when (conversion) {
+                        'o'.code -> "0" + digits
+                        'x'.code -> "0x" + digits
+                        'X'.code -> "0X" + digits
+                        else -> digits
+                    }
+                }
             }
 
             var minwidth: Int = digits.length
             var ndigits = minwidth
             val nzeros: Int
 
-            if (number < 0 && conversion != 'x'.code && conversion != 'X'.code &&
-                conversion != 'o'.code
-            ) {
+            if (number < 0 && !digits.startsWith("-")) {
+                // Nothing to do: an unsigned conversion has no sign to skip.
+            } else if (number < 0) {
                 ndigits--
             } else if (explicitPlus || space) {
                 minwidth++
@@ -526,7 +633,16 @@ open class StringLib
             var text: String = when (conversion.toChar()) {
                 'e' -> net.blueva.luak.DecimalFormat.e(x, digits, upper = false)
                 'E' -> net.blueva.luak.DecimalFormat.e(x, digits, upper = true)
-                'f', 'F' -> net.blueva.luak.DecimalFormat.f(x, digits)
+                'f', 'F' -> {
+                    val rendered: String = net.blueva.luak.DecimalFormat.f(x, digits)
+                    // The '#' flag keeps the decimal point even with no digits
+                    // after it, so the value still reads as a float.
+                    if (alternateForm && digits == 0 && !rendered.contains('.')) {
+                        rendered + "."
+                    } else {
+                        rendered
+                    }
+                }
                 'G' -> net.blueva.luak.DecimalFormat.g(x, digits).uppercase()
                 else -> net.blueva.luak.DecimalFormat.g(x, digits)
             }
@@ -550,9 +666,28 @@ open class StringLib
             buf.append(text)
         }
 
-        /** True when the conversion carries a width, precision or flag. */
+        /** True when anything was written between the `%` and the letter. */
         val hasmodifiers: Boolean
-            get() = width > 0 || precision >= 0 || leftAdjust
+            get() = src.length > 2
+
+        /**
+         * `%a`: the value in hexadecimal, with this descriptor's sign and width.
+         *
+         * A precision here counts hexadecimal digits after the point rather
+         * than characters, so the padding is applied separately from the
+         * rendering.
+         */
+        fun formathex(buf: Buffer, value: Double, upper: Boolean) {
+            var text: String = net.blueva.luak.DecimalFormat.hex(value, upper, precision)
+            if (!text.startsWith("-")) {
+                if (explicitPlus) text = "+" + text else if (space) text = " " + text
+            }
+            val padding: Int = width - text.length
+            if (padding > 0) {
+                text = if (leftAdjust) text + " ".repeat(padding) else " ".repeat(padding) + text
+            }
+            buf.append(text)
+        }
 
         fun format(buf: Buffer, s: LuaString) {
             var s: LuaString = s
@@ -1427,6 +1562,16 @@ open class StringLib
 
         // Pattern matching implementation
         private val L_ESC: Int = '%'.code
+
+        /**
+         * The bytes a conversion specification may hold before its letter.
+         *
+         * Flags, width and precision all live in here, which is why a run of
+         * six zeros is a long specification rather than a repeated flag.
+         */
+        internal fun isSpecSpan(byte: Int): Boolean =
+            byte == '-'.code || byte == '+'.code || byte == '#'.code || byte == '0'.code ||
+                byte == ' '.code || byte == '.'.code || (byte >= '1'.code && byte <= '9'.code)
         private val SPECIALS: LuaString? = valueOf("^$*+?.([%-")
         private const val MAX_CAPTURES = 32
 

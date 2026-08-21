@@ -892,19 +892,30 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun singlevar(`var`: expdesc) {
-        val varname: LuaString = this.str_checkname()!!
+        this.buildvar(this.str_checkname()!!, `var`)
+    }
+
+    /**
+     * Resolves [varname], which may turn out to be a local, an upvalue or a
+     * global, and leaves the expression for it in [var].
+     *
+     * With no `global` declaration anywhere in scope every name that is not a
+     * local is a global, which is how Lua has always behaved. Once a `global`
+     * statement names anything, the rest of the scope - inner functions
+     * included - has to declare what it uses, unless a collective `global *`
+     * is also in scope, which puts the default back.
+     */
+    internal fun buildvar(varname: LuaString, `var`: expdesc) {
         val fs: FuncState = this.fs!!
-        if (FuncState.singlevaraux(
-                fs,
-                varname,
-                `var`,
-                1
-            ) === net.blueva.luak.compiler.LexState.Companion.VVOID
-        ) { /* global name? */
-            val declaration: FuncState.Globaldesc? = this.checkdeclared(fs, varname)
-            this.buildglobal(varname, `var`)
-            if (declaration != null && declaration.readonly) `var`.readonlyGlobal = varname
+        val search = FuncState.Globalsearch()
+        val resolved: Int = FuncState.singlevaraux(fs, varname, `var`, 1, search)
+        if (resolved != net.blueva.luak.compiler.LexState.Companion.VVOID) return
+        val declaration: FuncState.Globaldesc? = search.found ?: search.collective
+        if (declaration == null && search.named) {
+            this.semerror("variable '" + varname.tojstring() + "' not declared")
         }
+        this.buildglobal(varname, `var`)
+        if (declaration != null && declaration.readonly) `var`.readonlyGlobal = varname
     }
 
     /**
@@ -913,42 +924,18 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     private fun buildglobal(varname: LuaString, `var`: expdesc) {
         val fs: FuncState = this.fs!!
         val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1) /* get environment variable */
-        _assert(`var`.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL || `var`.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL)
+        val search = FuncState.Globalsearch()
+        // Every global is read through _ENV, so _ENV itself cannot be one: the
+        // lookup would have nowhere to start.
+        if (FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1, search) ==
+            net.blueva.luak.compiler.LexState.Companion.VVOID
+        ) {
+            this.semerror(
+                "_ENV is global when accessing variable '" + varname.tojstring() + "'",
+            )
+        }
         this.codestring(key, varname) /* key is variable name */
         fs.indexed(`var`, key) /* env[varname] */
-    }
-
-    /**
-     * Checks [varname] against the `global` declarations in scope.
-     *
-     * With no declaration at all every name is a global, which is how Lua has
-     * always behaved. Once a `global` statement names anything, the rest of the
-     * scope has to declare what it uses - unless a collective `global *` is
-     * also in scope, which puts the default back.
-     *
-     * @return the declaration that covers [varname], or `null` if none does
-     */
-    private fun checkdeclared(fs: FuncState, varname: LuaString): FuncState.Globaldesc? {
-        val declarations: ArrayList<FuncState.Globaldesc> = fs.globals
-        var collective: FuncState.Globaldesc? = null
-        var named = false
-        var index = declarations.size
-        while (--index >= 0) {
-            val declaration: FuncState.Globaldesc = declarations[index]
-            val name: LuaString? = declaration.name
-            if (name == null) {
-                if (collective == null) collective = declaration
-            } else if (name == varname) {
-                return declaration
-            } else {
-                named = true
-            }
-        }
-        if (named && collective == null) {
-            this.semerror("variable '" + varname.tojstring() + "' not declared")
-        }
-        return collective
     }
 
     internal fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
@@ -1927,36 +1914,28 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
+    /**
+     * `test_then_block -> [IF | ELSEIF] cond THEN block`
+     *
+     * Lua 5.2 had a special case here for a `goto` or `break` written as the
+     * first statement after `then`, which registered any labels that followed
+     * it before emitting the jump that skips the block - so a label could end
+     * up pointing at that jump. 5.5 dropped it; the ordinary block handles the
+     * same code correctly.
+     */
     fun test_then_block(escapelist: IntPtr?) {
-        /* test_then_block -> [IF | ELSEIF] cond THEN block */
         val v: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        val bl: BlockCnt = BlockCnt()
-        val jf: Int /* instruction to skip 'then' code (if condition is false) */
         this.next() /* skip IF or ELSEIF */
-        expr(v) /* read expression */
+        expr(v) /* read condition */
+        if (v.k == net.blueva.luak.compiler.LexState.Companion.VNIL) v.k = net.blueva.luak.compiler.LexState.Companion.VFALSE /* 'falses' are all equal here */
+        fs!!.goiftrue(v)
+        val condtrue: Int = v.f.i
         this.checknext(net.blueva.luak.compiler.LexState.Companion.TK_THEN)
-        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_GOTO || t.token == net.blueva.luak.compiler.LexState.Companion.TK_BREAK) {
-            fs!!.goiffalse(v) /* will jump to label if condition is true */
-            fs!!.enterblock(bl, false) /* must enter block before 'goto' */
-            gotostat(v.t.i) /* handle goto/break */
-            skipnoopstat() /* skip other no-op statements */
-            if (block_follow(false)) { /* 'goto' is the entire block? */
-                fs!!.leaveblock()
-                return  /* and that is it */
-            } else  /* must skip over 'then' part if condition is false */
-                jf = fs!!.jump()
-        } else { /* regular case (not goto/break) */
-            fs!!.goiftrue(v) /* skip over block if condition is false */
-            fs!!.enterblock(bl, false)
-            jf = v.f.i
+        this.block() /* 'then' part */
+        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSE || t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSEIF) {
+            fs!!.concat((escapelist)!!, fs!!.jump()) /* must jump over it */
         }
-        statlist() /* `then' part */
-        fs!!.leaveblock()
-        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSE || t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSEIF) fs!!.concat(
-            (escapelist)!!,
-            fs!!.jump()
-        ) /* must jump over it */
-        fs!!.patchtohere(jf)
+        fs!!.patchtohere(condtrue)
     }
 
 
@@ -2065,7 +2044,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val defaultkind: Int = this.getglobalattribute(net.blueva.luak.compiler.LexState.Companion.VDKREG)
         if (this.testnext('*'.code)) {
             fs.globals.add(
-                FuncState.Globaldesc(null, defaultkind == net.blueva.luak.compiler.LexState.Companion.RDKCONST)
+                FuncState.Globaldesc(
+                    null,
+                    defaultkind == net.blueva.luak.compiler.LexState.Companion.RDKCONST,
+                    fs.nactvar.toInt(),
+                ),
             )
             return
         }
@@ -2079,7 +2062,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         } while (this.testnext(','.code))
         if (this.testnext('='.code)) this.initglobal(names, 0, this.linenumber)
         /* the names come into scope only after their own initializers */
-        for (i in names.indices) fs.globals.add(FuncState.Globaldesc(names[i], readonly[i]))
+        for (i in names.indices) {
+            fs.globals.add(FuncState.Globaldesc(names[i], readonly[i], fs.nactvar.toInt()))
+        }
     }
 
     /**
@@ -2135,7 +2120,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     private fun globalfunc(line: Int) {
         val fs: FuncState = this.fs!!
         val fname: LuaString = this.str_checkname()!!
-        fs.globals.add(FuncState.Globaldesc(fname, false))
+        fs.globals.add(FuncState.Globaldesc(fname, false, fs.nactvar.toInt()))
         val `var`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         this.buildglobal(fname, `var`)
         val b: expdesc = net.blueva.luak.compiler.LexState.expdesc()
@@ -2175,6 +2160,16 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val globalname: LuaString? = e.readonlyGlobal
         if (globalname != null) {
             this.semerror("attempt to assign to const variable '" + globalname.tojstring() + "'")
+        }
+        if (e.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL) {
+            // The same variable seen from an inner function.
+            val up = this.fs?.f?.upvalues?.getOrNull(e.u.info) ?: return
+            if (up.kind != net.blueva.luak.compiler.LexState.Companion.VDKREG) {
+                this.semerror(
+                    "attempt to assign to const variable '" + (up.name?.tojstring() ?: "?") + "'",
+                )
+            }
+            return
         }
         if (e.k != net.blueva.luak.compiler.LexState.Companion.VLOCAL) return
         val fs: FuncState = this.fs!!

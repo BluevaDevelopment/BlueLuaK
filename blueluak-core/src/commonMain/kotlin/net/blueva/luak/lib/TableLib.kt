@@ -89,6 +89,18 @@ class TableLib : TwoArgFunction() {
      * neither a string nor a number names its own index.
      */
     internal class concat : VarArgFunction() {
+        /** Appends `list[index]`, refusing anything that is not a string. */
+        private fun addfield(out: Buffer, list: LuaValue, index: Long) {
+            val element: LuaValue = list.get(LuaValue.valueOf(index))
+            if (!element.isstring()) {
+                LuaValue.error(
+                    "invalid value (" + element.typename() +
+                        ") at index " + index + " in table for 'concat'",
+                )
+            }
+            out.append(element.strvalue()!!)
+        }
+
         override fun invoke(args: Varargs): Varargs {
             val list: LuaValue = checkindexable(args)
             val separator: LuaString = if (args.isnoneornil(2)) EMPTYSTRING!! else args.checkstring(2)
@@ -96,18 +108,15 @@ class TableLib : TwoArgFunction() {
             val last: Long = if (args.isnoneornil(4)) list.length().toLong() else args.checklong(4)
             val out: Buffer = Buffer()
             var index: Long = first
-            while (index <= last) {
-                val element: LuaValue = list.get(LuaValue.valueOf(index))
-                if (!element.isstring()) {
-                    LuaValue.error(
-                        "invalid value (" + element.typename() +
-                            ") at index " + index + " in table for 'concat'",
-                    )
-                }
-                out.append(element.strvalue()!!)
-                if (index < last) out.append(separator)
+            // The last element is added outside the loop, so the counter never
+            // has to step past it: with a range ending at math.maxinteger,
+            // one more increment would wrap around and read the table again.
+            while (index < last) {
+                addfield(out, list, index)
+                out.append(separator)
                 index++
             }
+            if (index == last) addfield(out, list, index)
             return out.tostring()
         }
     }

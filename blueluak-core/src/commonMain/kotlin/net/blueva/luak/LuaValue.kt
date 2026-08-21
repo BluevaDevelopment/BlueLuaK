@@ -3664,7 +3664,14 @@ open class LuaValue : Varargs() {
         var h = metatag(net.blueva.luak.LuaValue.Companion.CONCAT)
         if (h.isnil() && (rhs.metatag(net.blueva.luak.LuaValue.Companion.CONCAT)
                 .also { h = it }).isnil()
-        ) net.blueva.luak.LuaValue.Companion.error("attempt to concatenate " + typename() + " and " + rhs.typename())
+        ) {
+            // Blame the operand that is not concatenable, the way Lua does,
+            // rather than naming both.
+            val culprit: LuaValue = if (!this.isstring() || this is LuaTable) this else rhs
+            net.blueva.luak.LuaValue.Companion.error(
+                "attempt to concatenate a " + culprit.typename() + " value",
+            )
+        }
         return h.call(this, rhs)!!
     }
 
@@ -3749,8 +3756,14 @@ open class LuaValue : Varargs() {
     /** Throw [LuaError] indicating index was attempted on illegal type
      * @throws LuaError when called.
      */
+    /**
+     * Reports indexing something that cannot be indexed.
+     *
+     * The key is not named here: Lua names where the *value* came from, which
+     * only the interpreter can work out, and it adds that afterwards.
+     */
     private fun indexerror(key: String?) {
-        net.blueva.luak.LuaValue.Companion.error("attempt to index ? (a " + typename() + " value) with key '" + key + "'")
+        net.blueva.luak.LuaValue.Companion.error("attempt to index a " + typename() + " value")
     }
 
     /**
@@ -4367,7 +4380,7 @@ open class LuaValue : Varargs() {
                     }
                 } else if ((t.metatag(net.blueva.luak.LuaValue.Companion.NEWINDEX)
                         .also { tm = it }).isnil()
-                ) throw LuaError("table expected for set index ('" + key + "') value, got " + t.typename())
+                ) throw LuaError("attempt to index a " + t.typename() + " value")
                 if (tm!!.isfunction()) {
                     tm.call(t, key, value)
                     return true
