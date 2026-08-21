@@ -25,7 +25,7 @@ Basalt Luak (or simply Luak) is a Kotlin-first implementation of an embeddable L
 - **JVM 17+**
 - **JavaScript IR**, tested on Node.js
 - **WebAssembly**, tested on Node.js
-- **Kotlin/Native** for Linux x64, Windows x64, macOS x64, and macOS ARM64
+- **Kotlin/Native** for Linux x64, Linux ARM64, Windows x64, macOS x64, and macOS ARM64
 
 The Lua runtime, value model, bytecode compiler, and standard libraries live in `commonMain`. JVM-specific integration is isolated from the shared runtime.
 
@@ -158,6 +158,41 @@ kotlin {
     }
 }
 ```
+
+## Sandboxing Untrusted Code
+
+A host that runs plugins it did not write needs bounds the plugin cannot lift. These live on `Globals`, are off by default, and cost next to nothing when unused.
+
+```kotlin
+val globals = LuaPlatform.standardGlobals()
+
+globals.budget = Budget().apply { instructions = 10_000_000 }  // per resumption
+globals.memoryceiling = 64L * 1024 * 1024                      // bytes
+globals.textonly = true                                        // no binary chunks
+globals.seedrandom(laneId, runId)                              // reproducible draws
+
+globals.bind(plugin).call()
+```
+
+| Bound | What it does | What it costs when unused |
+|---|---|---|
+| `Globals.budget` | Stops a resumption that runs too long, or one a watchdog calls `Budget.interrupt()` on, with an ordinary Lua error. Needs no `debug` library, unlike `debug.sethook`. | One null check per instruction |
+| `Globals.memoryceiling` | Raises Lua's own `not enough memory` past a cap on what the state has been charged for. Each state counts its own objects, so one lane cannot spend another's. | Nothing |
+| `Globals.textonly` | Refuses binary chunks through every route into the loader — `load`, `loadfile`, `dofile`, `require`, and the host's own `Globals.load`. The undumper reads a format, not a language, and a malformed dump is not something checking makes safe. | Nothing |
+| `Globals.seedrandom(x, y)` | Fixes `math.random`'s sequence from outside Lua. Unseeded states already differ from one another; this is for repeating a run. | Nothing |
+
+Both ceilings stay reached once they are: catching the error and carrying on meets it again, so only the host — through `Budget.refill()`, which the next resumption does anyway, or `Globals.startmemorycount()` — puts the state back to work.
+
+### Starting a lane cheaply
+
+Compiling the plugin is what a new lane costs, not building the standard libraries: for a 200-function chunk on the JVM that is 1094 µs against 61 µs. Compile it once and hand it to each lane, which a `Prototype` is safe for — it is finished code and constants, never written to again.
+
+```kotlin
+val plugin: Prototype = template.compile(source, "@plugin.lua")
+for (lane in lanes) lane.bind(plugin).call()
+```
+
+A whole lane costs 34 µs that way against 901 µs compiling per lane. Sharing the *environment* instead is not on offer, and deliberately: `math.random` carries a generator, `io` carries open files, and `package` carries what has been required, so a lane reaching into another's would be no sandbox at all.
 
 ## Building
 
