@@ -250,16 +250,21 @@ open class StringLib
      * so that a later loadstring on this string returns a copy of the function.
      * function must be a Lua function without upvalues.
      * Boolean param stripDebug - true to strip debugging info, false otherwise.
-     * The default value for stripDebug is true.
+     * The default value for stripDebug is false.
      * 
      * TODO: port dumping code as optional add-on
      */
     internal class dump : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val f: LuaValue = args.checkfunction(1)
+            // Only a Lua function has bytecode to write out; anything from the
+            // library is native and has none.
+            if (f !is LuaClosure) LuaValue.argerror(1, "Lua function expected")
             val baos: ByteArrayOutputStream = ByteArrayOutputStream()
             try {
-                DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, true))
+                // Debug information is kept unless the caller asks for it to
+                // go: a dump that still names its upvalues is the useful one.
+                DumpState.dump((f as LuaClosure).p, baos, args.optboolean(2, false))
                 return LuaString.valueUsing(baos.toByteArray())
             } catch (e: IOException) {
                 return (error(e.message))!!
@@ -763,6 +768,12 @@ open class StringLib
             this.soffset = start
             this.lastmatch = -1
         }
+
+        // The match state is what this iterator carries between calls, which
+        // is what an upvalue is.
+        override fun nupvalues(): Int = 1
+
+        override fun upvaluestate(n: Int): Any? = if (n == 1) ms else null
 
         override fun invoke(args: Varargs): Varargs {
             while (soffset <= srclen) {

@@ -767,9 +767,19 @@ internal class FuncState internal constructor() : Constants() {
         val func: Int
         this.exp2anyreg(e)
         this.freeexp(e)
+        val receiver: Int = e.u.info
         func = this.freereg.toInt()
         this.reserveregs(2)
-        this.codeABC(OP_SELF, func, e.u.info, this.exp2RK(key))
+        val rk: Int = this.exp2RK(key)
+        if (ISK(rk)) {
+            this.codeABC(OP_SELF, func, receiver, rk)
+        } else {
+            // The method name did not fit in the instruction's constant
+            // operand, so the call is built the long way: the receiver is
+            // copied into place and the method looked up as an ordinary field.
+            this.codeABC(OP_MOVE, func + 1, receiver, 0)
+            this.codeABC(OP_GETTABLE, func, receiver, rk)
+        }
         this.freeexp(key)
         e.u.info = func
         e.k = LexState.VNONRELOC

@@ -274,22 +274,25 @@ class Globals : LuaTable() {
     @kotlin.Throws(IOException::class)
     fun loadPrototype(`is`: InputStream, chunkname: String?, mode: String): Prototype? {
         var `is`: InputStream = `is`
-        if (mode.indexOf('b') >= 0) {
+        if (!`is`.markSupported()) `is` = net.blueva.luak.Globals.BufferedStream(`is`)
+        `is`.mark(4)
+        val first: Int = `is`.read()
+        `is`.reset()
+        // The signature byte says which kind of chunk is really there, so the
+        // mode is checked against that rather than against what the caller
+        // hoped for: asking for text and handing over a dump is refused, not
+        // parsed as source.
+        if (first == LoadState.LUA_SIGNATURE[0].toInt()) {
+            if (mode.indexOf('b') < 0) {
+                error("attempt to load a binary chunk (mode is '" + mode + "')")
+            }
             if (undumper == null) error("No undumper.")
-            if (!`is`.markSupported()) `is` = net.blueva.luak.Globals.BufferedStream(`is`)
-            `is`.mark(4)
-            val p: Prototype? = undumper!!.undump(`is`, chunkname)
-            if (p != null) return p
-            `is`.reset()
+            return undumper!!.undump(`is`, chunkname)
         }
-        if (mode.indexOf('t') >= 0) {
-            return compilePrototype(`is`, chunkname)
+        if (mode.indexOf('t') < 0) {
+            error("attempt to load a text chunk (mode is '" + mode + "')")
         }
-        // Which kind of chunk was refused, as Lua puts it: the caller asked
-        // for one form and the stream holds the other.
-        val kind: String = if (mode.indexOf('t') >= 0) "binary" else "text"
-        error("attempt to load a " + kind + " chunk (mode is '" + mode + "')")
-        return null
+        return compilePrototype(`is`, chunkname)
     }
 
     /** Compile lua source from a Reader into a Prototype. The characters in the reader
@@ -322,13 +325,13 @@ class Globals : LuaTable() {
      * @return Values supplied as arguments to the resume() call that reactivates this thread.
      */
     fun yield(args: Varargs?): Varargs {
-        if (running.isMainThread) throw LuaError("cannot yield main thread")
+        if (running.isMainThread) throw LuaError("attempt to yield from outside a coroutine")
         return runLuaSync { yieldSuspend(args) }
     }
 
     /** Suspending counterpart to [yield]; see its doc for details. */
     suspend fun yieldSuspend(args: Varargs?): Varargs {
-        if (running.isMainThread) throw LuaError("cannot yield main thread")
+        if (running.isMainThread) throw LuaError("attempt to yield from outside a coroutine")
         val s: LuaThread.State = running.state
         return s.lua_yield(args)
     }

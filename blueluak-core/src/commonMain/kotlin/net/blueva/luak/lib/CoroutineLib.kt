@@ -172,6 +172,12 @@ class CoroutineLib : TwoArgFunction() {
             this.luathread = luathread
         }
 
+        // The coroutine is what this wrapper carries, which is what an upvalue
+        // is.
+        override fun nupvalues(): Int = 1
+
+        override fun upvaluestate(n: Int): Any? = if (n == 1) luathread else null
+
         override fun invoke(args: Varargs): Varargs {
             val result: Varargs = luathread.resume(args)
             if (result.arg1()!!.toboolean()) {

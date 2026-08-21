@@ -28,9 +28,10 @@ internal expect fun platformCollectGarbage()
  * True when [failure] is the host running out of call stack.
  *
  * The interpreter recurses on the host's stack, so a Lua program that recurses
- * without bound exhausts that rather than a stack of Lua's own. Recognising it
- * is what lets the runtime report it as the ordinary Lua "stack overflow" a
- * `pcall` can catch, instead of letting a host error escape.
+ * without bound exhausts that rather than a stack of Lua's own. That stack is
+ * this port's counterpart of the C stack a reference build runs out of, so it
+ * is reported the same way - "C stack overflow", which a `pcall` can catch -
+ * instead of letting a host error escape.
  */
 internal expect fun platformIsStackOverflow(failure: Throwable): Boolean
 internal expect fun platformUsedMemory(): Long

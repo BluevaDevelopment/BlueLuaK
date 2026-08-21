@@ -111,11 +111,18 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
     override fun initupvalue1(env: LuaValue?) {
-        if (p.upvalues == null || p.upvalues!!.size === 0) this.upValues =
-            net.blueva.luak.LuaClosure.Companion.NOUPVALUES
-        else {
-            this.upValues = arrayOfNulls<UpValue>(p.upvalues!!.size)
-            this.upValues[0] = UpValue(arrayOf<LuaValue?>(env), 0)
+        val descs: Array<Upvaldesc?>? = p.upvalues
+        if (descs == null || descs.isEmpty()) {
+            this.upValues = net.blueva.luak.LuaClosure.Companion.NOUPVALUES
+            return
+        }
+        // Every slot gets storage of its own, not only the first: a closure
+        // loaded from a dump has upvalues nobody has set yet, and reading one
+        // before then has to answer nil rather than fall over.
+        this.upValues = arrayOfNulls<UpValue>(descs.size)
+        this.upValues[0] = UpValue(arrayOf<LuaValue?>(env), 0)
+        for (index in 1..<descs.size) {
+            this.upValues[index] = UpValue(arrayOf<LuaValue?>(NIL), 0)
         }
     }
 
@@ -219,12 +226,51 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      */
     private fun <T> runAcrossBoundary(block: suspend () -> T): T {
         val state: LuaThread.State = globals?.running?.state ?: return runLuaSync(block)
+        // A call in from outside is a protected boundary of its own, so the
+        // tally goes back to what it was however this ends.
+        val outer: Int = state.foreigncalls
         state.noyield++
         try {
+            enterforeign(state)
             return runLuaSync(block)
         } finally {
+            state.foreigncalls = outer
             state.noyield--
         }
+    }
+
+    /**
+     * Counts one call that leaves Lua, refusing to go deeper than Lua does.
+     *
+     * See [LuaThread.State.foreigncalls]: this is the step that costs host
+     * stack, so it is the one with a ceiling on it.
+     */
+    private fun enterforeign(state: LuaThread.State) {
+        // Counted first and left counted if it fails: the tally stays where it
+        // was until a protected call puts it back, so an error raised at the
+        // ceiling does not make room for the next one on its way out.
+        if (++state.foreigncalls > LuaThread.State.MAX_HANDLER_CALLS) {
+            LuaValue.error("error in error handling")
+        }
+        if (state.foreigncalls > LuaThread.State.MAX_FOREIGN_CALLS) {
+            LuaValue.error("C stack overflow")
+        }
+    }
+
+    /**
+     * Calls a metamethod, counting the re-entry into the interpreter.
+     *
+     * A call the interpreter makes for an instruction of its own loops inside
+     * the loop; one made from here recurses on the host stack, which is what
+     * Lua counts and puts a ceiling on.
+     */
+    private suspend fun callmeta(h: LuaValue, a: LuaValue, b: LuaValue): LuaValue {
+        val state: LuaThread.State = globals?.running?.state ?: return h.callSuspend(a, b)!!
+        enterforeign(state)
+        val result: LuaValue = h.callSuspend(a, b)!!
+        // Only on the way out that worked: see enterforeign.
+        state.foreigncalls--
+        return result
     }
 
     override fun call(): LuaValue = runAcrossBoundary { call0() }
@@ -368,14 +414,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                 // process the op code
                 when (i and 0x3f) {
-                    Lua.OP_MOVE -> {
-                        stack[a] = stack[i ushr 23]
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_LOADK -> {
-                        stack[a] = k[i ushr 14]!!
+                    Lua.OP_MOVE, Lua.OP_LOADK, Lua.OP_LOADNIL, Lua.OP_GETUPVAL,
+                    Lua.OP_SETUPVAL, Lua.OP_NEWTABLE,
+                    -> {
+                        // Lifted out of this method to keep it under the JVM's
+                        // 8000-bytecode JIT limit - see execute()'s doc.
+                        loadOpcode(stack, i, a, k)
                         ++pc
                         continue
                     }
@@ -402,222 +446,30 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         continue
                     }
 
-                    Lua.OP_LOADNIL -> {
-                        b = i ushr 23
-                        while (b-- >= 0) {
-                            stack[a++] = LuaValue.NIL
-                        }
+                    Lua.OP_GETTABUP, Lua.OP_GETTABLE, Lua.OP_SETTABUP,
+                    Lua.OP_SETTABLE, Lua.OP_SELF,
+                    -> {
+                        // Also lifted out because an __index or __newindex
+                        // called from here may yield.
+                        tableOpcode(stack, i, a, k)
                         ++pc
                         continue
                     }
 
-                    Lua.OP_GETUPVAL -> {
-                        stack[a] = upValues[i ushr 23]!!.getValue()!!
+                    Lua.OP_ADD, Lua.OP_SUB, Lua.OP_MUL, Lua.OP_DIV, Lua.OP_IDIV,
+                    Lua.OP_BAND, Lua.OP_BOR, Lua.OP_BXOR, Lua.OP_SHL, Lua.OP_SHR,
+                    Lua.OP_MOD, Lua.OP_POW, Lua.OP_CONCAT,
+                    -> {
+                        // Lifted out of this method to keep it under the JVM's
+                        // 8000-bytecode JIT limit, and because a metamethod
+                        // called from there may yield - see execute()'s doc.
+                        binaryOpcode(stack, i, a, k)
                         ++pc
                         continue
                     }
 
-                    Lua.OP_GETTABUP -> {
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = upValues[i ushr 23]!!.getValue()!!
-                            .get(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_GETTABLE -> {
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = stack[i ushr 23].get(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SETTABUP -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        upValues[a]!!.getValue()!!
-                            .set(
-                                if (b > 0xff) k[b and 0x0ff] else stack[b],
-                                if (c > 0xff) k[c and 0x0ff] else stack[c]
-                            )
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SETUPVAL -> {
-                        upValues[i ushr 23]!!.setValue(stack[a])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SETTABLE -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a].set(
-                            if (b > 0xff) k[b and 0x0ff] else stack[b],
-                            if (c > 0xff) k[c and 0x0ff] else stack[c]
-                        )
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_NEWTABLE -> {
-                        stack[a] = LuaTable(i ushr 23, (i shr 14) and 0x1ff)
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SELF -> {
-                        o = stack[i ushr 23]
-                        stack[a + 1] = o
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = o.get(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_ADD -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .add(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SUB -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .sub(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_MUL -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .mul(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_DIV -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .div(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_IDIV -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .idiv(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_BAND -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .band(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_BOR -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .bor(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_BXOR -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .bxor(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SHL -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .shl(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_SHR -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .shr(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_BNOT -> {
-                        stack[a] = stack[i ushr 23].bnot()
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_MOD -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .mod(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_POW -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                            .pow(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_UNM -> {
-                        stack[a] = stack[i ushr 23].neg()
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_NOT -> {
-                        stack[a] = stack[i ushr 23].not()!!
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_LEN -> {
-                        stack[a] = stack[i ushr 23].len()
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_CONCAT -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        if (c > b + 1) {
-                            val sb: Buffer = stack[c].buffer()!!
-                            while (--c >= b) sb.concatTo(stack[c])
-                            stack[a] = sb.value()!!
-                        } else {
-                            stack[a] = stack[c - 1].concat(stack[c])
-                        }
+                    Lua.OP_UNM, Lua.OP_NOT, Lua.OP_LEN, Lua.OP_BNOT -> {
+                        unaryOpcode(stack, i, a)
                         ++pc
                         continue
                     }
@@ -643,29 +495,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         continue
                     }
 
-                    Lua.OP_EQ -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        if ((if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                                .eq_b(if (c > 0xff) k[c and 0x0ff] else stack[c])!! !== (a != 0)) ++pc
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_LT -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        if ((if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                                .lt_b(if (c > 0xff) k[c and 0x0ff]!! else stack[c]) !== (a != 0)) ++pc
-                        ++pc
-                        continue
-                    }
-
-                    Lua.OP_LE -> {
-                        b = i ushr 23
-                        c = (i shr 14) and 0x1ff
-                        if ((if (b > 0xff) k[b and 0x0ff]!! else stack[b])
-                                .lteq_b(if (c > 0xff) k[c and 0x0ff]!! else stack[c]) !== (a != 0)) ++pc
+                    Lua.OP_EQ, Lua.OP_LT, Lua.OP_LE -> {
+                        // Lifted out because a comparison metamethod called
+                        // from here may yield - see execute()'s doc.
+                        if (compareOpcode(stack, i, k) != (a != 0)) ++pc
                         ++pc
                         continue
                     }
@@ -780,29 +613,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_FORLOOP -> {
-                        val step: LuaValue = stack[a + 2]
-                        if (step is LuaInteger) {
-                            // Read as unsigned: only the test against zero and
-                            // the decrement matter, and both are the same bits.
-                            val remaining: Long = stack[a + 1].tolong()
-                            if (remaining != 0L) {
-                                stack[a + 1] = LuaValue.valueOf(remaining - 1L)
-                                val next: LuaValue = LuaValue.valueOf(stack[a].tolong() + step.tolong())
-                                stack[a] = next
-                                stack[a + 3] = next
-                                pc += (i ushr 14) - 0x1ffff
-                            }
-                        } else {
-                            val by: Double = step.todouble()
-                            val next: Double = stack[a].todouble() + by
-                            val limit: Double = stack[a + 1].todouble()
-                            if (if (by > 0.0) next <= limit else limit <= next) {
-                                val value: LuaValue = LuaValue.valueOf(next)
-                                stack[a] = value
-                                stack[a + 3] = value
-                                pc += (i ushr 14) - 0x1ffff
-                            }
-                        }
+                        // Lifted out to keep this method under the JVM's
+                        // 8000-bytecode JIT limit - see execute()'s doc.
+                        if (forLoop(stack, a)) pc += (i ushr 14) - 0x1ffff
                         ++pc
                         continue
                     }
@@ -869,19 +682,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_CLOSURE -> {
-                        val newp: Prototype = p.p!![i ushr 14]!!
-                        val ncl: LuaClosure = net.blueva.luak.LuaClosure(newp, globals)
-                        val uv: Array<Upvaldesc?> = newp.upvalues!!
-                        var j = 0
-                        val nup = uv.size
-                        while (j < nup) {
-                            if (uv[j]!!.instack)  /* upvalue refes to local variable? */
-                                ncl.upValues[j] = findupval(stack, uv[j]!!.idx, openups!!)
-                            else  /* get upvalue from enclosing function */
-                                ncl.upValues[j] = upValues[(uv[j]!!.idx).toInt()]
-                            ++j
-                        }
-                        stack[a] = ncl
+                        stack[a] = makeclosure(stack, i, openups)
                         ++pc
                         continue
                     }
@@ -927,12 +728,13 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             // handler is told which error it is unwinding from.
             // A closer that raises replaces the error being unwound, so what
             // leaves here is not always what arrived.
-            val outgoing: LuaError = if (tbc == null) {
-                le
-            } else if (debuglib != null) {
-                debuglib.withoutTopFrame { closeToBeClosed(tbc, stack, 0, le) } ?: le
-            } else {
-                closeToBeClosed(tbc, stack, 0, le) ?: le
+            // Suspending here too: a handler may yield while the error is on
+            // its way out, which is what a coroutine's own pcall allows.
+            if (debuglib != null && tbc != null) debuglib.hidetopframe()
+            val outgoing: LuaError = try {
+                if (tbc == null) le else closeToBeClosed(tbc, stack, 0, le) ?: le
+            } finally {
+                if (debuglib != null && tbc != null) debuglib.showtopframe()
             }
             if (outgoing.traceback == null) {
                 enrichArgError(outgoing, p, pc, stack)
@@ -947,7 +749,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             processErrorHooks(le, p, pc)
             throw le
         } finally {
-            if (tbc != null) closeToBeClosed(tbc, stack, 0, null)?.let { throw it }
+            if (tbc != null) runLuaSync { closeToBeClosed(tbc, stack, 0, null) }?.let { throw it }
             if (openups != null) {
                 var u = openups.size
                 while (--u >= 0) {
@@ -976,20 +778,39 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val r: LuaThread = globals.running
         if (r.errorfunc == null) return
         val e: LuaValue = r.errorfunc!!
-        r.errorfunc = null
+        // Running the handler is itself a call out of Lua. Past the room Lua
+        // keeps above the ordinary ceiling there is nothing left to report but
+        // the failure of the handling.
+        // Running the handler is a call of its own; refused past the ceiling
+        // the same way any other call is.
+        if (r.state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
+            le.replaceMessage(LuaValue.valueOf("error in error handling")!!)
+            le.traceback = "error in error handling"
+            return
+        }
+        if (r.state.foreigncalls >= LuaThread.State.MAX_FOREIGN_CALLS) {
+            le.replaceMessage(LuaValue.valueOf("C stack overflow")!!)
+            le.traceback = "C stack overflow"
+            return
+        }
         // A handler written in Lua pushes its own frame; one from the library,
         // debug.traceback most of all, needs one pushed for it so the levels it
         // counts line up with what a Lua handler would see.
         val debuglib: net.blueva.luak.lib.DebugLib? =
             if (e !is LuaClosure) globals.debuglib else null
         if (debuglib != null) debuglib.onCall(e as? LuaFunction)
+        // The call itself is counted where it re-enters the interpreter, so
+        // nothing is added here.
         val handled: LuaValue = try {
             e.call(le.messageObject ?: NIL)!!
+        } catch (nested: LuaError) {
+            // The handler raised in its turn, and that error was handled by
+            // the same handler on the way out: what came back is the answer.
+            nested.messageObject ?: NIL
         } catch (t: Throwable) {
             LuaValue.valueOf("error in error handling")!!
         } finally {
             if (debuglib != null) debuglib.onReturn()
-            r.errorfunc = e
         }
         le.replaceMessage(handled)
         // Doubles as the mark that the handler has already run.
@@ -1005,7 +826,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     private fun enrichIndexError(le: LuaError, p: Prototype, pc: Int) {
         if (le.argMessageOverride != null) return
         val m: String = le.message ?: return
-        if (!Regex("^attempt to index a \\w+ value$").matches(m)) return
+        if (!Regex("^attempt to index a .+ value$").matches(m)) return
         val code: IntArray = p.code ?: return
         if (pc < 0 || pc >= code.size) return
         val instr: Int = code[pc]
@@ -1051,7 +872,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     private fun enrichCallError(le: LuaError, p: Prototype, pc: Int) {
         if (le.argMessageOverride != null) return
         val m: String = le.message ?: return
-        if (!Regex("^attempt to call a \\w+ value$").matches(m)) return
+        if (!Regex("^attempt to call a .+ value$").matches(m)) return
         val code: IntArray = p.code ?: return
         if (pc < 0 || pc >= code.size) return
         val instr: Int = code[pc]
@@ -1076,7 +897,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // on, the other says a number was not a whole one.
         val wanted: String
         val insertAt: Int
-        val operand = Regex("^attempt to perform (?:arithmetic|bitwise operation) on a (\\w+) value$")
+        val operand = Regex("^attempt to perform (?:arithmetic|bitwise operation) on a (.+) value$")
             .find(m)
         if (operand != null) {
             wanted = operand.groupValues[1]
@@ -1105,7 +926,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 if (rk >= stack.size) continue
                 stack[rk]
             }
-            if (value.typename() != wanted) continue
+            // Compared by the name the message used, which a __name field
+            // may have replaced.
+            if (value.objtypename() != wanted) continue
             // For the "not a whole number" message, the operand to blame is
             // the one that is not whole - the other may well be an integer.
             if (insertAt != m.length && net.blueva.luak.luaHasIntegerRepresentation(value)) continue
@@ -1193,7 +1016,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo!!.size) p.lineinfo!![pc] else -1
             }
         }
-        le.fileline = file.toString() + ":" + line
+        // A chunk whose debug information was stripped has neither a name nor
+        // a line to report, and Lua writes both as a question mark.
+        le.fileline = file.toString() + ":" + (if (line < 0) "?" else line.toString())
         errorHook(le)
     }
 
@@ -1304,6 +1129,325 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         } finally {
             debuglib.onReturn()
         }
+    }
+
+    /**
+     * One pass of a numeric `for`, upstream's `forloop`.
+     *
+     * @return true when the loop should go round again
+     */
+    private fun forLoop(stack: Array<LuaValue>, a: Int): Boolean {
+        val step: LuaValue = stack[a + 2]
+        if (step is LuaInteger) {
+            // Read as unsigned: only the test against zero and the decrement
+            // matter, and both are the same bits.
+            val remaining: Long = stack[a + 1].tolong()
+            if (remaining == 0L) return false
+            stack[a + 1] = LuaValue.valueOf(remaining - 1L)
+            val next: LuaValue = LuaValue.valueOf(stack[a].tolong() + step.tolong())
+            stack[a] = next
+            stack[a + 3] = next
+            return true
+        }
+        val by: Double = step.todouble()
+        val next: Double = stack[a].todouble() + by
+        val limit: Double = stack[a + 1].todouble()
+        if (if (by > 0.0) next > limit else limit > next) return false
+        val value: LuaValue = LuaValue.valueOf(next)
+        stack[a] = value
+        stack[a + 3] = value
+        return true
+    }
+
+    /** Builds the closure an OP_CLOSURE asks for, binding its upvalues. */
+    private fun makeclosure(stack: Array<LuaValue>, i: Int, openups: Array<UpValue?>?): LuaClosure {
+        val newp: Prototype = p.p!![i ushr 14]!!
+        val ncl = net.blueva.luak.LuaClosure(newp, globals)
+        val uv: Array<Upvaldesc?> = newp.upvalues!!
+        var j = 0
+        while (j < uv.size) {
+            ncl.upValues[j] = if (uv[j]!!.instack) {
+                findupval(stack, uv[j]!!.idx, openups!!)
+            } else {
+                upValues[(uv[j]!!.idx).toInt()]
+            }
+            ++j
+        }
+        return ncl
+    }
+
+    /** The opcodes that only move a value about, with nothing to dispatch. */
+    private fun loadOpcode(stack: Array<LuaValue>, i: Int, a: Int, k: Array<LuaValue?>) {
+        when (i and 0x3f) {
+            Lua.OP_MOVE -> stack[a] = stack[i ushr 23]
+            Lua.OP_LOADK -> stack[a] = k[i ushr 14]!!
+            Lua.OP_LOADNIL -> {
+                var slot: Int = a
+                var count: Int = i ushr 23
+                while (count-- >= 0) stack[slot++] = LuaValue.NIL
+            }
+
+            Lua.OP_GETUPVAL -> stack[a] = upValues[i ushr 23]!!.getValue()!!
+            Lua.OP_SETUPVAL -> upValues[i ushr 23]!!.setValue(stack[a])
+            else -> stack[a] = LuaTable(i ushr 23, (i shr 14) and 0x1ff)
+        }
+    }
+
+    /**
+     * The opcodes that read or write a field.
+     *
+     * A table answers from its own storage; anything else, or a miss with an
+     * `__index`, goes through the metamethod, which may yield.
+     */
+    private suspend fun tableOpcode(stack: Array<LuaValue>, i: Int, a: Int, k: Array<LuaValue?>) {
+        val c: Int = (i shr 14) and 0x1ff
+        when (i and 0x3f) {
+            Lua.OP_GETTABUP -> {
+                val target: LuaValue = upValues[i ushr 23]!!.getValue()!!
+                stack[a] = index(target, operand(stack, k, c))
+            }
+
+            Lua.OP_GETTABLE -> stack[a] = index(stack[i ushr 23], operand(stack, k, c))
+
+            Lua.OP_SELF -> {
+                val target: LuaValue = stack[i ushr 23]
+                stack[a + 1] = target
+                stack[a] = index(target, operand(stack, k, c))
+            }
+
+            Lua.OP_SETTABUP -> {
+                val target: LuaValue = upValues[a]!!.getValue()!!
+                newindex(target, operand(stack, k, i ushr 23), operand(stack, k, c))
+            }
+
+            else -> newindex(stack[a], operand(stack, k, i ushr 23), operand(stack, k, c))
+        }
+    }
+
+    /**
+     * Reads `target[key]`, following `__index` as far as it leads.
+     *
+     * The handler is called from here rather than from inside the value, so a
+     * coroutine can yield out of one.
+     */
+    private suspend fun index(target: LuaValue, key: LuaValue): LuaValue {
+        var value: LuaValue = target
+        var loop = 0
+        while (loop++ < LuaValue.MAXTAGLOOP) {
+            val handler: LuaValue
+            if (value.istable()) {
+                val found: LuaValue = value.rawget(key)
+                if (!found.isnil()) return found
+                handler = value.metatag(LuaValue.INDEX)
+                if (handler.isnil()) return found
+            } else {
+                handler = value.metatag(LuaValue.INDEX)
+                if (handler.isnil()) return value.get(key) // reports what it is
+            }
+            if (handler.isfunction()) return callmeta(handler, value, key)
+            value = handler
+        }
+        LuaValue.error("loop in gettable")
+        return LuaValue.NIL
+    }
+
+    /** Writes `target[key]`, following `__newindex` as far as it leads. */
+    private suspend fun newindex(target: LuaValue, key: LuaValue, value: LuaValue) {
+        var holder: LuaValue = target
+        var loop = 0
+        while (loop++ < LuaValue.MAXTAGLOOP) {
+            val handler: LuaValue
+            if (holder.istable()) {
+                if (!holder.rawget(key).isnil()) {
+                    holder.rawset(key, value)
+                    return
+                }
+                handler = holder.metatag(LuaValue.NEWINDEX)
+                if (handler.isnil()) {
+                    holder.set(key, value) // reports a bad key as Lua does
+                    return
+                }
+            } else {
+                handler = holder.metatag(LuaValue.NEWINDEX)
+                if (handler.isnil()) {
+                    holder.set(key, value) // reports what it is
+                    return
+                }
+            }
+            if (handler.isfunction()) {
+                handler.callSuspend(holder, key, value)
+                return
+            }
+            holder = handler
+        }
+        LuaValue.error("loop in settable")
+    }
+
+    /**
+     * The two operands of a binary opcode, constants and registers alike.
+     */
+    private fun operand(stack: Array<LuaValue>, k: Array<LuaValue?>, rk: Int): LuaValue =
+        if (rk > 0xff) k[rk and 0x0ff]!! else stack[rk]
+
+    /**
+     * Runs `__add` and its kin, letting the handler yield if it wants to.
+     *
+     * The handler is looked for on the left operand and then on the right, as
+     * Lua looks for it, and calling it here rather than from inside the value
+     * itself is what lets a coroutine yield out of one.
+     */
+    private suspend fun binmeta(tag: LuaValue, lhs: LuaValue, rhs: LuaValue): LuaValue {
+        var h: LuaValue = lhs.metatag(tag)
+        if (h.isnil()) h = rhs.metatag(tag)
+        if (h.isnil()) LuaValue.operandError(tag, lhs, rhs)
+        lhs.checkcallable(tag, h)
+        return callmeta(h, lhs, rhs)
+    }
+
+    /**
+     * The arithmetic, bitwise and concatenation opcodes.
+     *
+     * Two numbers are worked out here and now; anything else goes through the
+     * metamethod, which may yield, which is why this is a suspending method of
+     * its own rather than part of [execute].
+     */
+    /**
+     * The comparison opcodes.
+     *
+     * Two numbers or two strings are compared here and now; anything else goes
+     * through the metamethod, which may yield.
+     */
+    private suspend fun compareOpcode(stack: Array<LuaValue>, i: Int, k: Array<LuaValue?>): Boolean {
+        val lhs: LuaValue = operand(stack, k, i ushr 23)
+        val rhs: LuaValue = operand(stack, k, (i shr 14) and 0x1ff)
+        val opcode: Int = i and 0x3f
+        if (opcode == Lua.OP_EQ) {
+            if (lhs.raweq(rhs)) return true
+            // Only two tables or two full userdata have an __eq to consult.
+            if (lhs.type() != rhs.type()) return false
+            if (!lhs.istable() && !lhs.isuserdata()) return false
+            var h: LuaValue = lhs.metatag(LuaValue.EQ)
+            if (h.isnil()) h = rhs.metatag(LuaValue.EQ)
+            if (h.isnil()) return false
+            lhs.checkcallable(LuaValue.EQ, h)
+            return callmeta(h, lhs, rhs).toboolean()
+        }
+        val primitive: Boolean =
+            (lhs is LuaNumber && rhs is LuaNumber) || (lhs is LuaString && rhs is LuaString)
+        if (primitive) {
+            return if (opcode == Lua.OP_LT) lhs.lt_b(rhs) else lhs.lteq_b(rhs)
+        }
+        val tag: LuaValue = if (opcode == Lua.OP_LT) LuaValue.LT else LuaValue.LE
+        var h: LuaValue = lhs.metatag(tag)
+        if (h.isnil()) h = rhs.metatag(tag)
+        if (h.isnil()) {
+            // Lua 5.4 dropped the "not (b < a)" stand-in for a missing __le,
+            // so there is nothing left to try.
+            lhs.ordererror(lhs, rhs)
+        }
+        lhs.checkcallable(tag, h)
+        return callmeta(h, lhs, rhs).toboolean()
+    }
+
+    private suspend fun binaryOpcode(stack: Array<LuaValue>, i: Int, a: Int, k: Array<LuaValue?>) {
+        val opcode: Int = i and 0x3f
+        if (opcode == Lua.OP_CONCAT) {
+            var b: Int = i ushr 23
+            var c: Int = (i shr 14) and 0x1ff
+            while (c > b) {
+                val left: LuaValue = stack[c - 1]
+                val right: LuaValue = stack[c]
+                stack[c - 1] = if (left.isstring() && right.isstring()) {
+                    left.concat(right)
+                } else {
+                    concatmeta(left, right)
+                }
+                c--
+            }
+            stack[a] = stack[b]
+            return
+        }
+        val lhs: LuaValue = operand(stack, k, i ushr 23)
+        val rhs: LuaValue = operand(stack, k, (i shr 14) and 0x1ff)
+        if (lhs is LuaNumber && rhs is LuaNumber) {
+            stack[a] = when (opcode) {
+                Lua.OP_ADD -> lhs.add(rhs)
+                Lua.OP_SUB -> lhs.sub(rhs)
+                Lua.OP_MUL -> lhs.mul(rhs)
+                Lua.OP_DIV -> lhs.div(rhs)
+                Lua.OP_IDIV -> lhs.idiv(rhs)
+                Lua.OP_MOD -> lhs.mod(rhs)
+                Lua.OP_POW -> lhs.pow(rhs)
+                Lua.OP_BAND -> lhs.band(rhs)
+                Lua.OP_BOR -> lhs.bor(rhs)
+                Lua.OP_BXOR -> lhs.bxor(rhs)
+                Lua.OP_SHL -> lhs.shl(rhs)
+                else -> lhs.shr(rhs)
+            }
+            return
+        }
+        val tag: LuaValue = when (opcode) {
+            Lua.OP_ADD -> LuaValue.ADD
+            Lua.OP_SUB -> LuaValue.SUB
+            Lua.OP_MUL -> LuaValue.MUL
+            Lua.OP_DIV -> LuaValue.DIV
+            Lua.OP_IDIV -> LuaValue.IDIV
+            Lua.OP_MOD -> LuaValue.MOD
+            Lua.OP_POW -> LuaValue.POW
+            Lua.OP_BAND -> LuaValue.BAND
+            Lua.OP_BOR -> LuaValue.BOR
+            Lua.OP_BXOR -> LuaValue.BXOR
+            Lua.OP_SHL -> LuaValue.SHL
+            else -> LuaValue.SHR
+        }
+        stack[a] = binmeta(tag, lhs, rhs)
+    }
+
+    /** `__concat`, which may yield, blaming the operand that is not a string. */
+    private suspend fun concatmeta(lhs: LuaValue, rhs: LuaValue): LuaValue {
+        var h: LuaValue = lhs.metatag(LuaValue.CONCAT)
+        if (h.isnil()) h = rhs.metatag(LuaValue.CONCAT)
+        if (h.isnil()) {
+            val culprit: LuaValue = if (!lhs.isstring() || lhs is LuaTable) lhs else rhs
+            LuaValue.error("attempt to concatenate a " + culprit.objtypename() + " value")
+        }
+        lhs.checkcallable(LuaValue.CONCAT, h)
+        return callmeta(h, lhs, rhs)
+    }
+
+    /** The unary opcodes, whose metamethods may yield in the same way. */
+    private suspend fun unaryOpcode(stack: Array<LuaValue>, i: Int, a: Int) {
+        val operand: LuaValue = stack[i ushr 23]
+        when (i and 0x3f) {
+            Lua.OP_NOT -> stack[a] = operand.not()!!
+            Lua.OP_UNM -> stack[a] =
+                if (operand is LuaNumber) operand.neg() else unmeta(LuaValue.UNM, operand)
+
+            Lua.OP_BNOT -> stack[a] =
+                if (operand is LuaNumber) operand.bnot() else unmeta(LuaValue.BNOT, operand)
+
+            else -> stack[a] =
+                if (operand is LuaString) operand.len() else unmeta(LuaValue.LEN, operand)
+        }
+    }
+
+    /**
+     * A unary metamethod, which Lua hands its operand twice.
+     *
+     * A table answers `#t` from its own length when it has no `__len`, which is
+     * the one case that is not an error without a handler.
+     */
+    private suspend fun unmeta(tag: LuaValue, operand: LuaValue): LuaValue {
+        val h: LuaValue = operand.metatag(tag)
+        if (h.isnil()) {
+            if (tag == LuaValue.LEN && operand is LuaTable) return operand.len()
+            if (tag == LuaValue.LEN) {
+                LuaValue.error("attempt to get length of a " + operand.objtypename() + " value")
+            }
+            LuaValue.operandError(tag, operand, operand)
+        }
+        operand.checkcallable(tag, h)
+        return callmeta(h, operand, operand)
     }
 
     /** The call's arguments in an array of their own, so they can be written to. */
@@ -1420,7 +1564,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * @param error the error being unwound from, or null on an ordinary exit
      * @return the error to carry on with, or null if none is outstanding
      */
-    private fun closeToBeClosed(
+    private suspend fun closeToBeClosed(
         list: ArrayList<Int>,
         stack: Array<LuaValue>,
         level: Int,
@@ -1442,15 +1586,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 // alone: a trailing nil would be an argument the language does
                 // not pass, and '...' inside the handler would count it.
                 val raised: LuaError? = pending
-                // Not suspending: making this a suspension point costs the
-                // interpreter loop about a kilobyte of spill code at each of
-                // the four places it closes from, which is enough to push
-                // execute() past the JIT's method-size limit. A handler that
-                // yields is refused for that reason - see execute()'s doc.
+                // Suspending, so a handler may yield on the ordinary ways out
+                // of a block. The paths that close while an error is unwinding
+                // reach this through runLuaSync instead, which is where Lua
+                // also refuses to yield.
                 if (raised == null) {
-                    close.call(value)
+                    close.callSuspend(value)
                 } else {
-                    close.call(value, raised.messageObject ?: NIL)
+                    close.callSuspend(value, raised.messageObject ?: NIL)
                 }
             } catch (failure: LuaError) {
                 pending = failure

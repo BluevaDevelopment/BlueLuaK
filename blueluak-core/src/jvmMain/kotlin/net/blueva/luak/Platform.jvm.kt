@@ -30,4 +30,9 @@ internal actual fun platformLoadLibrary(className: String, globals: Globals): Lu
 internal actual fun platformTypeName(type: KClass<*>): String =
     type.qualifiedName ?: type.simpleName ?: "userdata"
 
-internal actual fun platformIsStackOverflow(failure: Throwable): Boolean = failure is StackOverflowError
+internal actual fun platformIsStackOverflow(failure: Throwable): Boolean =
+    // A class first reached at the bottom of an exhausted stack cannot be
+    // initialised, and stays that way for the rest of the run: every later use
+    // of it raises a LinkageError instead. That is the same exhaustion showing
+    // up a step later, so it is reported as such rather than as a host fault.
+    failure is StackOverflowError || failure is LinkageError

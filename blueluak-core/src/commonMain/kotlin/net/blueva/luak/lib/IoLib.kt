@@ -530,7 +530,13 @@ open class IoLib : TwoArgFunction() {
         // it on the way out of the block whichever way the block is left. A
         // handle that was closed by hand first is left alone rather than
         // complained about, which is what lets both forms be written together.
-        filemethods!!.set("__close", closehandle())
+        val closer = closehandle()
+        filemethods!!.set("__close", closer)
+        // Lua's file metatable names the same function under __gc, since that
+        // is what would close the handle if a collector ran finalizers. This
+        // runtime never does - for a file or for anything else - so the field
+        // says what closing means here rather than promising it will happen.
+        filemethods!!.set("__gc", closer)
         setLibInstance(mt)
 
 
@@ -761,8 +767,16 @@ open class IoLib : TwoArgFunction() {
      */
     internal class closehandle : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            val file: File? = net.blueva.luak.lib.IoLib.Companion.optfile(args.arg1())
-            if (file == null || file.isclosed()) return (LuaValue.TRUE)!!
+            val handle: LuaValue? = args.arg1()
+            val file: File? = net.blueva.luak.lib.IoLib.Companion.optfile(handle)
+            // It still has to be given a handle; what it tolerates is one that
+            // has already been closed.
+            if (file == null) {
+                val got: String =
+                    if (handle == null || handle.isnil()) "no value" else handle.argtypename()
+                LuaValue.argerror(1, "FILE* expected, got " + got)
+            }
+            if (file!!.isclosed()) return (LuaValue.TRUE)!!
             return net.blueva.luak.lib.IoLib.Companion.ioclose(file)
         }
     }
@@ -1100,7 +1114,10 @@ open class IoLib : TwoArgFunction() {
             // Worded the way Lua words it, including what was there instead,
             // since calling a file method with no self is the usual mistake.
             if (f == null) {
-                val got: String = if (`val` == null || `val`.isnil()) "no value" else `val`.typename()!!
+                // The name the value's own metatable gives it, if it has one,
+                // so a script that passed the wrong handle sees which.
+                val got: String =
+                    if (`val` == null || `val`.isnil()) "no value" else `val`.argtypename()
                 argerror(1, "FILE* expected, got " + got)
             }
             net.blueva.luak.lib.IoLib.Companion.checkopen((f)!!)

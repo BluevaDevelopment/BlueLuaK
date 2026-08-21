@@ -194,6 +194,35 @@ class LuaThread : LuaValue {
         var pendingextraargs: Int = 0
 
         /**
+         * How many calls that are not Lua-to-Lua are in progress.
+         *
+         * A Lua function calling another loops inside the interpreter, but a
+         * call that goes out to the library and back in recurses on the host
+         * stack. Lua counts exactly those and refuses to go deeper than
+         * [MAX_FOREIGN_CALLS], which is what keeps a runaway
+         * `pcall`-through-`pcall` from having to exhaust the whole stack
+         * before it is stopped.
+         */
+        var foreigncalls: Int = 0
+
+
+        companion object {
+            /** As many nested calls out of Lua as Lua allows, `LUAI_MAXCCALLS`. */
+            const val MAX_FOREIGN_CALLS: Int = 200
+
+            /**
+             * Past this, handling an error is itself given up on.
+             *
+             * Lua leaves a tenth of the allowance above the ordinary ceiling
+             * so that a message handler still has room to run; a handler that
+             * keeps failing eats through it, and then there is nothing left to
+             * report but the failure of the handling itself.
+             */
+            const val MAX_HANDLER_CALLS: Int = MAX_FOREIGN_CALLS * 11 / 10
+
+        }
+
+        /**
          * How many library calls into Lua code are in progress on this thread.
          *
          * While any of them is, there is nowhere for a yield to suspend to and
@@ -302,9 +331,10 @@ class LuaThread : LuaValue {
                 val message: LuaValue? = err.messageObject
                 if (message != null) return message
             }
-            val text: String = err.message
-                ?: if (platformIsStackOverflow(err)) "stack overflow" else err.toString()
-            return LuaValue.valueOf(text)!!
+            // Asked first: running out of stack can surface with a message of
+            // the host's own, which says nothing useful to a Lua program.
+            if (platformIsStackOverflow(err)) return LuaValue.valueOf("C stack overflow")!!
+            return LuaValue.valueOf(err.message ?: err.toString())!!
         }
 
         /** Unwinds a suspended coroutine so its pending closers run. */

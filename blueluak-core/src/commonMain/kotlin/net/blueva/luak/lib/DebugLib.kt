@@ -21,6 +21,7 @@ import net.blueva.luak.arrayCopy
 import net.blueva.luak.Globals
 import net.blueva.luak.Lua
 import net.blueva.luak.LuaBoolean
+import net.blueva.luak.LuaLightUserdata
 import net.blueva.luak.LuaClosure
 import net.blueva.luak.LuaError
 import net.blueva.luak.LuaFunction
@@ -267,6 +268,8 @@ class DebugLib : TwoArgFunction() {
     //	debug.getuservalue (u)
     internal class getuservalue : LibFunction() {
         override fun call(u: LuaValue?): LuaValue? {
+            // A light userdata carries nothing, so there is nothing to answer.
+            if (u is LuaLightUserdata) return NIL
             return if (u!!.isuserdata()) u else NIL
         }
     }
@@ -350,6 +353,10 @@ class DebugLib : TwoArgFunction() {
     //	debug.setuservalue (udata, value)
     internal class setuservalue : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            // A light userdata has nowhere to put a value; only a full one has.
+            if (args.arg1() is LuaLightUserdata) {
+                LuaValue.argerror(1, "userdata expected, got light userdata")
+            }
             val o: Any? = args.checkuserdata(1)
             val v: LuaValue = args.checkvalue(2)!!
             val u: LuaUserdata = args.arg1() as LuaUserdata
@@ -376,13 +383,17 @@ class DebugLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val func: LuaValue? = args.checkfunction(1)
             val up: Int = args.checkint(2)
+            // A bare reference to the storage itself, so two upvalues can be
+            // compared: the same one answers the same value every time, and
+            // two different ones never collide.
             if (func is LuaClosure) {
-                val c: LuaClosure = func as LuaClosure
-                if (c.upValues != null && up > 0 && up <= c.upValues.size) {
-                    return valueOf(c.upValues[up - 1].hashCode())
+                if (up > 0 && up <= func.upValues.size) {
+                    return LuaLightUserdata(func.upValues[up - 1]!!)
                 }
+                return NIL
             }
-            return NIL
+            val carried: Any? = (func as? LuaFunction)?.upvaluestate(up)
+            return if (carried != null) LuaLightUserdata(carried) else NIL
         }
     }
 
@@ -507,19 +518,34 @@ class DebugLib : TwoArgFunction() {
      * be shown that function's caller rather than the function itself.
      */
     fun <T> withoutTopFrame(body: () -> T): T {
-        val stack: CallStack = callstack()
-        if (stack.calls == 0) return body()
-        // The slot is not just hidden but reused by whatever runs next, so
-        // what was in it has to be kept and put back afterwards.
-        val hidden: CallFrame = stack.frame!![stack.calls - 1]!!
-        val saved: Array<Any?> = hidden.snapshot()
-        stack.calls--
+        hidetopframe()
         try {
             return body()
         } finally {
-            stack.calls++
-            hidden.restore(saved)
+            showtopframe()
         }
+    }
+
+    /** The frames hidden by [hidetopframe], innermost last. */
+    private val hidden: ArrayList<Pair<CallFrame, Array<Any?>>> = ArrayList()
+
+    /** Takes the innermost frame out of sight; see [withoutTopFrame]. */
+    fun hidetopframe() {
+        val stack: CallStack = callstack()
+        if (stack.calls == 0) return
+        // The slot is not just hidden but reused by whatever runs next, so
+        // what was in it has to be kept and put back afterwards.
+        val frame: CallFrame = stack.frame!![stack.calls - 1]!!
+        hidden.add(Pair(frame, frame.snapshot()))
+        stack.calls--
+    }
+
+    /** Puts back what [hidetopframe] took out of sight. */
+    fun showtopframe() {
+        if (hidden.isEmpty()) return
+        val (frame, saved) = hidden.removeAt(hidden.size - 1)
+        callstack().calls++
+        frame.restore(saved)
     }
 
     fun traceback(level: Int): String {

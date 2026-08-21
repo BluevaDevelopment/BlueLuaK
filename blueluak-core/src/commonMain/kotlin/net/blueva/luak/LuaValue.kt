@@ -1055,7 +1055,23 @@ open class LuaValue : Varargs() {
      * @throws LuaError in all cases
      */
     protected fun argerror(expected: String?): LuaValue? {
-        throw LuaError("bad argument: " + expected + " expected, got " + typename())
+        throw LuaError("bad argument: " + expected + " expected, got " + argtypename())
+    }
+
+    /**
+     * The type name an argument error calls this value.
+     *
+     * A `__name` field renames the type, and a light userdata is named as one
+     * so a script told "userdata expected" can see what it actually passed.
+     */
+    internal fun argtypename(): String {
+        val mt: LuaValue? = getmetatable()
+        if (mt != null) {
+            val name: LuaValue = mt.rawget(net.blueva.luak.LuaValue.Companion.NAME)
+            if (name.type() == net.blueva.luak.LuaValue.Companion.TSTRING) return name.tojstring()
+        }
+        if (this is LuaLightUserdata) return "light userdata"
+        return typename()!!
     }
 
     /**
@@ -1064,7 +1080,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError in all cases
      */
     protected fun typerror(expected: String?): LuaValue? {
-        throw LuaError(expected.toString() + " expected, got " + typename())
+        throw LuaError(expected.toString() + " expected, got " + argtypename())
     }
 
     /**
@@ -4444,7 +4460,7 @@ open class LuaValue : Varargs() {
         }
 
         /** Constant limiting metatag loop processing  */
-        private const val MAXTAGLOOP = 100
+        internal const val MAXTAGLOOP = 100
 
         /** As many `__call` handlers as Lua follows before refusing the chain. */
         const val MAX_CALL_CHAIN: Int = 15
