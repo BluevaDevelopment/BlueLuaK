@@ -78,7 +78,11 @@ jobs:
             task: linuxX64Test
           - target: Linux ARM64
             os: ubuntu-24.04-arm
-            task: linuxArm64Test
+            # Kotlin gives a Native target a <target>Test task only where it is
+            # also a supported host, and linuxArm64 is not one, so the test
+            # executable is linked here and run by the step below.
+            task: linuxArm64TestBinaries
+            binary: blueluak-core/build/bin/linuxArm64/debugTest/test.kexe
           - target: Windows x64
             os: windows-latest
             task: mingwX64Test
@@ -100,6 +104,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
       - name: Run ${{ matrix.target }} tests
         run: ./gradlew :blueluak-core:${{ matrix.task }} --no-daemon --stacktrace
+      - name: Run the ${{ matrix.target }} test executable
+        if: matrix.binary != ''
+        run: ${{ matrix.binary }}
 
   publication:
     name: Verify publications
