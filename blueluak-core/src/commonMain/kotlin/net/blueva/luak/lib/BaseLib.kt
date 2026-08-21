@@ -180,13 +180,28 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     // "assert", // ( v [,message] ) -> v, message | ERR
     internal class _assert : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            if (!args.arg1()!!.toboolean()) error(
-                if (args.narg() > 1) args.optjstring(
-                    2,
-                    "assertion failed!"
-                ) else "assertion failed!"
-            )
-            return args
+            if (args.arg1()!!.toboolean()) return args
+            // There has to be something to test in the first place, which is
+            // the one complaint `assert` makes about its own arguments.
+            if (args.narg() == 0) argerror(1, "value expected")
+            // Whatever was given as the message is raised as it stands - only
+            // the second argument, and only when there was one - so a table
+            // reaches the caller as a table. Without one, the message is the
+            // usual text, which being a string is given a place to point at.
+            val message: LuaValue = if (args.narg() > 1) args.arg(2)!! else valueOf("assertion failed!")!!
+            // A nil message becomes text where it is raised, as `error` does
+            // with one, so that a handler always has something to report.
+            if (message.isnil()) {
+                val failure = LuaError(valueOf("<no error object>"))
+                failure.level = 0
+                throw failure
+            }
+            if (message.type() != LuaValue.TSTRING) {
+                val failure = LuaError(message)
+                failure.level = 0
+                throw failure
+            }
+            throw LuaError(message.tojstring(), 1)
         }
     }
 
@@ -519,14 +534,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             } catch (e: Exception) {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
-            } catch (t: Throwable) {
+            } catch (deep: Throwable) {
                 // Unbounded recursion exhausts the host's stack rather than a
                 // stack of Lua's own; a protected call is where that becomes
                 // the ordinary Lua error the caller expects. The conversion
                 // happens here, not deeper in, because building the error needs
                 // some stack back.
-                if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
-                return (varargsOf(FALSE, valueOf("C stack overflow")))!!
+                if (!net.blueva.luak.platformIsStackOverflow(deep)) throw deep
+                return (varargsOf(FALSE, valueOf(overflowmessage(t))))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
             }
@@ -551,14 +566,14 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             } catch (e: Exception) {
                 val m: String? = e.message
                 return (varargsOf(FALSE, valueOf(if (m != null) m else e.toString())))!!
-            } catch (t: Throwable) {
+            } catch (deep: Throwable) {
                 // Unbounded recursion exhausts the host's stack rather than a
                 // stack of Lua's own; a protected call is where that becomes
                 // the ordinary Lua error the caller expects. The conversion
                 // happens here, not deeper in, because building the error needs
                 // some stack back.
-                if (!net.blueva.luak.platformIsStackOverflow(t)) throw t
-                return (varargsOf(FALSE, valueOf("C stack overflow")))!!
+                if (!net.blueva.luak.platformIsStackOverflow(deep)) throw deep
+                return (varargsOf(FALSE, valueOf(overflowmessage(t))))!!
             } finally {
                 if (t != null) t.errorfunc = preverror
             }
@@ -653,12 +668,21 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         override fun call(table: LuaValue?): LuaValue? {
             // What it was given is looked at first, as Lua looks at it: being
             // handed something that is not a table is the more useful thing to
-            // be told about than the missing second argument.
-            table!!.checktable()
+            // be told about than the missing second argument. Named as the
+            // argument it is, so that a library function given this one as a
+            // callback can be told which argument was wrong.
+            if (!table!!.istable()) {
+                argerror(1, "table expected, got " + table.argtypename())
+            }
             return (argerror(2, "nil or table expected"))!!
         }
 
         override fun call(table: LuaValue?, metatable: LuaValue?): LuaValue? {
+            // Named as the argument it is, so that a library function given
+            // this one as a callback can be told which argument was wrong.
+            if (!table!!.istable()) {
+                argerror(1, "table expected, got " + table.argtypename())
+            }
             val mt0: LuaValue? = table!!.checktable()!!.getmetatable()
             if (mt0 != null && !mt0.rawget(METATABLE).isnil()) error("cannot change a protected metatable")
             val mt: LuaValue? = if (metatable!!.isnil()) null else metatable!!.checktable()
@@ -727,7 +751,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                     if (!net.blueva.luak.platformIsStackOverflow(overflow)) throw overflow
                     // The stack has unwound by the time this is reached, so
                     // there is room to run the handler over it.
-                    return (varargsOf(FALSE, runMessageHandler(t, valueOf("C stack overflow"))))!!
+                    return (varargsOf(FALSE, runMessageHandler(t, valueOf(overflowmessage(t)))))!!
                 }
             } finally {
                 t.errorfunc = preverror
@@ -758,7 +782,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                     if (!net.blueva.luak.platformIsStackOverflow(overflow)) throw overflow
                     // The stack has unwound by the time this is reached, so
                     // there is room to run the handler over it.
-                    return (varargsOf(FALSE, runMessageHandler(t, valueOf("C stack overflow"))))!!
+                    return (varargsOf(FALSE, runMessageHandler(t, valueOf(overflowmessage(t)))))!!
                 }
             } finally {
                 t.errorfunc = preverror
@@ -773,16 +797,26 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             if (t.state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
                 return valueOf("error in error handling")!!
             }
-            if (t.state.foreigncalls >= LuaThread.State.MAX_FOREIGN_CALLS) {
-                return valueOf("C stack overflow")!!
-            }
-            // The call itself is counted where it re-enters the interpreter.
+            // A handler written in Lua is counted where it enters the
+            // interpreter; one of the library's own never does, and is
+            // counted here so that a chain of them cannot go round for ever.
+            val outer: Int = t.state.foreigncalls
             try {
+                if (handler !is net.blueva.luak.LuaClosure) t.state.foreigncalls++
+                t.state.inhandler++
                 return handler.call(errval) ?: NIL
             } catch (nested: LuaError) {
-                return nested.messageObject ?: NIL
+                // The handler raised in its turn. An error that has already
+                // been through the handler is the answer as it stands; one
+                // that has not goes through it now, until the room kept for
+                // handling runs out.
+                if (nested.traceback != null) return nested.messageObject ?: NIL
+                return runMessageHandler(t, nested.messageObject ?: NIL)
             } catch (ignored: Throwable) {
                 return valueOf("error in error handling")!!
+            } finally {
+                t.state.inhandler--
+                t.state.foreigncalls = outer
             }
         }
     }
@@ -953,14 +987,15 @@ private fun frameFor(t: LuaThread?, f: LuaValue): DebugLib? {
     return t?.globals?.debuglib
 }
 
+/**
+ * What a host stack overflow is reported as on [t].
+ *
+ * Running out of stack in the room kept for handling an error is a failure of
+ * the handling; see LuaThread.State.inhandler.
+ */
+private fun overflowmessage(t: LuaThread?): String =
+    if ((t?.state?.inhandler ?: 0) > 0) "error in error handling" else "C stack overflow"
+
 private fun enterForeign(state: LuaThread.State) {
-    if (++state.foreigncalls < LuaThread.State.MAX_FOREIGN_CALLS) return
-    // See LuaClosure.enterforeign: the ceiling is reported once, and the room
-    // above it belongs to whatever is handling that.
-    if (state.foreigncalls == LuaThread.State.MAX_FOREIGN_CALLS) {
-        LuaValue.error("C stack overflow")
-    }
-    if (state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
-        LuaValue.error("error in error handling")
-    }
+    net.blueva.luak.enterForeignCall(state)
 }

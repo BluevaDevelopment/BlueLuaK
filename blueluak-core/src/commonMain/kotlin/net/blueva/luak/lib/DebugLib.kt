@@ -684,6 +684,26 @@ class DebugLib : TwoArgFunction() {
     }
 
     /**
+     * Names the function a library called back into, for an error it raised.
+     *
+     * A function of the library's own that a library function called has no
+     * call in any Lua code to be named after, so Lua names it by where a
+     * library keeps it, and reports the error with no place at all: the
+     * caller is not written in Lua and has no line to point at.
+     */
+    fun notecallback(le: LuaError) {
+        if (le.positioned) return
+        le.nowhere = true
+        val message: String = le.message ?: return
+        val match = Regex("^bad argument #(\\d+): ([\\s\\S]*)$").find(message) ?: return
+        val frames: CallStack = callstack()
+        if (frames.calls == 0) return
+        val name: String = globalfuncname(frames.frame!![frames.calls - 1]!!.f) ?: "?"
+        le.argMessageOverride =
+            "bad argument #" + match.groupValues[1] + " to '" + name + "' (" + match.groupValues[2] + ")"
+    }
+
+    /**
      * The name [f] answers to in the loaded libraries, or null.
      *
      * A function of the library's own has no name of its own to give: what a
@@ -1519,5 +1539,28 @@ class DebugLib : TwoArgFunction() {
             }
             return setreg
         }
+    }
+}
+
+/**
+ * Calls [f] as a library function calls back into another function.
+ *
+ * A function of the library's own has no frame of its own to push, so one is
+ * pushed for it here: without that a traceback would not name it, the levels
+ * a hook counts would skip it, and an error it raises could not say which
+ * function it was in. See [DebugLib.notecallback].
+ */
+internal fun callback(debuglib: DebugLib?, f: LuaValue, args: Varargs): Varargs {
+    if (debuglib == null || f !is net.blueva.luak.LuaFunction || f is net.blueva.luak.LuaClosure) {
+        return f.invoke(args)!!
+    }
+    debuglib.onCall(f)
+    try {
+        return f.invoke(args)!!
+    } catch (le: LuaError) {
+        debuglib.notecallback(le)
+        throw le
+    } finally {
+        debuglib.onReturn()
     }
 }

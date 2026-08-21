@@ -86,7 +86,7 @@ open class StringLib
         string.set("find", net.blueva.luak.lib.StringLib.find())
         string.set("format", format())
         string.set("gmatch", net.blueva.luak.lib.StringLib.gmatch())
-        string.set("gsub", net.blueva.luak.lib.StringLib.gsub())
+        string.set("gsub", net.blueva.luak.lib.StringLib.gsub(env as? net.blueva.luak.Globals))
         string.set("len", net.blueva.luak.lib.StringLib.len())
         string.set("lower", net.blueva.luak.lib.StringLib.lower())
         string.set("match", net.blueva.luak.lib.StringLib.match())
@@ -837,7 +837,7 @@ open class StringLib
      * x = string.gsub("$name-$version.tar.gz", "%$(%w+)", t)
      * --> x="lua-5.1.tar.gz"
      */
-    internal class gsub : VarArgFunction() {
+    internal class gsub(private val globals: net.blueva.luak.Globals?) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val src: LuaString = args.checkstring(1)
             val srclen: Int = src.length()
@@ -861,7 +861,7 @@ open class StringLib
                 val res = ms.match(soffset, if (anchor) 1 else 0)
                 if (res != -1 && res != lastmatch) {  /* match? */
                     n++
-                    if (ms.add_value(lbuf, soffset, res, repl)) changed = true
+                    if (ms.add_value(lbuf, soffset, res, repl, globals?.debuglib)) changed = true
                     lastmatch = res
                     soffset = lastmatch
                 } else if (soffset < srclen)  /* otherwise, skip one character */
@@ -1081,7 +1081,14 @@ open class StringLib
          * @return true when something was actually replaced; a function or
          *   table that answers nil or false leaves the matched text as it was
          */
-        fun add_value(lbuf: Buffer, soffset: Int, end: Int, repl: LuaValue): Boolean {
+        @kotlin.jvm.JvmOverloads
+        fun add_value(
+            lbuf: Buffer,
+            soffset: Int,
+            end: Int,
+            repl: LuaValue,
+            debuglib: DebugLib? = null,
+        ): Boolean {
             var repl: LuaValue = repl
             when (repl.type()) {
                 LuaValue.TSTRING, LuaValue.TNUMBER -> {
@@ -1089,7 +1096,10 @@ open class StringLib
                     return true
                 }
 
-                LuaValue.TFUNCTION -> repl = repl.invoke(push_captures(true, soffset, end))!!.arg1()
+                // Through the library's own way of calling back, so that a
+                // function of the library's own can be named in an error.
+                LuaValue.TFUNCTION -> repl =
+                    callback(debuglib, repl, push_captures(true, soffset, end)!!).arg1()!!
                 LuaValue.TTABLE ->                // Need to call push_onecapture here for the error checking
                     repl = repl.get(push_onecapture(0, soffset, end))
 

@@ -240,9 +240,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         state.noyield++
         try {
             enterforeign(state)
-            return runLuaSync(block)
-        } finally {
+            val answer: T = runLuaSync(block)
+            // Put back only on the way out with an answer: an error leaves the
+            // tally where it was, so that whatever handles it is working in
+            // the room above the ceiling rather than starting again from
+            // below it. A protected call is what puts it back then.
             state.foreigncalls = outer
+            return answer
+        } finally {
             state.noyield--
         }
     }
@@ -257,17 +262,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // Counted first and left counted if it fails: the tally stays where it
         // was until a protected call puts it back, so an error raised at the
         // ceiling does not make room for the next one on its way out.
-        if (++state.foreigncalls < LuaThread.State.MAX_FOREIGN_CALLS) return
-        // The ceiling itself is where the stack is reported as gone. Above it
-        // is the room an error handler is given to work in, which is why a
-        // call from in there is let through; running out of that room too is
-        // a failure of the handling rather than of the call.
-        if (state.foreigncalls == LuaThread.State.MAX_FOREIGN_CALLS) {
-            LuaValue.error("C stack overflow")
-        }
-        if (state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
-            LuaValue.error("error in error handling")
-        }
+        enterForeignCall(state)
     }
 
     /**
@@ -818,6 +813,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         if (state != null) {
             if (++state.unwinding < STACK_UNWIND_HEADROOM) return null
             state.unwinding = 0
+            // Running out of stack in the room kept for handling one is a
+            // failure of the handling; see LuaThread.State.inhandler. It says
+            // no more than that, with no place: the handling is what failed,
+            // not anything the program wrote.
+            if (state.inhandler > 0) {
+                val failed = LuaError("error in error handling")
+                failed.nowhere = true
+                return failed
+            }
         }
         return LuaError("stack overflow")
     }
@@ -840,19 +844,13 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         val r: LuaThread = globals.running
         if (r.errorfunc == null) return
         val e: LuaValue = r.errorfunc!!
-        // Running the handler is itself a call out of Lua. Past the room Lua
-        // keeps above the ordinary ceiling there is nothing left to report but
-        // the failure of the handling.
-        // Running the handler is a call of its own; refused past the ceiling
-        // the same way any other call is.
+        // Running the handler is itself a call out of Lua, and it is made in
+        // the room Lua keeps above the ordinary ceiling for exactly this. Past
+        // that room there is nothing left to report but the failure of the
+        // handling, and the handler is not called again.
         if (r.state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
             le.replaceMessage(LuaValue.valueOf("error in error handling")!!)
             le.traceback = "error in error handling"
-            return
-        }
-        if (r.state.foreigncalls >= LuaThread.State.MAX_FOREIGN_CALLS) {
-            le.replaceMessage(LuaValue.valueOf("C stack overflow")!!)
-            le.traceback = "C stack overflow"
             return
         }
         // A handler written in Lua pushes its own frame; one from the library,
@@ -863,15 +861,28 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         if (debuglib != null) debuglib.onCall(e as? LuaFunction)
         // The call itself is counted where it re-enters the interpreter, so
         // nothing is added here.
+        // A handler written in Lua is counted where it enters the
+        // interpreter; one of the library's own never does, and is counted
+        // here so that a chain of them cannot go round for ever.
+        val outer: Int = r.state.foreigncalls
+        if (e !is LuaClosure) r.state.foreigncalls++
+        r.state.inhandler++
         val handled: LuaValue = try {
             e.call(le.messageObject ?: NIL)!!
         } catch (nested: LuaError) {
-            // The handler raised in its turn, and that error was handled by
-            // the same handler on the way out: what came back is the answer.
+            // The handler raised in its turn. Lua hands that to the same
+            // handler, again and again, until the room kept for handling runs
+            // out and the failure of the handling is what is left to report.
+            // An error raised by Lua code has already been through the handler
+            // on its way out of that code; one raised by the runtime itself,
+            // which is what running out of room looks like, has not.
+            if (nested.traceback == null) errorHook(nested)
             nested.messageObject ?: NIL
         } catch (t: Throwable) {
             LuaValue.valueOf("error in error handling")!!
         } finally {
+            r.state.inhandler--
+            r.state.foreigncalls = outer
             if (debuglib != null) debuglib.onReturn()
         }
         le.replaceMessage(handled)
@@ -1061,6 +1072,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // with its own line. See [LuaError.positioned].
         if (le.positioned) return
         le.positioned = true
+        // Raised where Lua adds no place; see LuaError.nowhere.
+        if (le.nowhere) {
+            errorHook(le)
+            return
+        }
         // A level of zero says the message is complete as it stands, which is
         // what `error(msg, 0)` asks for.
         if (le.level <= 0) {

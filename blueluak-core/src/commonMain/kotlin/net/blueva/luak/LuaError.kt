@@ -53,6 +53,15 @@ class LuaError : RuntimeException {
     internal var positioned: Boolean = false
 
     /**
+     * True when this error is to carry no place at all.
+     *
+     * Lua points at the line that called the function which raised, and where
+     * that caller is not written in Lua there is no line to point at: an
+     * error raised in a function a library called stands on its own.
+     */
+    internal var nowhere: Boolean = false
+
+    /**
      * The stack this error was raised on, one entry per frame.
      *
      * A coroutine keeps the stack it died on so a later

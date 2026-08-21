@@ -865,7 +865,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun new_localvar(name: LuaString?) {
         val reg = registerlocalvar(name)
-        fs!!.checklimit(dyd.n_actvar + 1, LUAI_MAXVARS, "local variables")
+        // Counted within this function alone: the array holds the variables
+        // of every function being compiled, and a function nested in another
+        // starts where the one around it left off.
+        fs!!.checklimit(dyd.n_actvar + 1 - fs!!.firstlocal, LUAI_MAXVARS, "local variables")
         if (dyd.actvar == null || dyd.n_actvar + 1 > dyd.actvar!!.size) dyd.actvar =
             realloc(dyd.actvar, maxOf(1, dyd.n_actvar * 2))
         dyd.actvar!![dyd.n_actvar++] = net.blueva.luak.compiler.LexState.Vardesc(reg)
@@ -2597,8 +2600,15 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             }
         }
 
+        /**
+         * True for a byte that cannot be shown as itself.
+         *
+         * Only the printable ASCII range is shown as a character; anything
+         * else, a byte past 127 included, is written as its number, since
+         * what it looks like depends on how the text is being read.
+         */
         private fun iscntrl(token: Int): Boolean {
-            return token < ' '.code
+            return token < ' '.code || token > '~'.code
         }
 
         // =============================================================

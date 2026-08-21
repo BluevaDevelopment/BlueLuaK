@@ -72,6 +72,25 @@ import kotlin.coroutines.suspendCoroutine
  *
  * @see net.blueva.luak.lib.CoroutineLib
  */
+/**
+ * Counts a call that recurses on the host stack, refusing it past the ceiling.
+ *
+ * The interpreter runs on the host's own stack, so a Lua program that calls
+ * out and back in without bound would exhaust it. Lua counts those calls
+ * instead and stops at a ceiling of its own, keeping a little room above it
+ * for whatever handles the failure; running out of that room too is a failure
+ * of the handling rather than of the call.
+ */
+internal fun enterForeignCall(state: LuaThread.State) {
+    if (++state.foreigncalls < LuaThread.State.MAX_FOREIGN_CALLS) return
+    if (state.foreigncalls == LuaThread.State.MAX_FOREIGN_CALLS) {
+        LuaValue.error("C stack overflow")
+    }
+    if (state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
+        LuaValue.error("error in error handling")
+    }
+}
+
 class LuaThread : LuaValue {
     val state: State
 
@@ -202,6 +221,15 @@ class LuaThread : LuaValue {
         var unwinding: Int = 0
 
         /**
+         * How many message handlers are running on this thread.
+         *
+         * A reference build gives a handler a stack of its own to work in,
+         * past the one the program ran out of; running out again in there is
+         * a failure of the handling rather than another overflow.
+         */
+        var inhandler: Int = 0
+
+        /**
          * Set while a `__gc` handler is being called, so the frame it pushes
          * can be marked as a finalizer's; see [DebugLib.CallFrame.finalizer].
          */
@@ -287,6 +315,11 @@ class LuaThread : LuaValue {
 
         fun lua_resume(new_thread: LuaThread, args: Varargs?): Varargs {
             val previous_thread: LuaThread = globals.running
+            // A resumed coroutine runs on the host stack the resuming one is
+            // standing on, so it carries on counting from there; see
+            // enterForeignCall.
+            val outer: Int = previous_thread.state.foreigncalls
+            foreigncalls = outer
             try {
                 globals.running = new_thread
                 // Mark the resuming thread NORMAL before running the resumed
@@ -335,6 +368,7 @@ class LuaThread : LuaValue {
                 pendingYieldValues = null
                 globals.running = previous_thread
                 globals.running.state.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+                previous_thread.state.foreigncalls = outer
             }
         }
 
@@ -365,6 +399,33 @@ class LuaThread : LuaValue {
 
         /** Unwinds a suspended coroutine so its pending closers run. */
         fun lua_close(closing: LuaThread): Varargs {
+            // Closing runs the coroutine's pending handlers, which recurse on
+            // the host stack the way any other call out of Lua does: a chain
+            // of coroutines each closing the one before it is what a ceiling
+            // on that is for. The tally goes back where it was afterwards,
+            // since a close reports what went wrong rather than raising it.
+            // Counted against the thread that asked, not the one being
+            // closed: the handlers run on the host stack the asking thread is
+            // already standing on, and the thread being closed carries on
+            // counting from there.
+            val caller: State = globals.running.state
+            val outer: Int = caller.foreigncalls
+            try {
+                enterForeignCall(caller)
+            } catch (deep: LuaError) {
+                status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
+                return LuaValue.varargsOf(LuaValue.FALSE, errorObject(deep))!!
+            }
+            foreigncalls = caller.foreigncalls
+            try {
+                return closing(closing)
+            } finally {
+                caller.foreigncalls = outer
+            }
+        }
+
+        /** What [lua_close] does once the call has been counted. */
+        private fun closing(closing: LuaThread): Varargs {
             val continuation = yieldContinuation
             yieldContinuation = null
             if (continuation == null) {

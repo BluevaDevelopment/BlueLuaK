@@ -112,13 +112,16 @@ internal class FuncState internal constructor() : Constants() {
         if (v > l) errorlimit(l, msg)
     }
 
+    /**
+     * Refuses a function that needs more of something than Lua allows.
+     *
+     * The message names the function it is about, since a limit is reached by
+     * the shape of a whole function rather than at any one place in it.
+     */
     fun errorlimit(limit: Int, what: String?) {
-        // TODO: report message logic.
-        val msg: String? =
-            if (f!!.linedefined === 0) ls!!.L!!.pushfstring("main function has more than " + limit + " " + what) else ls!!.L!!.pushfstring(
-                "function at line " + f!!.linedefined + " has more than " + limit + " " + what
-            )
-        ls!!.lexerror(msg, 0)
+        val line: Int = f!!.linedefined
+        val where: String = if (line == 0) "main function" else "function at line " + line
+        ls!!.syntaxerror("too many " + what + " (limit is " + limit + ") in " + where)
     }
 
     fun getlocvar(i: Int): LocVars {
@@ -354,6 +357,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun ret(first: Int, nret: Int) {
+        checklimit(nret + 1, MAX_RETURNS, "returns")
         this.codeABC(OP_RETURN, first, nret + 1, 0)
     }
 
@@ -491,10 +495,12 @@ internal class FuncState internal constructor() : Constants() {
     fun checkstack(n: Int) {
         val newstack = this.freereg + n
         if (newstack > this.f!!.maxstacksize) {
-            if (newstack >= MAXSTACK) ls!!.syntaxerror("function or expression too complex")
+            checklimit(newstack, MAX_FSTACK, "registers")
             this.f!!.maxstacksize = newstack
         }
     }
+
+
 
     fun reserveregs(n: Int) {
         this.checkstack(n)
@@ -1171,6 +1177,12 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     companion object {
+        /** As many registers as one function may use, as Lua allows. */
+        const val MAX_FSTACK: Int = 255
+
+        /** As many values as one `return` may hand back, as Lua allows. */
+        const val MAX_RETURNS: Int = 255
+
         /**
          * Looks for [n] among one function's variables, innermost first.
          *

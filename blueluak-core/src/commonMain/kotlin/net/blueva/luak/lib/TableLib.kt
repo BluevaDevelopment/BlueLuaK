@@ -71,7 +71,7 @@ class TableLib : TwoArgFunction() {
         table.set("move", net.blueva.luak.lib.TableLib.move())
         table.set("pack", net.blueva.luak.lib.TableLib.pack())
         table.set("remove", net.blueva.luak.lib.TableLib.remove())
-        table.set("sort", net.blueva.luak.lib.TableLib.sort())
+        table.set("sort", net.blueva.luak.lib.TableLib.sort(env as? net.blueva.luak.Globals))
         table.set("unpack", net.blueva.luak.lib.TableLib.unpack())
         env!!.set("table", table)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("table", table)
@@ -244,10 +244,11 @@ class TableLib : TwoArgFunction() {
     }
 
     // "sort" (table [, comp])
-    internal class sort : VarArgFunction() {
+    internal class sort(private val globals: net.blueva.luak.Globals?) : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             args.checktable(1).sort(
-                if (args.isnil(2)) NIL else args.checkfunction(2)
+                if (args.isnil(2)) NIL else args.checkfunction(2),
+                globals?.debuglib,
             )
             return (NONE)!!
         }

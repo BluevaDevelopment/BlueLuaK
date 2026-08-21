@@ -783,13 +783,14 @@ open class LuaTable : LuaValue, Metatable {
     /** Sort the table using a comparator.
      * @param comparator [LuaValue] to be called to compare elements.
      */
-    fun sort(comparator: LuaValue) {
+    @kotlin.jvm.JvmOverloads
+    fun sort(comparator: LuaValue, debuglib: net.blueva.luak.lib.DebugLib? = null) {
         if (len().tolong() >= Int.MAX_VALUE.toLong()) throw LuaError("array too big: " + len().tolong())
         if (m_metatable != null && m_metatable!!.useWeakValues()) {
             dropWeakArrayValues()
         }
         val n = length()
-        if (n > 1) auxsort(1, n, if (comparator.isnil()) null else comparator)
+        if (n > 1) auxsort(1, n, if (comparator.isnil()) null else comparator, debuglib)
     }
 
     /**
@@ -805,25 +806,25 @@ open class LuaTable : LuaValue, Metatable {
      * The larger half is looped on rather than recursed into, so what is on
      * the host stack stays within the logarithm of the size.
      */
-    private fun auxsort(from: Int, to: Int, cmpfunc: LuaValue?) {
+    private fun auxsort(from: Int, to: Int, cmpfunc: LuaValue?, debuglib: net.blueva.luak.lib.DebugLib?) {
         var lo = from
         var up = to
         while (lo < up) {
             /* sort elements 'lo', 'p', and 'up' */
-            if (compare(up, lo, cmpfunc)) swap(lo, up)
+            if (compare(up, lo, cmpfunc, debuglib)) swap(lo, up)
             if (up - lo == 1) return /* only 2 elements */
             var p: Int = lo + (up - lo) / 2 /* middle point */
-            if (compare(p, lo, cmpfunc)) swap(p, lo)
-            else if (compare(up, p, cmpfunc)) swap(p, up)
+            if (compare(p, lo, cmpfunc, debuglib)) swap(p, lo)
+            else if (compare(up, p, cmpfunc, debuglib)) swap(p, up)
             if (up - lo == 2) return /* only 3 elements */
             swap(p, up - 1) /* the pivot goes next to the end */
-            p = partition(lo, up, cmpfunc)
+            p = partition(lo, up, cmpfunc, debuglib)
             /* a[lo .. p - 1] <= a[p] <= a[p + 1 .. up] */
             if (p - lo < up - p) {
-                auxsort(lo, p - 1, cmpfunc)
+                auxsort(lo, p - 1, cmpfunc, debuglib)
                 lo = p + 1
             } else {
-                auxsort(p + 1, up, cmpfunc)
+                auxsort(p + 1, up, cmpfunc, debuglib)
                 up = p - 1
             }
         }
@@ -835,17 +836,22 @@ open class LuaTable : LuaValue, Metatable {
      * The pivot is at `up - 1` when this starts, and at the index answered
      * when it ends.
      */
-    private fun partition(lo: Int, up: Int, cmpfunc: LuaValue?): Int {
+    private fun partition(
+        lo: Int,
+        up: Int,
+        cmpfunc: LuaValue?,
+        debuglib: net.blueva.luak.lib.DebugLib?,
+    ): Int {
         val pivot: Int = up - 1
         var i: Int = lo
         var j: Int = up - 1
         while (true) {
             /* repeat ++i while a[i] < P */
-            while (compare(++i, pivot, cmpfunc)) {
+            while (compare(++i, pivot, cmpfunc, debuglib)) {
                 if (i == up - 1) LuaValue.error("invalid order function for sorting")
             }
             /* repeat --j while P < a[j] */
-            while (compare(pivot, --j, cmpfunc)) {
+            while (compare(pivot, --j, cmpfunc, debuglib)) {
                 if (j < i) LuaValue.error("invalid order function for sorting")
             }
             if (j < i) {
@@ -862,12 +868,19 @@ open class LuaTable : LuaValue, Metatable {
         set(j, held)
     }
 
-    private fun compare(i: Int, j: Int, cmpfunc: LuaValue?): Boolean {
+    private fun compare(
+        i: Int,
+        j: Int,
+        cmpfunc: LuaValue?,
+        debuglib: net.blueva.luak.lib.DebugLib? = null,
+    ): Boolean {
         val a: LuaValue? = get(i)
         val b: LuaValue? = get(j)
         if (a == null || b == null) return false
         if (cmpfunc != null) {
-            return cmpfunc.call(a, b)!!.toboolean()
+            // Through the library's own way of calling back, so that an order
+            // function of the library's own can be named in an error.
+            return net.blueva.luak.lib.callback(debuglib, cmpfunc, varargsOf(a, b)!!).arg1()!!.toboolean()
         } else {
             return a.lt_b(b)
         }
