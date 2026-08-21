@@ -193,6 +193,9 @@ class LuaThread : LuaValue {
         /** The `__call` chain length the next frame pushed should report. */
         var pendingextraargs: Int = 0
 
+        /** True when the next frame pushed is one a tail call is making. */
+        var pendingtailcall: Boolean = false
+
         /**
          * How many calls that are not Lua-to-Lua are in progress.
          *

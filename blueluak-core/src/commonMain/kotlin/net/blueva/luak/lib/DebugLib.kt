@@ -124,11 +124,13 @@ class DebugLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val t: LuaThread = if (args.narg() > 0) args.checkthread(1) else globals!!.running
             val s: LuaThread.State = t.state
-            return varargsOf(
-                if (s.hookfunc != null) s.hookfunc else NIL,
-                valueOf((if (s.hookcall) "c" else "") + (if (s.hookline) "l" else "") + (if (s.hookrtrn) "r" else "")),
-                valueOf(s.hookcount)
-            )
+            // Nothing installed: one answer, not an empty mask and a zero.
+            if (s.hookfunc == null) return NIL!!
+            // The letters in the order Lua writes them.
+            val mask: String = (if (s.hookcall) "c" else "") +
+                (if (s.hookrtrn) "r" else "") +
+                (if (s.hookline) "l" else "")
+            return varargsOf(hookfunction(t), valueOf(mask), valueOf(s.hookcount))
         }
     }
 
@@ -178,7 +180,7 @@ class DebugLib : TwoArgFunction() {
             if (what.indexOf('u') >= 0) {
                 info.set(net.blueva.luak.lib.DebugLib.Companion.NUPS, valueOf(ar.nups.toInt()))
                 info.set(net.blueva.luak.lib.DebugLib.Companion.NPARAMS, valueOf(ar.nparams.toInt()))
-                info.set(net.blueva.luak.lib.DebugLib.Companion.ISVARARG, if (ar.isvararg) ONE else ZERO)
+                info.set(net.blueva.luak.lib.DebugLib.Companion.ISVARARG, valueOf(ar.isvararg)!!)
             }
             if (what.indexOf('n') >= 0) {
                 // A function looked up by value has no call to be named from,
@@ -189,8 +191,12 @@ class DebugLib : TwoArgFunction() {
                 }
                 info.set(net.blueva.luak.lib.DebugLib.Companion.NAMEWHAT, LuaValue.valueOf(ar.namewhat))
             }
+            if (what.indexOf('r') >= 0) {
+                info.set(net.blueva.luak.lib.DebugLib.Companion.FTRANSFER, valueOf(ar.ftransfer))
+                info.set(net.blueva.luak.lib.DebugLib.Companion.NTRANSFER, valueOf(ar.ntransfer))
+            }
             if (what.indexOf('t') >= 0) {
-                info.set(net.blueva.luak.lib.DebugLib.Companion.ISTAILCALL, ZERO)
+                info.set(net.blueva.luak.lib.DebugLib.Companion.ISTAILCALL, valueOf(ar.istailcall)!!)
                 info.set(net.blueva.luak.lib.DebugLib.Companion.EXTRAARGS, valueOf(ar.extraargs))
             }
             // A function that is not written in Lua has no lines to report,
@@ -244,10 +250,37 @@ class DebugLib : TwoArgFunction() {
 
     //	debug.getregistry ()
     internal inner class getregistry : ZeroArgFunction() {
-        override fun call(): LuaValue? {
-            return (globals)!!
-        }
+        override fun call(): LuaValue? = registry()
     }
+
+    /**
+     * The registry: a table of the runtime's own, not the globals.
+     *
+     * It holds what the library needs to keep alongside a program without
+     * putting it where the program can trip over it - the hook functions,
+     * under `_HOOKKEY`, keyed weakly by thread so that a coroutine's hook
+     * goes when the coroutine does.
+     */
+    fun registry(): LuaTable {
+        val existing: LuaTable? = registryTable
+        if (existing != null) return existing
+        val made = LuaTable()
+        val hooks = LuaTable()
+        hooks.setmetatable(tableOf(arrayOf<LuaValue?>(valueOf("__mode"), valueOf("k"))))
+        made.set(net.blueva.luak.lib.DebugLib.Companion.HOOKKEY!!, hooks)
+        registryTable = made
+        return made
+    }
+
+    /** Where the hook functions are kept, keyed by the thread they belong to. */
+    private fun hooks(): LuaTable =
+        registry().get(net.blueva.luak.lib.DebugLib.Companion.HOOKKEY!!)!! as LuaTable
+
+    /** The hook installed on [thread], or nil. */
+    internal fun hookfunction(thread: LuaThread): LuaValue =
+        hooks().get(thread)
+
+    private var registryTable: LuaTable? = null
 
     //	debug.getupvalue (f, up)
     internal class getupvalue : VarArgFunction() {
@@ -260,18 +293,26 @@ class DebugLib : TwoArgFunction() {
                 if (name != null) {
                     return (varargsOf(name, (c.upValues[up - 1]!!.getValue())!!))!!
                 }
+                return NIL
             }
+            // What a function of the library's own carries has no name of its
+            // own, which is what Lua answers for one: the empty string.
+            val carried: Any? = (func as? LuaFunction)?.upvaluestate(up)
+            if (carried != null) return (varargsOf(valueOf(""), LuaLightUserdata(carried)))!!
             return NIL
         }
     }
 
     //	debug.getuservalue (u)
-    internal class getuservalue : LibFunction() {
-        override fun call(u: LuaValue?): LuaValue? {
-            // A light userdata carries nothing, so there is nothing to answer.
-            if (u is LuaLightUserdata) return NIL
-            return if (u!!.isuserdata()) u else NIL
-        }
+    /**
+     * `debug.getuservalue (u [, n])`.
+     *
+     * A userdata here carries the host object it wraps and nothing else: there
+     * are no user values attached to one, so there is never an nth to answer
+     * with.
+     */
+    internal class getuservalue : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = NIL!!
     }
 
 
@@ -292,7 +333,15 @@ class DebugLib : TwoArgFunction() {
                 'r' -> rtrn = true
             }
             val s: LuaThread.State = t.state
-            s.hookfunc = func
+            // A hook with nothing to fire on is no hook at all, which is what
+            // Lua takes an empty mask and a zero count to mean.
+            val installed: LuaValue? =
+                if (call || line || rtrn || count > 0) func else null
+            // The function itself lives in the registry, keyed by its thread;
+            // the flags stay on the thread so the interpreter's
+            // per-instruction check costs nothing.
+            hooks().set(t, if (installed == null) NIL!! else installed)
+            s.hookfunc = installed
             s.hookcall = call
             s.hookline = line
             s.hookcount = count
@@ -353,16 +402,15 @@ class DebugLib : TwoArgFunction() {
     //	debug.setuservalue (udata, value)
     internal class setuservalue : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
-            // A light userdata has nowhere to put a value; only a full one has.
-            if (args.arg1() is LuaLightUserdata) {
-                LuaValue.argerror(1, "userdata expected, got light userdata")
+            // It still has to be a full userdata, but there is nowhere to put
+            // the value: a userdata here carries the host object it wraps and
+            // nothing else, so this always answers that it did not fit.
+            val target: LuaValue = args.arg1()!!
+            if (target.type() != LuaValue.TUSERDATA || target is LuaLightUserdata) {
+                LuaValue.argerror(1, "userdata expected, got " + target.argtypename())
             }
-            val o: Any? = args.checkuserdata(1)
-            val v: LuaValue = args.checkvalue(2)!!
-            val u: LuaUserdata = args.arg1() as LuaUserdata
-            u.m_instance = v.checkuserdata()!!
-            u.m_metatable = v.getmetatable()
-            return (NONE)!!
+            args.checkvalue(2)
+            return (FALSE)!!
         }
     }
 
@@ -371,8 +419,14 @@ class DebugLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             var a = 1
             val thread: LuaThread = if (args.isthread(a)) args.checkthread(a++) else globals!!.running
+            val given: LuaValue = args.arg(a)!!
+            // Anything that is not text is handed straight back: a message
+            // object of a program's own is not something to build on.
+            if (!given.isnil() && !given.isstring()) return given
             val message: String? = args.optjstring(a++, null)
-            val level: Int = args.optint(a++, 1)
+            // Level 1 is the function that asked, so the traceback does not
+            // start by naming this one.
+            val level: Int = args.optint(a++, if (thread === globals!!.running) 1 else 0)
             val tb = callstack(thread).traceback(level)
             return valueOf(if (message != null) message.toString() + "\n" + tb else tb)
         }
@@ -412,6 +466,11 @@ class DebugLib : TwoArgFunction() {
     }
 
     fun onCall(f: LuaFunction?) {
+        onCall(f, null)
+    }
+
+    /** As [onCall], remembering the arguments a library function was given. */
+    fun onCall(f: LuaFunction?, args: Array<LuaValue?>?) {
         val s: LuaThread.State = globals!!.running.state
         // The frame goes on even inside a hook: code the hook runs counts
         // levels from itself, and skipping the bookkeeping would make it
@@ -419,10 +478,27 @@ class DebugLib : TwoArgFunction() {
         // must not call itself.
         val frames: CallStack = callstack()
         frames.onCall(f)
-        frames.frame!![frames.calls - 1]!!.extraargs = s.pendingextraargs
+        val pushed: CallFrame = frames.frame!![frames.calls - 1]!!
+        pushed.extraargs = s.pendingextraargs
+        pushed.args = args
+        // What the call is handing over, for a hook to read back.
+        pushed.ftransfer = 1
+        pushed.ntransfer = args?.size ?: 0
+        val tail: Boolean = s.pendingtailcall
+        pushed.istailcall = tail
+        s.pendingtailcall = false
         s.pendingextraargs = 0
         markhookframe(s)
-        if (!s.inhook && s.hookcall) callHook(s, net.blueva.luak.lib.DebugLib.Companion.CALL, NIL)
+        // A tail call is its own kind of event, since the frame it makes takes
+        // the place of the one that called it.
+        if (!s.inhook && s.hookcall) {
+            callHook(
+                s,
+                if (tail) net.blueva.luak.lib.DebugLib.Companion.TAILCALL
+                else net.blueva.luak.lib.DebugLib.Companion.CALL,
+                NIL,
+            )
+        }
     }
 
     fun onCall(c: LuaClosure?, varargs: Varargs?, stack: Array<LuaValue?>?) {
@@ -443,10 +519,25 @@ class DebugLib : TwoArgFunction() {
         frames.onCall(c, varargs, stack)
         val pushed: CallFrame = frames.frame!![frames.calls - 1]!!
         pushed.args = args
+        // The declared parameters are what a call hands a Lua function.
+        pushed.ftransfer = 1
+        pushed.ntransfer = c?.p?.numparams ?: 0
+        val tail: Boolean = s.pendingtailcall
+        pushed.istailcall = tail
+        s.pendingtailcall = false
         pushed.extraargs = s.pendingextraargs
         s.pendingextraargs = 0
         markhookframe(s)
-        if (!s.inhook && s.hookcall) callHook(s, net.blueva.luak.lib.DebugLib.Companion.CALL, NIL)
+        // A tail call is its own kind of event, since the frame it makes takes
+        // the place of the one that called it.
+        if (!s.inhook && s.hookcall) {
+            callHook(
+                s,
+                if (tail) net.blueva.luak.lib.DebugLib.Companion.TAILCALL
+                else net.blueva.luak.lib.DebugLib.Companion.CALL,
+                NIL,
+            )
+        }
     }
 
     fun onInstruction(pc: Int, v: Varargs?, top: Int) {
@@ -494,6 +585,11 @@ class DebugLib : TwoArgFunction() {
         s.pendingextraargs = chain
     }
 
+    /** Says that the next frame pushed is one a tail call is making. */
+    fun ontailcall() {
+        globals!!.running.state.pendingtailcall = true
+    }
+
     /** Marks the frame just pushed as the hook's own, when it is one. */
     private fun markhookframe(s: LuaThread.State) {
         if (!s.hookframepending) return
@@ -502,8 +598,32 @@ class DebugLib : TwoArgFunction() {
         if (frames.calls > 0) frames.frame!![frames.calls - 1]!!.hooked = true
     }
 
+    /**
+     * Records the values a call is about to hand back, for a return hook.
+     *
+     * They take the place of the arguments on the frame, which is where Lua
+     * leaves them too: a hook reads either with `debug.getlocal`.
+     */
+    fun onResults(results: Varargs?) {
+        val frames: CallStack = callstack()
+        if (frames.calls == 0) return
+        val frame: CallFrame = frames.frame!![frames.calls - 1]!!
+        val count: Int = results?.narg() ?: 0
+        val values: Array<LuaValue?> = arrayOfNulls(count)
+        for (index in 0..<count) values[index] = results!!.arg(index + 1)
+        frame.results = values
+        frame.ftransfer = 1
+        frame.ntransfer = count
+    }
+
     fun onReturn() {
         val s: LuaThread.State = globals!!.running.state
+        // A frame a tail call is leaving is not returning, it is being taken
+        // over: the call that replaces it reports itself instead.
+        if (s.pendingtailcall) {
+            callstack().onReturn()
+            return
+        }
         // The hook runs while the frame is still there, so code inside it can
         // still ask which function is returning.
         if (!s.inhook && s.hookrtrn) callHook(s, net.blueva.luak.lib.DebugLib.Companion.RETURN, NIL)
@@ -577,7 +697,11 @@ class DebugLib : TwoArgFunction() {
 
     @kotlin.jvm.JvmOverloads
     fun callstack(t: LuaThread = globals!!.running): CallStack {
-        if (t.callstack == null) t.callstack = net.blueva.luak.lib.DebugLib.CallStack()
+        if (t.callstack == null) {
+            val made = net.blueva.luak.lib.DebugLib.CallStack()
+            made.main = t.isMainThread
+            t.callstack = made
+        }
         return t.callstack as CallStack
     }
 
@@ -587,6 +711,11 @@ class DebugLib : TwoArgFunction() {
 
         /** (t) how many arguments a `__call` chain put in front of the real ones. */
         var extraargs: Int = 0
+
+        /** (r) the first value being handed over, and how many there are. */
+        var ftransfer: Int = 0
+
+        var ntransfer: Int = 0
         var what: String? = null /* (S) 'Lua', 'C', 'main', 'tail' */
         var source: String? = null /* (S) */
         var currentline: Int = 0 /* (l) */
@@ -625,6 +754,14 @@ class DebugLib : TwoArgFunction() {
     class CallStack internal constructor() {
         var frame: Array<CallFrame?>? = net.blueva.luak.lib.DebugLib.CallStack.Companion.EMPTY
         var calls: Int = 0
+
+        /**
+         * True for the stack a program was started on.
+         *
+         * Only that one has the host below it, which is the frame a traceback
+         * ends with; a coroutine's stack ends where its body does.
+         */
+        var main: Boolean = false
 
                 fun currentline(): Int {
             return if (calls > 0) frame!![calls - 1]!!.currentline() else -1
@@ -693,7 +830,9 @@ class DebugLib : TwoArgFunction() {
                     sb.append('>')
                 }
             }
-            sb.append("\n\t[Java]: in ?")
+            // Below the main thread is the host that started it, which is
+            // where a reference build shows its own C entry point.
+            if (main) sb.append("\n\t[C]: in ?")
             return sb.toString()
         }
 
@@ -731,14 +870,21 @@ class DebugLib : TwoArgFunction() {
                         ar.nparams = p.numparams.toShort()
                         ar.isvararg = p.is_vararg !== 0
                     } else {
-                        ar.nups = 0
+                        // A function of the library's own takes whatever it is
+                        // given and carries whatever state it was built with.
+                        ar.nups = ((f as? LuaFunction)?.nupvalues() ?: 0).toShort()
                         ar.isvararg = true
                         ar.nparams = 0
                     }
 
                     't' -> {
-                        ar.istailcall = false
+                        ar.istailcall = ci?.istailcall ?: false
                         ar.extraargs = ci?.extraargs ?: 0
+                    }
+
+                    'r' -> {
+                        ar.ftransfer = ci?.ftransfer ?: 0
+                        ar.ntransfer = ci?.ntransfer ?: 0
                     }
                     'n' -> {
                         // A hook was not called from any instruction, so there
@@ -797,8 +943,26 @@ class DebugLib : TwoArgFunction() {
         /** True when this frame is a hook the runtime called, not a Lua call. */
         var hooked: Boolean = false
 
+        /** True when a tail call made this frame, taking its caller's place. */
+        var istailcall: Boolean = false
+
         /** How many `__call` handlers put a value in front of the real arguments. */
         var extraargs: Int = 0
+
+        /**
+         * The first of the values being handed over, and how many there are.
+         *
+         * At a call that is the arguments, at a return the results; it is what
+         * `debug.getinfo(f, "r")` reports so a hook can read them back out
+         * with `debug.getlocal`.
+         */
+        var ftransfer: Int = 0
+
+        var ntransfer: Int = 0
+
+        /** The values being handed back, once a call has produced them. */
+        var results: Array<LuaValue?>? = null
+
         var top: Int = 0
         var v: Varargs? = null
         var stack: Array<LuaValue?>? = null
@@ -825,7 +989,11 @@ class DebugLib : TwoArgFunction() {
             this.oldpc = 0
             this.args = null
             this.hooked = false
+            this.istailcall = false
             this.extraargs = 0
+            this.ftransfer = 0
+            this.ntransfer = 0
+            this.results = null
         }
 
         /** Everything [restore] needs to put this frame back as it is now. */
@@ -862,20 +1030,40 @@ class DebugLib : TwoArgFunction() {
         }
 
         fun getLocal(i: Int): Varargs {
+            // Once a call has produced its results they are what the indices in
+            // the transfer range name, which is what a return hook reads.
+            val produced: Array<LuaValue?>? = results
+            if (produced != null && i >= ftransfer && i < ftransfer + ntransfer) {
+                return varargsOf(valueOf("(temporary)"), produced[i - ftransfer] ?: NIL)!!
+            }
+            // A function of the library's own has no registers, only the
+            // arguments it was handed, which is what Lua reports for one.
+            if (f?.isclosure() != true) {
+                val given: Array<LuaValue?> = args ?: return NIL!!
+                if (i < 1 || i > given.size) return NIL!!
+                return varargsOf(valueOf("(C temporary)"), given[i - 1] ?: NIL)!!
+            }
             if (i < 0) {
                 val slot: Int = extraArg(i)
                 if (slot < 0) return NIL!!
                 return varargsOf(valueOf("(vararg)"), args!![slot] ?: NIL)!!
             }
             val name: LuaString? = getlocalname(i)
-            if (i >= 1 && i <= stack!!.size && stack!![i - 1] != null) return varargsOf(
-                if (name == null) NIL else name,
-                stack!![i - 1]!!
-            )!!
-            else return NIL!!
+            if (i >= 1 && i <= livelimit() && stack!![i - 1] != null) {
+                // A register the function is using but has not named yet holds
+                // a temporary, which is what Lua calls it.
+                return varargsOf(name ?: valueOf("(temporary)"), stack!![i - 1]!!)!!
+            }
+            return NIL!!
         }
 
         fun setLocal(i: Int, value: LuaValue?): Varargs? {
+            if (f?.isclosure() != true) {
+                val given: Array<LuaValue?> = args ?: return NIL
+                if (i < 1 || i > given.size) return NIL
+                given[i - 1] = value
+                return valueOf("(C temporary)")
+            }
             if (i < 0) {
                 val slot: Int = extraArg(i)
                 if (slot < 0) return NIL
@@ -888,6 +1076,24 @@ class DebugLib : TwoArgFunction() {
                 return if (name == null) NIL else name
             } else {
                 return NIL
+            }
+        }
+
+        /**
+         * How many registers of this frame hold something worth looking at.
+         *
+         * While a call is under way the function being called sits just past
+         * them, and what is beyond that belongs to the call, not to this
+         * frame.
+         */
+        private fun livelimit(): Int {
+            val room: Int = stack?.size ?: 0
+            val closure: LuaClosure = f?.checkclosure() ?: return room
+            val code: IntArray = closure.p.code ?: return room
+            if (pc < 0 || pc >= code.size) return room
+            return when (Lua.GET_OPCODE(code[pc])) {
+                Lua.OP_CALL, Lua.OP_TAILCALL -> Lua.GETARG_A(code[pc])
+                else -> room
             }
         }
 
@@ -947,6 +1153,7 @@ class DebugLib : TwoArgFunction() {
         val LUA: LuaString? = valueOf("Lua")
         private val QMARK: LuaString? = valueOf("?")
         private val CALL: LuaString? = valueOf("call")
+        private val TAILCALL: LuaString? = valueOf("tail call")
         private val LINE: LuaString? = valueOf("line")
         private val COUNT: LuaString? = valueOf("count")
         private val RETURN: LuaString? = valueOf("return")
@@ -959,6 +1166,12 @@ class DebugLib : TwoArgFunction() {
         val NAME: LuaString? = valueOf("name")
         val NAMEWHAT: LuaString? = valueOf("namewhat")
         val EXTRAARGS: LuaString? = valueOf("extraargs")
+
+        val FTRANSFER: LuaString? = valueOf("ftransfer")
+        val NTRANSFER: LuaString? = valueOf("ntransfer")
+
+        /** Where the registry keeps the hook functions, as Lua names it. */
+        val HOOKKEY: LuaString? = valueOf("_HOOKKEY")
         val WHAT: LuaString? = valueOf("what")
         val SOURCE: LuaString? = valueOf("source")
         val SHORT_SRC: LuaString? = valueOf("short_src")

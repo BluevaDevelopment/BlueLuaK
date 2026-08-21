@@ -314,34 +314,43 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // __call is not what ends up running.
         val callee: LuaValue = stack[a]
         val traced: Boolean = debuglib != null && callee is LuaFunction && callee !is LuaClosure
-        if (traced) debuglib!!.onCall(callee as LuaFunction)
+        if (traced) debuglib!!.onCall(callee as LuaFunction, fixedArityArgs(stack, i, a))
         try {
-            return callFixedArityValues(stack, i, a)
+            val produced: LuaValue? = callFixedArityValues(stack, i, a)
+            if (traced && produced != null) debuglib!!.onResults(produced)
+            return produced != null
         } finally {
             if (traced) debuglib!!.onReturn()
         }
     }
 
     /** The call shapes themselves, without the bookkeeping around them. */
-    private suspend fun callFixedArityValues(stack: Array<LuaValue>, i: Int, a: Int): Boolean {
-        when (i and (Lua.MASK_B or Lua.MASK_C)) {
-            (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend()
-            (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1])
-            (3 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1], stack[a + 2])
-            (4 shl Lua.POS_B) or (1 shl Lua.POS_C) ->
-                stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])
+    /**
+     * @return what the call produced, or null for a shape this does not handle
+     */
+    private suspend fun callFixedArityValues(stack: Array<LuaValue>, i: Int, a: Int): LuaValue? {
+        val produced: LuaValue = when (i and (Lua.MASK_B or Lua.MASK_C)) {
+            (1 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend() ?: NIL
+            (2 shl Lua.POS_B) or (1 shl Lua.POS_C) -> stack[a].callSuspend(stack[a + 1]) ?: NIL
+            (3 shl Lua.POS_B) or (1 shl Lua.POS_C) ->
+                stack[a].callSuspend(stack[a + 1], stack[a + 2]) ?: NIL
 
-            (1 shl Lua.POS_B) or (2 shl Lua.POS_C) -> stack[a] = stack[a].callSuspend()!!
-            (2 shl Lua.POS_B) or (2 shl Lua.POS_C) -> stack[a] = stack[a].callSuspend(stack[a + 1])!!
+            (4 shl Lua.POS_B) or (1 shl Lua.POS_C) ->
+                stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3]) ?: NIL
+
+            (1 shl Lua.POS_B) or (2 shl Lua.POS_C) -> stack[a].callSuspend()!!.also { stack[a] = it }
+            (2 shl Lua.POS_B) or (2 shl Lua.POS_C) ->
+                stack[a].callSuspend(stack[a + 1])!!.also { stack[a] = it }
+
             (3 shl Lua.POS_B) or (2 shl Lua.POS_C) ->
-                stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2])!!
+                stack[a].callSuspend(stack[a + 1], stack[a + 2])!!.also { stack[a] = it }
 
             (4 shl Lua.POS_B) or (2 shl Lua.POS_C) ->
-                stack[a] = stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])!!
+                stack[a].callSuspend(stack[a + 1], stack[a + 2], stack[a + 3])!!.also { stack[a] = it }
 
-            else -> return false
+            else -> return null
         }
-        return true
+        return produced
     }
 
     /**
@@ -584,7 +593,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         // here while the instruction is still known, and a
                         // chain of __call handlers is followed here rather
                         // than by nesting one call inside the next.
-                        if (debuglib != null) debuglib.notecallchain(stack[a])
+                        if (debuglib != null) {
+                            debuglib.notecallchain(stack[a])
+                            // The frame this makes takes this one's place.
+                            debuglib.ontailcall()
+                        }
                         val prefix: ArrayList<LuaValue> = ArrayList()
                         val target: LuaValue = resolveTailcall(stack, a, prefix)
                         // See LuaValue.invoke: outermost first, so the
@@ -604,12 +617,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         // Before the results are read off the stack, as upstream
                         // closes at the return rather than after it.
                         if (tbc != null) closeToBeClosed(tbc, stack, 0, null)?.let { throw it }
-                        when (b) {
-                            0 -> return varargsOf(stack, a, top - v.narg() - a, v)
-                            1 -> return NONE
-                            2 -> return stack[a]
-                            else -> return varargsOf(stack, a, b - 1)
+                        val results: Varargs = when (b) {
+                            0 -> varargsOf(stack, a, top - v.narg() - a, v)
+                            1 -> NONE!!
+                            2 -> stack[a]
+                            else -> varargsOf(stack, a, b - 1)
                         }
+                        // What it hands back, so a return hook can read them.
+                        if (debuglib != null) debuglib.onResults(results)
+                        return results
                     }
 
                     Lua.OP_FORLOOP -> {
@@ -1123,9 +1139,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      */
     private suspend fun invokeTraced(f: LuaValue, args: Varargs, debuglib: DebugLib?): Varargs {
         if (debuglib == null || f !is LuaFunction || f is LuaClosure) return f.invokeSuspend(args)
-        debuglib.onCall(f)
+        debuglib.onCall(f, copyArgs(args))
         try {
-            return f.invokeSuspend(args)
+            val results: Varargs = f.invokeSuspend(args)
+            // What it hands back, so a return hook can read the results.
+            debuglib.onResults(results)
+            return results
         } finally {
             debuglib.onReturn()
         }
@@ -1448,6 +1467,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
         operand.checkcallable(tag, h)
         return callmeta(h, operand, operand)
+    }
+
+    /** The arguments of a fixed-arity call, for the debug library to report. */
+    private fun fixedArityArgs(stack: Array<LuaValue>, i: Int, a: Int): Array<LuaValue?> {
+        val count: Int = ((i ushr 23) and 0x1ff) - 1
+        if (count <= 0) return arrayOfNulls(0)
+        val values: Array<LuaValue?> = arrayOfNulls(count)
+        for (index in 0..<count) values[index] = stack[a + 1 + index]
+        return values
     }
 
     /** The call's arguments in an array of their own, so they can be written to. */

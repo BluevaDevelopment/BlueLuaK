@@ -1267,6 +1267,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                             this.dyd!!.actvar!![this.dyd!!.n_actvar - 1]!!.kind =
                                 net.blueva.luak.compiler.LexState.Companion.RDKCONST
                             f.is_vararg = 1 or Lua.VARARG_NAMED
+                        } else {
+                            // The slot exists either way, named or not: a
+                            // vararg function always has somewhere to put the
+                            // table, and code that walks the locals sees it.
+                            this.new_localvarliteral(
+                                net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_VARARGS,
+                            )
                         }
                     }
 
@@ -1278,7 +1285,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         // The vararg table is a local of its own, and comes into scope after
         // the count of declared parameters has been taken.
         f.numparams = fs.nactvar.toInt()
-        if (f.is_vararg and Lua.VARARG_NAMED != 0) this.adjustlocalvars(1)
+        if (f.is_vararg != 0) {
+            this.adjustlocalvars(1)
+            // In scope only once the call has been set up, which is when the
+            // extra arguments exist: asking a function value for its locals
+            // reads them at the very start and must not see this one.
+            fs.getlocvar(fs.nactvar - 1).startpc = 1
+        }
         fs.reserveregs((fs.nactvar).toInt()) /* reserve register for parameters */
     }
 
@@ -2400,6 +2413,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     companion object {
         protected val RESERVED_LOCAL_VAR_FOR_CONTROL: String = "(for control)"
+
+        /** The slot every vararg function keeps for the table form of `...`. */
+        protected val RESERVED_LOCAL_VAR_FOR_VARARGS: String = "(vararg table)"
 
         // The iterator, the state and the value the loop closes at the end all
         // go by one name, as they do upstream, so code that walks a frame's
