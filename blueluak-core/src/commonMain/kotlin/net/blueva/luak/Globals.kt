@@ -18,6 +18,7 @@ package net.blueva.luak
 
 import net.blueva.luak.lib.BaseLib
 import net.blueva.luak.lib.DebugLib
+import net.blueva.luak.lib.MathLib
 import net.blueva.luak.lib.PackageLib
 import net.blueva.luak.lib.ResourceFinder
 import net.blueva.luak.io.IOException
@@ -135,6 +136,9 @@ class Globals : LuaTable() {
     /** The DebugLib instance loaded into this Globals, or null if debugging is not enabled  */
     var debuglib: DebugLib? = null
 
+    /** The MathLib instance loaded into this Globals, or null if `math` is not loaded  */
+    var mathlib: MathLib? = null
+
     /**
      * What the host lets one resumption run, or null for no ceiling at all.
      *
@@ -207,6 +211,34 @@ class Globals : LuaTable() {
     /** Starts the tally [memoryceiling] is measured against again from nothing. */
     fun startmemorycount() {
         memory.startcounting()
+    }
+
+    /**
+     * Seeds this state's `math.random`, as `math.randomseed(x, y)` would.
+     *
+     * A fresh state seeds itself from the host's own generator, which is
+     * enough for two lanes never to start on the same sequence but leaves the
+     * host no way to repeat a run. Seeding it here fixes the sequence: the
+     * same two numbers give the same draws, here and from the reference
+     * interpreter, which is what makes a replay of a recorded session or a
+     * seeded test come out the same twice.
+     *
+     * ```kotlin
+     * val globals = LuaPlatform.standardGlobals()
+     * globals.seedrandom(lane.toLong(), run.toLong())
+     * ```
+     *
+     * A script can still call `math.randomseed` and seed over this; a host
+     * that means the sequence to stay fixed keeps that function away from it,
+     * the way it keeps away anything else it does not want reached.
+     *
+     * @param x the first half of the seed
+     * @param y the second half, as `math.randomseed`'s optional argument
+     * @throws LuaError if the `math` library is not loaded into this state
+     */
+    fun seedrandom(x: Long, y: Long = 0L) {
+        val math: MathLib = mathlib ?: throw LuaError("math library is not loaded")
+        math.seed(x, y)
     }
 
     /**

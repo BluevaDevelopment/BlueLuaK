@@ -72,6 +72,24 @@ open class MathLib : TwoArgFunction() {
         net.blueva.luak.lib.MathLib.Companion.MATHLIB = this
     }
 
+    /**
+     * The `math.random` this library installed, or null before [call] runs.
+     *
+     * Kept so that [seed] can reach the generator; a host has no other way to,
+     * since the function objects are not public.
+     */
+    internal var randomfunction: random? = null
+
+    /**
+     * Seeds `math.random` from the host, as `math.randomseed(x, y)` would.
+     *
+     * Reached through [net.blueva.luak.Globals.seedrandom]; see it for why a
+     * host wants to.
+     */
+    internal fun seed(x: Long, y: Long) {
+        randomfunction?.generator?.seed(x, y)
+    }
+
     /** Perform one-time initialization on the library by creating a table
      * containing the library functions, adding that table to the supplied environment,
      * adding the table to package.loaded, and returning table as the return value.
@@ -104,6 +122,7 @@ open class MathLib : TwoArgFunction() {
         val r: random?
         math.set("random", net.blueva.luak.lib.MathLib.random().also { r = it })
         math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed((r)!!))
+        randomfunction = r
         math.set("rad", net.blueva.luak.lib.MathLib.rad())
         math.set("sin", net.blueva.luak.lib.MathLib.sin())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
@@ -115,6 +134,7 @@ open class MathLib : TwoArgFunction() {
         // deprecated in 5.3 and removed in 5.4; the classes behind them stay
         // for embedders that want to put them back.
         env!!.set("math", math)
+        (env as? net.blueva.luak.Globals)?.mathlib = this
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("math", math)
         return math
     }
