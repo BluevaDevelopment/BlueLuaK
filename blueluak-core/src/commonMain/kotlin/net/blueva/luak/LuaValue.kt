@@ -1456,7 +1456,7 @@ open class LuaValue : Varargs() {
      * @param library The callable [LuaValue] to load into `this`
      * @return [LuaValue] returned by the initialization call.
      */
-    fun load(library: LuaValue): LuaValue {
+    open fun load(library: LuaValue): LuaValue {
         return library.call(net.blueva.luak.LuaValue.Companion.EMPTYSTRING, this)!!
     }
 

@@ -84,7 +84,7 @@ open class LuaTable : LuaValue, Metatable {
     constructor() {
         array = NOVALS
         hash = net.blueva.luak.LuaTable.Companion.NOBUCKETS
-        Memory.account(Memory.TABLE)
+        Memory.current.account(Memory.TABLE)
     }
 
     /**
@@ -168,7 +168,7 @@ open class LuaTable : LuaValue, Metatable {
             val was: Int = array.size
             array =
                 net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
-            Memory.account(Memory.SLOT * (array.size - was))
+            Memory.current.account(Memory.SLOT * (array.size - was))
         }
     }
 
@@ -188,7 +188,7 @@ open class LuaTable : LuaValue, Metatable {
         hash =
             (if (nhash > 0) arrayOfNulls<Slot>(1 shl net.blueva.luak.LuaTable.Companion.log2(nhash)) else net.blueva.luak.LuaTable.Companion.NOBUCKETS)
         hashEntries = 0
-        Memory.account(Memory.TABLE + Memory.SLOT * array.size + Memory.NODE * hash.size)
+        Memory.current.account(Memory.TABLE + Memory.SLOT * array.size + Memory.NODE * hash.size)
     }
 
     protected val arrayLengthValue: Int
@@ -769,8 +769,8 @@ open class LuaTable : LuaValue, Metatable {
         hashEntries -= movingToArray
         // Only what the table grew by: what it gave up is for the host to
         // reclaim, and the tally does not go down until a collection ends.
-        if (array.size > wasarray) Memory.account(Memory.SLOT * (array.size - wasarray))
-        if (hash.size > washash) Memory.account(Memory.NODE * (hash.size - washash))
+        if (array.size > wasarray) Memory.current.account(Memory.SLOT * (array.size - wasarray))
+        if (hash.size > washash) Memory.current.account(Memory.NODE * (hash.size - washash))
     }
 
     override fun entry(key: LuaValue?, value: LuaValue?): Slot? {

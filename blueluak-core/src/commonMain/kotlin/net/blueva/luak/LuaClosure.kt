@@ -125,7 +125,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         this.p = p
         this.initupvalue1(env)
         globals = env as? Globals
-        Memory.account(Memory.CLOSURE + Memory.UPVALUE * upValues.size)
+        Memory.current.account(Memory.CLOSURE + Memory.UPVALUE * upValues.size)
     }
 
     /** As the two-argument form, for a chunk whose environment is its own. */
@@ -256,6 +256,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // what a budget's ceiling is measured over; one made from inside Lua
         // spends the ceiling already in force. See Budget.
         if (outer == 0) globals?.budget?.refill()
+        // What this call allocates belongs to the state it runs in, whichever
+        // state ran before it; see Memory.current.
+        val outermemory: Memory = Memory.current
+        globals?.let { Memory.enter(it.memory) }
         state.noyield++
         try {
             enterforeign(state)
@@ -268,6 +272,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             return answer
         } finally {
             state.noyield--
+            Memory.enter(outermemory)
         }
     }
 
@@ -1674,13 +1679,16 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      */
     private fun buildVarargTable(varargs: Varargs, p: Prototype, stack: Array<LuaValue>) {
         val count: Int = varargs.narg()
-        val before: Long = Memory.accounted
+        // The one instance throughout, so that what is taken back below comes
+        // off the same tally it went on.
+        val memory: Memory = Memory.current
+        val before: Long = memory.accounted
         val table = LuaTable(count, 1)
         for (i in 1..count) table.set(i, varargs.arg(i)!!)
         table.set("n", count)
         // The arguments of a call are not an allocation of the program's; see
         // Memory.uncount.
-        Memory.uncount(Memory.accounted - before)
+        memory.uncount(memory.accounted - before)
         stack[p.numparams] = table
     }
 

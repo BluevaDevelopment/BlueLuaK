@@ -146,6 +146,70 @@ class Globals : LuaTable() {
     var budget: Budget? = null
 
     /**
+     * What this state's own Lua objects cost; see [Memory].
+     *
+     * One per state, so that two lanes in the same process neither see each
+     * other's `collectgarbage("count")` nor spend each other's ceiling.
+     */
+    internal val memory: Memory = Memory()
+
+    /**
+     * Loads a library into this state, charging what it builds to this state.
+     *
+     * The standard libraries are most of what a fresh state holds, so a host
+     * reading [memorycharged] or `collectgarbage("count")` should see them.
+     */
+    override fun load(library: LuaValue): LuaValue = Memory.charging(memory) { super.load(library) }
+
+    /**
+     * Bytes this state may be charged for before Lua in it fails, or 0 - the
+     * default - for no ceiling.
+     *
+     * This is what stops a plugin taking the process down by filling a table:
+     * past the ceiling, the allocation that crosses it raises `not enough
+     * memory`, the same error Lua raises when a real one runs out, and every
+     * allocation after it does the same until the host calls
+     * [startmemorycount].
+     *
+     * ### What the figure counts
+     *
+     * Bytes charged since [startmemorycount], using the sizes a reference
+     * build would use - so the ceiling is in the same units a script reads
+     * from `collectgarbage("count")`, and a host can set it from a figure it
+     * measured. It counts what was allocated, not what is still held: the
+     * host's collector is the one that reclaims here, and seven of the eight
+     * targets give no way to learn that a particular object has gone. A table
+     * that grows is charged once for each size it grows through, so for the
+     * runaway case the two figures are the same; a state that churns through
+     * short-lived tables is charged for them even after they are gone, and
+     * will reach the ceiling with less live than the ceiling says.
+     *
+     * That makes the ceiling a conservative one - it can arrive early, never
+     * late - so a long-lived state wants the host to call [startmemorycount]
+     * where it knows the lane is quiet, the way [Budget.instructions] is
+     * refilled per resumption.
+     *
+     * Deliberately out of Lua's own reach: `collectgarbage` in any of its
+     * forms clears the tally behind `collectgarbage("count")` and not this
+     * one, since a ceiling a script can clear by calling a standard-library
+     * function is not a ceiling.
+     */
+    var memoryceiling: Long
+        get() = memory.ceiling
+        set(value) {
+            memory.ceiling = if (value > 0) value else 0
+        }
+
+    /** Bytes charged to this state since [startmemorycount]; see [memoryceiling]. */
+    val memorycharged: Long
+        get() = memory.charged
+
+    /** Starts the tally [memoryceiling] is measured against again from nothing. */
+    fun startmemorycount() {
+        memory.startcounting()
+    }
+
+    /**
      * Objects the host has reclaimed whose `__gc` handler has still to run.
      *
      * Filled by the host, off whatever thread it reclaims on, and emptied here
@@ -191,8 +255,8 @@ class Globals : LuaTable() {
             // one: a program waiting for a finalizer to run has nothing else
             // to wait for, and the host collects when it sees fit rather than
             // when Lua would.
-            if (Memory.sincecollect < Memory.COLLECT_EVERY) return
-            Memory.collected()
+            if (memory.sincecollect < Memory.COLLECT_EVERY) return
+            memory.collected()
             platformCollectGarbage()
             due = takeFinalized(finalized)
             if (due.isEmpty()) return

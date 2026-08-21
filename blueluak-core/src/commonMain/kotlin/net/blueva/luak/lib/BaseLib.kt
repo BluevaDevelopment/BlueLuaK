@@ -260,10 +260,10 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             if ("collect".equals(s)) {
                 platformCollectGarbage()
                 baselib.globals!!.runfinalizers()
-                net.blueva.luak.Memory.collected()
+                baselib.globals!!.memory.collected()
                 return (ZERO)!!
             } else if ("count".equals(s)) {
-                val used: Long = net.blueva.luak.Memory.used()
+                val used: Long = baselib.globals!!.memory.used()
                 return (varargsOf(valueOf(used / 1024.0), valueOf((used % 1024).toInt())))!!
             } else if ("step".equals(s)) {
                 // A step of the size asked for, and the answer says whether it
@@ -280,15 +280,15 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                     return (LuaValue.FALSE)!!
                 }
                 net.blueva.luak.lib.BaseLib.collectgarbage.stepped = 0
-                net.blueva.luak.Memory.collected()
+                baselib.globals!!.memory.collected()
                 return (LuaValue.TRUE)!!
             } else if ("isrunning".equals(s)) {
-                return (valueOf(net.blueva.luak.Memory.running))!!
+                return (valueOf(baselib.globals!!.memory.running))!!
             } else if ("stop".equals(s)) {
-                net.blueva.luak.Memory.running = false
+                baselib.globals!!.memory.running = false
                 return (ZERO)!!
             } else if ("restart".equals(s)) {
-                net.blueva.luak.Memory.running = true
+                baselib.globals!!.memory.running = true
                 return (ZERO)!!
             } else if ("param".equals(s)) {
                 // The host collector is not tunable from here, so a parameter
