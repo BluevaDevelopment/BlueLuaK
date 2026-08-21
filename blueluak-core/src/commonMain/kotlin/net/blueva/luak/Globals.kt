@@ -214,6 +214,29 @@ class Globals : LuaTable() {
     }
 
     /**
+     * Refuses binary chunks in this state, however they are asked for.
+     *
+     * A binary chunk is trusted input: the undumper reads a format, not a
+     * language, and a reference build says outright that a malformed one can
+     * crash the interpreter - there is no amount of checking that makes
+     * arbitrary bytes safe to load as bytecode. A host taking chunks from
+     * somewhere it does not control wants them compiled from source and
+     * nothing else.
+     *
+     * With this set, every route into the loader behaves as though only `t`
+     * had been asked for. `load(s, name, "b")`, `load(s, name, "bt")` on a
+     * dump, `loadfile`, `dofile`, `require`, and the host's own
+     * [Globals.load] all answer Lua's own `attempt to load a binary chunk
+     * (mode is 't')` - which is the message a reference build gives when the
+     * mode rules a chunk out, so a script that already handles it needs no
+     * telling that it is running in a sandbox.
+     *
+     * Source still compiles as usual, and `string.dump` still produces a
+     * chunk; what is refused is reading one back.
+     */
+    var textonly: Boolean = false
+
+    /**
      * Seeds this state's `math.random`, as `math.randomseed(x, y)` would.
      *
      * A fresh state seeds itself from the host's own generator, which is
@@ -461,6 +484,10 @@ class Globals : LuaTable() {
     @kotlin.Throws(IOException::class)
     fun loadPrototype(`is`: InputStream, chunkname: String?, mode: String): Prototype? {
         var `is`: InputStream = `is`
+        // A state that refuses binary chunks refuses them however the mode was
+        // written, and reports the mode it went by rather than the one it was
+        // handed; see textonly.
+        val mode: String = if (textonly) mode.replace("b", "") else mode
         if (!`is`.markSupported()) `is` = net.blueva.luak.Globals.BufferedStream(`is`)
         `is`.mark(4)
         val first: Int = `is`.read()
