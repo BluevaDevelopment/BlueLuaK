@@ -26,11 +26,34 @@ package net.blueva.luak
  */
 open class Lua {
     companion object {
-    /** version is supplied by ant build task  */
-    val _VERSION: String = BuildInfo.VERSION
+    /** The Lua *language* version this runtime implements, as scripts see it in
+     * the `_VERSION` global. Lua programs branch on this
+     * (`if _VERSION == "Lua 5.5" then ...`) and the reference test suite reads
+     * it, so it must name the language and not the implementation. See
+     * [BLUELUAK_VERSION] for BlueLuaK's own release number.
+     *
+     * One 5.5 language feature is still missing behind this: a named vararg
+     * parameter, `function f(...t)`, whose table shares storage with `...` and
+     * so needs the 5.5 vararg model rather than the 5.2-shaped one the port is
+     * still on.  */
+    val _VERSION: String = "Lua 5.5"
+
+    /** BlueLuaK's own release, such as `"BlueLuaK 26.5"`. This is what tooling
+     * should report as the *engine* version; [_VERSION] is the language.  */
+    val BLUELUAK_VERSION: String = BuildInfo.VERSION
 
     /** use return values from previous op  */
     val LUA_MULTRET: Int = -1
+
+    /**
+     * Bit in `Prototype.is_vararg` marking a named vararg parameter.
+     *
+     * `function f(a, ...t)`, from Lua 5.5, binds the extra arguments to a
+     * table. The table and `...` are the same storage, so assigning `t[1]`
+     * changes what `...` yields, which is why the table is built once on entry
+     * and `...` is read back out of it.
+     */
+    const val VARARG_NAMED: Int = 2
 
 
     // from lopcodes.h
@@ -225,7 +248,30 @@ open class Lua {
 
     const val OP_EXTRAARG: Int = 39 /* Ax	extra (larger) argument for previous opcode	*/
 
-    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_EXTRAARG + 1
+    /* Opcodes added by the port past Lua 5.2. They are appended rather than
+       slotted into upstream's order so existing 5.2 bytecode keeps loading;
+       renumbering to match 5.5 belongs with the instruction-set rewrite. */
+    const val OP_IDIV: Int = 40 /*	A B C	R(A) := RK(B) // RK(C)				*/
+    const val OP_BAND: Int = 41 /*	A B C	R(A) := RK(B) & RK(C)				*/
+    const val OP_BOR: Int = 42 /*	A B C	R(A) := RK(B) | RK(C)				*/
+    const val OP_BXOR: Int = 43 /*	A B C	R(A) := RK(B) ~ RK(C)				*/
+    const val OP_SHL: Int = 44 /*	A B C	R(A) := RK(B) << RK(C)				*/
+    const val OP_SHR: Int = 45 /*	A B C	R(A) := RK(B) >> RK(C)				*/
+    const val OP_BNOT: Int = 46 /*	A B	R(A) := ~R(B)					*/
+
+    /** `A` - mark R(A) as a to-be-closed variable, from Lua 5.4's `<close>`. */
+    const val OP_TBC: Int = 47 /*	A	mark R(A) "to be closed"			*/
+
+    /**
+     * `A Bx` - raise an error if R(A) is not nil, from Lua 5.5's `global`.
+     *
+     * A `global x = v` declaration checks that the global is still unset
+     * before assigning it. `Kst(Bx - 1)` is the global's name, and `Bx == 0`
+     * means the name did not fit in the constant table.
+     */
+    const val OP_ERRNNIL: Int = 48 /*	A Bx	if R(A) ~= nil then error		*/
+
+    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_ERRNNIL + 1
 
     /* pseudo-opcodes used in parsing only.  */
     const val OP_GT: Int = 63 // >
@@ -309,6 +355,15 @@ open class Lua {
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABx),  /* OP_CLOSURE */
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_VARARG */
         (0 shl 7) or (0 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgU shl 2) or (net.blueva.luak.Lua.iAx),  /* OP_EXTRAARG */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_IDIV */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BAND */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BOR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BXOR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHL */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgR shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BNOT */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgN shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_TBC */
+        (0 shl 7) or (0 shl 6) or (net.blueva.luak.Lua.OpArgN shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABx),  /* OP_ERRNNIL */
     )
 
     fun getOpMode(m: Int): Int {
@@ -334,22 +389,43 @@ open class Lua {
     /* number of list items to accumulate before a SETLIST instruction */
     const val LFIELDS_PER_FLUSH: Int = 50
 
-    private const val MAXSRC = 80
+    /** Room for the identifier a chunk is named by, upstream's `LUA_IDSIZE`. */
+    private const val LUA_IDSIZE = 60
 
+    private const val CHUNKID_ELLIPSIS = "..."
+    private const val CHUNKID_PREFIX = "[string \""
+    private const val CHUNKID_SUFFIX = "\"]"
+
+    /**
+     * The name a chunk goes by in error messages, upstream's `luaO_chunkid`.
+     *
+     * A `=` source is taken literally, a `@` source is a file name and keeps
+     * its tail since the directories in front of it matter less, and anything
+     * else is source text, quoted and cut short at its first line.
+     */
     fun chunkid(source: String): String {
-        var source = source
-        if (source.startsWith("=")) return source.substring(1)
-        var end = ""
-        if (source.startsWith("@")) {
-            source = source.substring(1)
-        } else {
-            source = "[string \"" + source
-            end = "\"]"
+        val bufflen: Int = net.blueva.luak.Lua.LUA_IDSIZE
+        if (source.startsWith("=")) {
+            return if (source.length <= bufflen) source.substring(1) else source.substring(1, bufflen)
         }
-        val n: Int = source.length + end.length
-        if (n > net.blueva.luak.Lua.MAXSRC) source =
-            source.substring(0, net.blueva.luak.Lua.MAXSRC - end.length - 3) + "..."
-        return source + end
+        if (source.startsWith("@")) {
+            if (source.length <= bufflen) return source.substring(1)
+            return net.blueva.luak.Lua.CHUNKID_ELLIPSIS +
+                source.substring(1 + source.length - (bufflen - net.blueva.luak.Lua.CHUNKID_ELLIPSIS.length))
+        }
+        val newline: Int = source.indexOf('\n')
+        val room: Int = bufflen - (
+            net.blueva.luak.Lua.CHUNKID_PREFIX.length +
+                net.blueva.luak.Lua.CHUNKID_ELLIPSIS.length +
+                net.blueva.luak.Lua.CHUNKID_SUFFIX.length
+            ) - 1
+        if (source.length < room && newline < 0) {
+            return net.blueva.luak.Lua.CHUNKID_PREFIX + source + net.blueva.luak.Lua.CHUNKID_SUFFIX
+        }
+        var length: Int = if (newline >= 0) newline else source.length
+        if (length > room) length = room
+        return net.blueva.luak.Lua.CHUNKID_PREFIX + source.substring(0, length) +
+            net.blueva.luak.Lua.CHUNKID_ELLIPSIS + net.blueva.luak.Lua.CHUNKID_SUFFIX
     }
     }
 }

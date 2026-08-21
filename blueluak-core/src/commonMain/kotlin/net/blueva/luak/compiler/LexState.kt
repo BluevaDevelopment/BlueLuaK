@@ -59,6 +59,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal var dyd: Dyndata = net.blueva.luak.compiler.LexState.Dyndata() /* dynamic structures used by the parser */
     var source: LuaString? = null /* current source name */
     var envn: LuaString? = null /* environment variable name */
+
+    /** The name `global`, recognised as a statement without being reserved. */
+    private val glbn: LuaString = LuaString.valueOf("global")
     var decpoint: Byte = 0 /* locale decimal point */
 
     private fun isalnum(c: Int): Boolean {
@@ -113,20 +116,34 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
-    fun token2str(token: Int): String? {
+    /**
+     * How an error message names [token].
+     *
+     * Symbols and reserved words appear in quotes, since they are literal text
+     * a program could have written. The four that stand for a whole class of
+     * token - `<eof>`, `<number>`, `<name>`, `<string>` - do not, because the
+     * angle brackets already mark them as descriptions rather than text.
+     */
+    fun token2str(token: Int): String {
         if (token < net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED) {
-            return if (net.blueva.luak.compiler.LexState.Companion.iscntrl(token)) L!!.pushfstring("char(" + token + ")") else L!!.pushfstring(
-                (token.toChar()).toString()
-            )
-        } else {
-            return net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![token - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED]
+            return if (net.blueva.luak.compiler.LexState.Companion.iscntrl(token)) "'<\\" + token + ">'" else "'" + token.toChar() + "'"
         }
+        val text: String = net.blueva.luak.compiler.LexState.Companion.luaX_tokens!![token - net.blueva.luak.compiler.LexState.Companion.FIRST_RESERVED]!!
+        val describes: Boolean = token >= net.blueva.luak.compiler.LexState.Companion.TK_EOS && token <= net.blueva.luak.compiler.LexState.Companion.TK_STRING
+        return if (describes) text else "'" + text + "'"
     }
 
-    fun txtToken(token: Int): String? {
+    /**
+     * The text to put after "near" in an error message.
+     *
+     * A name, string or numeral is quoted as it was actually written, taken
+     * from the buffer the lexer has been filling; everything else is named the
+     * way [token2str] names it.
+     */
+    fun txtToken(token: Int): String {
         when (token) {
             net.blueva.luak.compiler.LexState.Companion.TK_NAME, net.blueva.luak.compiler.LexState.Companion.TK_STRING, net.blueva.luak.compiler.LexState.Companion.TK_NUMBER ->
-                return buff.concatToString(0, nbuff)
+                return "'" + buff.concatToString(0, nbuff) + "'"
 
             else -> return token2str(token)
         }
@@ -134,9 +151,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun lexerror(msg: String?, token: Int) {
         val cid: String? = Lua.chunkid(source!!.tojstring())
-        L!!.pushfstring(cid.toString() + ":" + linenumber + ": " + msg)
-        if (token != 0) L!!.pushfstring("syntax error: " + msg + " near " + txtToken(token))
-        throw LuaError(cid.toString() + ":" + linenumber + ": " + msg)
+        var full: String = cid.toString() + ":" + linenumber + ": " + msg
+        // "near <token>" says where the compiler was when it gave up, which is
+        // what the reader needs to find the problem.
+        if (token != 0) full = full + " near " + txtToken(token)
+        throw LuaError(full)
     }
 
     fun syntaxerror(msg: String?) {
@@ -175,8 +194,20 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         this.skipShebang()
     }
 
+    /**
+     * Skips a `#!` line, but only in a chunk that came from a file.
+     *
+     * Lua strips it while reading the file, before the lexer ever sees it, so
+     * `load("#=1")` is an ordinary chunk that starts with the length operator
+     * and fails to parse. A source name beginning with `@` is what marks a
+     * chunk as having been read from a file.
+     */
     private fun skipShebang() {
-        if (current == '#'.code) while (!currIsNewline() && current != net.blueva.luak.compiler.LexState.Companion.EOZ) nextChar()
+        val name: String = source?.tojstring() ?: return
+        if (!name.startsWith("@")) return
+        if (current == '#'.code) {
+            while (!currIsNewline() && current != net.blueva.luak.compiler.LexState.Companion.EOZ) nextChar()
+        }
     }
 
 
@@ -197,63 +228,18 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         while ((--n) >= 0) if (p[n] == from) p[n] = to
     }
 
-    internal fun strx2number(str: String, seminfo: SemInfo?): LuaValue {
-        val c: CharArray = str.toCharArray()
-        var s = 0
-        while (s < c.size && isspace(c[s].code)) ++s
-        // Check for negative sign
-        var sgn = 1.0
-        if (s < c.size && c[s] == '-') {
-            sgn = -1.0
-            ++s
-        }
-        /* Check for "0x" */
-        if (s + 2 >= c.size) return (LuaValue.ZERO)!!
-        if (c[s++] != '0') return (LuaValue.ZERO)!!
-        if (c[s] != 'x' && c[s] != 'X') return (LuaValue.ZERO)!!
-        ++s
-
-        // read integer part.
-        var m = 0.0
-        var e = 0
-        while (s < c.size && isxdigit(c[s].code)) m = (m * 16) + hexvalue(c[s++].code)
-        if (s < c.size && c[s] == '.') {
-            ++s // skip dot
-            while (s < c.size && isxdigit(c[s].code)) {
-                m = (m * 16) + hexvalue(c[s++].code)
-                e -= 4 // Each fractional part shifts right by 2^4
-            }
-        }
-        if (s < c.size && (c[s] == 'p' || c[s] == 'P')) {
-            ++s
-            var exp1 = 0
-            var neg1 = false
-            if (s < c.size && c[s] == '-') {
-                neg1 = true
-                ++s
-            }
-            while (s < c.size && isdigit(c[s].code)) exp1 = exp1 * 10 + c[s++].code - '0'.code
-            if (neg1) exp1 = -exp1
-            e += exp1
-        }
-        return LuaValue.valueOf(sgn * m * MathLib.dpow_d(2.0, (e).toDouble()))
-    }
-
     internal fun str2d(str: String, seminfo: SemInfo): Boolean {
-        if (str.indexOf('n') >= 0 || str.indexOf('N') >= 0) seminfo.r = LuaValue.ZERO
-        else if (str.indexOf('x') >= 0 || str.indexOf('X') >= 0) seminfo.r = strx2number(str, seminfo)
-        else {
-            try {
-                seminfo.r = LuaValue.valueOf((str.trim()).toDouble())
-            } catch (e: NumberFormatException) {
-                lexerror(
-                    "malformed number (" + e.message + ")",
-                    net.blueva.luak.compiler.LexState.Companion.TK_NUMBER
-                )
+        // The same reader the `tonumber` coercion uses, so a literal and its
+        // text form cannot disagree about whether they are integers.
+        val numeral: LuaValue = net.blueva.luak.NumberParser.parse(str.trim())
+            ?: run {
+                lexerror("malformed number", net.blueva.luak.compiler.LexState.Companion.TK_NUMBER)
+                return false
             }
-        }
+        seminfo.r = numeral
         return true
     }
+
 
     internal fun read_numeral(seminfo: SemInfo) {
         var expo = "Ee"
@@ -266,6 +252,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             if (isxdigit(current) || current == '.'.code) save_and_next()
             else break
         }
+        // A letter touching the numeral is part of the mistake, so it is taken
+        // into the token and the message can name what was actually written.
+        if (isalpha(current)) save_and_next()
         val str = buff.concatToString(0, nbuff)
         str2d(str, seminfo)
     }
@@ -337,16 +326,63 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         return if (c <= '9'.code) c - '0'.code else if (c <= 'F'.code) c + 10 - 'A'.code else c + 10 - 'a'.code
     }
 
+    /** Drops the last [n] characters the lexer saved. */
+    private fun buffremove(n: Int) {
+        nbuff -= n
+    }
+
+    /**
+     * Fails with [msg] unless [ok], keeping the offending character.
+     *
+     * The character is added to the buffer first so that the "near" part of
+     * the message shows what was actually written.
+     */
+    private fun esccheck(ok: Boolean, msg: String) {
+        if (!ok) {
+            if (current != net.blueva.luak.compiler.LexState.Companion.EOZ) save_and_next()
+            lexerror(msg, net.blueva.luak.compiler.LexState.Companion.TK_STRING)
+        }
+    }
+
+    /** One hexadecimal digit of an escape, left in the buffer for errors. */
+    private fun gethexa(): Int {
+        save_and_next()
+        esccheck(isxdigit(current), "hexadecimal digit expected")
+        return hexvalue(current)
+    }
+
     fun readhexaesc(): Int {
-        nextChar()
-        val c1 = current
-        nextChar()
-        val c2 = current
-        if (!isxdigit(c1) || !isxdigit(c2)) lexerror(
-            "hexadecimal digit expected 'x" + (c1.toChar()) + (c2.toChar()),
-            net.blueva.luak.compiler.LexState.Companion.TK_STRING
-        )
-        return (hexvalue(c1) shl 4) + hexvalue(c2)
+        var r: Int = gethexa()
+        r = (r shl 4) + gethexa()
+        buffremove(2) // the two digits were only kept in case of an error
+        return r
+    }
+
+    /**
+     * Reads a `\u{XXX}` escape and saves its UTF-8 encoding.
+     *
+     * Added in Lua 5.3. The braces hold at least one hexadecimal digit, and the
+     * value may reach `0x7FFFFFFF`, which needs the six-byte form the encoder
+     * in [net.blueva.luak.lib.Utf8Lib] also produces.
+     */
+    internal fun readutf8esc() {
+        var removed = 4 /* '\\', 'u', '{', and the first digit */
+        save_and_next() /* keep 'u' */
+        esccheck(current == '{'.code, "missing '{' in \\u{xxxx}")
+        var value: Long = gethexa().toLong() /* at least one digit is required */
+        while (true) {
+            save_and_next()
+            if (!isxdigit(current)) break
+            removed++
+            esccheck(value <= (0x7FFFFFFFL shr 4), "UTF-8 value too large")
+            value = (value shl 4) + hexvalue(current).toLong()
+        }
+        esccheck(current == '}'.code, "missing '}'")
+        nextChar() /* skip '}' */
+        buffremove(removed)
+        val encoded = ArrayList<Byte>()
+        net.blueva.luak.lib.Utf8Lib.encode(value, encoded, 1)
+        for (b in encoded) save(b.toInt() and 0xFF)
     }
 
     internal fun read_string(del: Int, seminfo: SemInfo) {
@@ -365,7 +401,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
                 '\\'.code -> {
                     var c: Int
-                    nextChar() /* do not save the `\' */
+                    save_and_next() /* keep the backslash for error messages */
                     when (current) {
                         'a'.code -> c = '\u0007'.code
                         'b'.code -> c = '\b'.code
@@ -374,16 +410,30 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                         'r'.code -> c = '\r'.code
                         't'.code -> c = '\t'.code
                         'v'.code -> c = '\u000B'.code
-                        'x'.code -> c = readhexaesc()
+                        'x'.code -> {
+                            c = readhexaesc()
+                            nextChar()
+                            buffremove(1) /* the backslash */
+                            save(c)
+                            continue
+                        }
+
+                        'u'.code -> {
+                            readutf8esc()
+                            continue
+                        }
+
                         '\n'.code, '\r'.code -> {
-                            save('\n'.code)
                             inclinenumber()
+                            buffremove(1)
+                            save('\n'.code)
                             continue
                         }
 
                         net.blueva.luak.compiler.LexState.Companion.EOZ -> continue  /* will raise an error next loop */
                         'z'.code -> {
                             /* zap following span of spaces */
+                            buffremove(1) /* the backslash */
                             nextChar() /* skip the 'z' */
                             while (isspace(current)) {
                                 if (currIsNewline()) inclinenumber()
@@ -393,25 +443,32 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                         }
 
                         else -> {
-                            if (!isdigit(current)) save_and_next() /* handles \\, \", \', and \? */
-                            else { /* \xxx */
+                            if (!isdigit(current)) {
+                                esccheck(
+                                    current == '\\'.code || current == '"'.code ||
+                                        current == '\''.code,
+                                    "invalid escape sequence",
+                                )
+                                buffremove(1) /* the backslash */
+                                save_and_next() /* handles \\, \" and \' */
+                            } else { /* \ddd */
                                 var i = 0
                                 c = 0
-                                do {
+                                while (i < 3 && isdigit(current)) {
                                     c = 10 * c + (current - '0'.code)
-                                    nextChar()
-                                } while (++i < 3 && isdigit(current))
-                                if (c > net.blueva.luak.compiler.LexState.Companion.UCHAR_MAX) lexerror(
-                                    "escape sequence too large",
-                                    net.blueva.luak.compiler.LexState.Companion.TK_STRING
-                                )
+                                    save_and_next()
+                                    i++
+                                }
+                                esccheck(c <= net.blueva.luak.compiler.LexState.Companion.UCHAR_MAX, "decimal escape too large")
+                                buffremove(i + 1) /* the digits and the backslash */
                                 save(c)
                             }
                             continue
                         }
                     }
-                    save(c)
                     nextChar()
+                    buffremove(1) /* the backslash */
+                    save(c)
                     continue
                 }
 
@@ -488,19 +545,32 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
                 '<'.code -> {
                     nextChar()
-                    if (current != '='.code) return '<'.code
-                    else {
+                    if (current == '='.code) {
                         nextChar()
                         return net.blueva.luak.compiler.LexState.Companion.TK_LE
-                    }
+                    } else if (current == '<'.code) {
+                        nextChar()
+                        return net.blueva.luak.compiler.LexState.Companion.TK_SHL
+                    } else return '<'.code
                 }
 
                 '>'.code -> {
                     nextChar()
-                    if (current != '='.code) return '>'.code
-                    else {
+                    if (current == '='.code) {
                         nextChar()
                         return net.blueva.luak.compiler.LexState.Companion.TK_GE
+                    } else if (current == '>'.code) {
+                        nextChar()
+                        return net.blueva.luak.compiler.LexState.Companion.TK_SHR
+                    } else return '>'.code
+                }
+
+                '/'.code -> {
+                    nextChar()
+                    if (current != '/'.code) return '/'.code
+                    else {
+                        nextChar()
+                        return net.blueva.luak.compiler.LexState.Companion.TK_IDIV
                     }
                 }
 
@@ -609,11 +679,22 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val u: U = net.blueva.luak.compiler.LexState.expdesc.U()
         val t: IntPtr = IntPtr() /* patch list of `exit when true' */
         val f: IntPtr = IntPtr() /* patch list of `exit when false' */
+
+        /**
+         * The name of the `global <const>` this expression reads, if any.
+         *
+         * A read-only global is an ordinary `_ENV[name]` index once compiled,
+         * so the only place the restriction survives is here, on the
+         * expression the parser hands to [check_readonly].
+         */
+        var readonlyGlobal: LuaString? = null
+
         fun init(k: Int, i: Int) {
             this.f.i = net.blueva.luak.compiler.LexState.Companion.NO_JUMP
             this.t.i = net.blueva.luak.compiler.LexState.Companion.NO_JUMP
             this.k = k
             this.u.info = i
+            this.readonlyGlobal = null
         }
 
         fun hasjumps(): Boolean {
@@ -625,6 +706,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
 
         fun setvalue(other: expdesc) {
+            this.readonlyGlobal = other.readonlyGlobal
             this.f.i = other.f.i
             this.k = other.k
             this.t.i = other.t.i
@@ -641,6 +723,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal class Vardesc(idx: Int) {
         val idx: Short /* variable index in stack */
 
+        /** How the variable was declared: plain, `<const>`, or `<close>`. */
+        var kind: Int = net.blueva.luak.compiler.LexState.Companion.VDKREG
+
         init {
             this.idx = idx.toShort()
         }
@@ -648,17 +733,27 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
 
     /* description of pending goto statements and label statements */
-    internal class Labeldesc(name: LuaString?, pc: Int, line: Int, nactvar: Short) {
+    internal class Labeldesc(
+        name: LuaString?,
+        pc: Int,
+        line: Int,
+        nactvar: Short,
+        nglobals: Int = 0,
+    ) {
         var name: LuaString? /* label identifier */
         var pc: Int /* position in code */
         var line: Int /* line where it appeared */
         var nactvar: Short /* local level where it appears in current block */
+
+        /** How many `global` declarations were in scope where this appeared. */
+        var nglobals: Int
 
         init {
             this.name = name
             this.pc = pc
             this.line = line
             this.nactvar = nactvar
+            this.nglobals = nglobals
         }
     }
 
@@ -694,15 +789,16 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     /* semantic error */
     fun semerror(msg: String?) {
         t.token = 0 /* remove 'near to' from final message */
+        // Something already read is what is wrong, not whatever the lexer has
+        // gone on to look at: a complaint about the end of a statement belongs
+        // on the line the statement is on.
+        linenumber = lastline
         syntaxerror(msg)
     }
 
     fun error_expected(token: Int) {
-        syntaxerror(
-            L!!.pushfstring(
-                net.blueva.luak.compiler.LexState.Companion.LUA_QS(token2str(token)).toString() + " expected"
-            )
-        )
+        // token2str already quotes whatever needs quoting.
+        syntaxerror(token2str(token) + " expected")
     }
 
     fun testnext(c: Int): Boolean {
@@ -730,13 +826,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         if (!testnext(what)) {
             if (where == linenumber) error_expected(what)
             else {
+                // token2str already quotes what it names, so nothing is
+                // added around it here.
                 syntaxerror(
                     L!!.pushfstring(
-                        (net.blueva.luak.compiler.LexState.Companion.LUA_QS(token2str(what))
-                            .toString() + " expected " + "(to close " + net.blueva.luak.compiler.LexState.Companion.LUA_QS(
-                            token2str(who)
-                        )
-                                + " at line " + where + ")")
+                        token2str(what) + " expected (to close " + token2str(who) +
+                            " at line " + where + ")",
                     )
                 )
             }
@@ -770,7 +865,10 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     fun new_localvar(name: LuaString?) {
         val reg = registerlocalvar(name)
-        fs!!.checklimit(dyd.n_actvar + 1, LUAI_MAXVARS, "local variables")
+        // Counted within this function alone: the array holds the variables
+        // of every function being compiled, and a function nested in another
+        // starts where the one around it left off.
+        fs!!.checklimit(dyd.n_actvar + 1 - fs!!.firstlocal, LUAI_MAXVARS, "local variables")
         if (dyd.actvar == null || dyd.n_actvar + 1 > dyd.actvar!!.size) dyd.actvar =
             realloc(dyd.actvar, maxOf(1, dyd.n_actvar * 2))
         dyd.actvar!![dyd.n_actvar++] = net.blueva.luak.compiler.LexState.Vardesc(reg)
@@ -779,6 +877,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun new_localvarliteral(v: String?) {
         val ts: LuaString = newstring(v)
         new_localvar(ts)
+    }
+
+    /** Declares a local with a kind other than the plain one. */
+    fun new_varkind(name: LuaString?, kind: Int) {
+        new_localvar(name)
+        dyd.actvar!![dyd.n_actvar - 1]!!.kind = kind
     }
 
     fun adjustlocalvars(nvars: Int) {
@@ -800,21 +904,50 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun singlevar(`var`: expdesc) {
-        val varname: LuaString? = this.str_checkname()
+        this.buildvar(this.str_checkname()!!, `var`)
+    }
+
+    /**
+     * Resolves [varname], which may turn out to be a local, an upvalue or a
+     * global, and leaves the expression for it in [var].
+     *
+     * With no `global` declaration anywhere in scope every name that is not a
+     * local is a global, which is how Lua has always behaved. Once a `global`
+     * statement names anything, the rest of the scope - inner functions
+     * included - has to declare what it uses, unless a collective `global *`
+     * is also in scope, which puts the default back.
+     */
+    internal fun buildvar(varname: LuaString, `var`: expdesc) {
         val fs: FuncState = this.fs!!
-        if (FuncState.singlevaraux(
-                fs,
-                (varname)!!,
-                `var`,
-                1
-            ) === net.blueva.luak.compiler.LexState.Companion.VVOID
-        ) { /* global name? */
-            val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-            FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1) /* get environment variable */
-            _assert(`var`.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL || `var`.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL)
-            this.codestring(key, varname) /* key is variable name */
-            fs.indexed(`var`, key) /* env[varname] */
+        val search = FuncState.Globalsearch()
+        val resolved: Int = FuncState.singlevaraux(fs, varname, `var`, 1, search)
+        if (resolved != net.blueva.luak.compiler.LexState.Companion.VVOID) return
+        val declaration: FuncState.Globaldesc? = search.found ?: search.collective
+        if (declaration == null && search.named) {
+            this.semerror("variable '" + varname.tojstring() + "' not declared")
         }
+        this.buildglobal(varname, `var`)
+        if (declaration != null && declaration.readonly) `var`.readonlyGlobal = varname
+    }
+
+    /**
+     * Builds the expression `_ENV[varname]`, which is what a global name is.
+     */
+    private fun buildglobal(varname: LuaString, `var`: expdesc) {
+        val fs: FuncState = this.fs!!
+        val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        val search = FuncState.Globalsearch()
+        // Every global is read through _ENV, so _ENV itself cannot be one: the
+        // lookup would have nowhere to start.
+        if (FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1, search) ==
+            net.blueva.luak.compiler.LexState.Companion.VVOID
+        ) {
+            this.semerror(
+                "_ENV is global when accessing variable '" + varname.tojstring() + "'",
+            )
+        }
+        this.codestring(key, varname) /* key is variable name */
+        fs.indexed(`var`, key) /* env[varname] */
     }
 
     internal fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
@@ -854,11 +987,20 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val gl = this.dyd.gt
         val gt = gl[g]!!
         _assert(gt.name!!.eq_b(label.name))
+        // A `global` declaration opens a scope of its own, so jumping past one
+        // is as wrong as jumping past a local.
+        if (gt.nglobals < label.nglobals) {
+            val declared: LuaString? = fs.globals[gt.nglobals].name
+            semerror(
+                "<goto " + gt.name + "> at line " + gt.line +
+                    " jumps into the scope of '" + (declared?.tojstring() ?: "*") + "'",
+            )
+        }
         if (gt.nactvar < label.nactvar) {
             val vname: LuaString = fs.getlocvar((gt.nactvar).toInt()).varname!!
             val msg: String? = L!!.pushfstring(
                 ("<goto " + gt.name + "> at line "
-                        + gt.line + " jumps into the scope of local '"
+                        + gt.line + " jumps into the scope of '"
                         + vname.tojstring() + "'")
             )
             semerror(msg)
@@ -895,7 +1037,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     /* Caller must grow() the vector before calling this. */
     internal fun newlabelentry(l: Array<Labeldesc?>, index: Int, name: LuaString?, line: Int, pc: Int): Int {
-        l[index] = net.blueva.luak.compiler.LexState.Labeldesc(name, pc, line, fs!!.nactvar)
+        l[index] = net.blueva.luak.compiler.LexState.Labeldesc(
+            name,
+            pc,
+            line,
+            fs!!.nactvar,
+            fs!!.globals.size,
+        )
         return index
     }
 
@@ -967,6 +1115,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         fs.nlocvars = 0
         fs.nactvar = 0
         fs.firstlocal = dyd.n_actvar
+        fs.firstlabel = dyd.n_label
         fs.bl = null
         fs.f!!.source = this.source
         fs.f!!.maxstacksize = 2 /* registers 0/1 are always valid */
@@ -1114,9 +1263,25 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     }
 
                     net.blueva.luak.compiler.LexState.Companion.TK_DOTS -> {
-                        /* param . `...' */
+                        /* param . `...' or `...NAME' */
                         this.next()
                         f.is_vararg = 1
+                        if (this.t.token == net.blueva.luak.compiler.LexState.Companion.TK_NAME) {
+                            // The extra arguments also get a name, holding them
+                            // as a table alongside '...'. The name is read-only:
+                            // rebinding it would break the link to '...'.
+                            this.new_localvar(this.str_checkname())
+                            this.dyd!!.actvar!![this.dyd!!.n_actvar - 1]!!.kind =
+                                net.blueva.luak.compiler.LexState.Companion.RDKCONST
+                            f.is_vararg = 1 or Lua.VARARG_NAMED
+                        } else {
+                            // The slot exists either way, named or not: a
+                            // vararg function always has somewhere to put the
+                            // table, and code that walks the locals sees it.
+                            this.new_localvarliteral(
+                                net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_VARARGS,
+                            )
+                        }
                     }
 
                     else -> this.syntaxerror("<name> or " + net.blueva.luak.compiler.LexState.Companion.LUA_QL("...") + " expected")
@@ -1124,7 +1289,16 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             } while ((f.is_vararg === 0) && this.testnext(','.code))
         }
         this.adjustlocalvars(nparams)
+        // The vararg table is a local of its own, and comes into scope after
+        // the count of declared parameters has been taken.
         f.numparams = fs.nactvar.toInt()
+        if (f.is_vararg != 0) {
+            this.adjustlocalvars(1)
+            // In scope only once the call has been set up, which is when the
+            // extra arguments exist: asking a function value for its locals
+            // reads them at the very start and must not see this one.
+            fs.getlocvar(fs.nactvar - 1).startpc = 1
+        }
         fs.reserveregs((fs.nactvar).toInt()) /* reserve register for parameters */
     }
 
@@ -1167,8 +1341,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
-    internal fun funcargs(f: expdesc, line: Int) {
+    internal fun funcargs(f: expdesc) {
         val fs: FuncState = this.fs!!
+        // Where the arguments start, which is the line a call reports itself
+        // on: a call written over several lines is the one at its '(', not the
+        // one where the expression naming the function began.
+        val line: Int = linenumber
         val args: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         val base: Int
         val nparams: Int
@@ -1238,7 +1416,8 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             }
 
             else -> {
-                this.syntaxerror("unexpected symbol " + t.token + " (" + (t.token.toChar()) + ")")
+                // The offending token is named by the "near" part already.
+                this.syntaxerror("unexpected symbol")
                 return
             }
         }
@@ -1248,7 +1427,6 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal fun suffixedexp(v: expdesc) {
         /* suffixedexp ->
        	primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
-        val line = linenumber
         primaryexp(v)
         while (true) {
             when (t.token) {
@@ -1271,13 +1449,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                     this.next()
                     this.checkname(key)
                     fs!!.self(v, key)
-                    this.funcargs(v, line)
+                    this.funcargs(v)
                 }
 
                 '('.code, net.blueva.luak.compiler.LexState.Companion.TK_STRING, '{'.code -> {
                     /* funcargs */
                     fs!!.exp2nextreg(v)
-                    this.funcargs(v, line)
+                    this.funcargs(v)
                 }
 
                 else -> return
@@ -1349,6 +1527,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             net.blueva.luak.compiler.LexState.Companion.TK_NOT -> return net.blueva.luak.compiler.LexState.Companion.OPR_NOT
             '-'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MINUS
             '#'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_LEN
+            '~'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_BNOT
             else -> return net.blueva.luak.compiler.LexState.Companion.OPR_NOUNOPR
         }
     }
@@ -1360,6 +1539,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             '-'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_SUB
             '*'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MUL
             '/'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_DIV
+            net.blueva.luak.compiler.LexState.Companion.TK_IDIV -> return net.blueva.luak.compiler.LexState.Companion.OPR_IDIV
+            '&'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_BAND
+            '|'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_BOR
+            '~'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_BXOR
+            net.blueva.luak.compiler.LexState.Companion.TK_SHL -> return net.blueva.luak.compiler.LexState.Companion.OPR_SHL
+            net.blueva.luak.compiler.LexState.Companion.TK_SHR -> return net.blueva.luak.compiler.LexState.Companion.OPR_SHR
             '%'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_MOD
             '^'.code -> return net.blueva.luak.compiler.LexState.Companion.OPR_POW
             net.blueva.luak.compiler.LexState.Companion.TK_CONCAT -> return net.blueva.luak.compiler.LexState.Companion.OPR_CONCAT
@@ -1507,6 +1692,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             net.blueva.luak.compiler.LexState.Companion.VLOCAL <= lh.v.k && lh.v.k <= net.blueva.luak.compiler.LexState.Companion.VINDEXED,
             "syntax error"
         )
+        this.check_readonly(lh.v)
         if (this.testnext(','.code)) {  /* assignment -> `,' primaryexp assignment */
             val nv: LHS_assign = net.blueva.luak.compiler.LexState.LHS_assign()
             nv.prev = lh
@@ -1566,8 +1752,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     fun labelstat(label: LuaString?, line: Int) {
         /* label -> '::' NAME '::' */
         val l: Int /* index of new label being created */
-        fs!!.checkrepeated(dyd.label, dyd.n_label, (label)!!) /* check for repeated labels */
         checknext(net.blueva.luak.compiler.LexState.Companion.TK_DBCOLON) /* skip double colon */
+        // Read before the label is checked or entered: a run of labels one
+        // after another is a single no-op, and the one that ends up entered is
+        // the last of them.
+        skipnoopstat() /* skip other no-op statements */
+        fs!!.checkrepeated(dyd.label, dyd.n_label, (label)!!) /* check for repeated labels */
         /* create new entry for this label */
         l = newlabelentry(
             grow(dyd.label, dyd.n_label + 1).also { dyd.label = it },
@@ -1576,7 +1766,6 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             line,
             fs!!.getlabel()
         )
-        skipnoopstat() /* skip other no-op statements */
         if (block_follow(false)) {  /* label is last no-op statement in the block? */
             /* assume that locals are already out of scope */
             dyd.label[l]!!.nactvar = fs!!.bl!!.nactvar
@@ -1649,7 +1838,16 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val fs: FuncState = this.fs!!
         val prep: Int
         val endfor: Int
-        this.adjustlocalvars(3) /* control variables */
+        // A generic for has a fourth control value, closed when the loop ends,
+        // which is how it can own the resource its iterator walks.
+        this.adjustlocalvars(if (isnum) 3 else 4) /* control variables */
+        // The mark goes in whatever the iterator turns out to return, since
+        // how many values it produces is not known until it runs; a fourth
+        // value of nil or false is skipped when the instruction executes.
+        if (!isnum) {
+            fs.markblocktobeclosed()
+            fs.codeABC(Lua.OP_TBC, base + 3, 0, 0)
+        }
         this.checknext(net.blueva.luak.compiler.LexState.Companion.TK_DO)
         prep = if (isnum) fs.codeAsBx(
             Lua.OP_FORPREP,
@@ -1678,10 +1876,12 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         /* fornum -> NAME = exp1,exp1[,exp1] forbody */
         val fs: FuncState = this.fs!!
         val base: Int = fs.freereg.toInt()
+        // The loop's own variable is a constant: Lua 5.5 refuses an
+        // assignment to it, since the loop overwrites it every pass anyway.
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_LIMIT)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STEP)
-        this.new_localvar(varname)
+        this.new_varkind(varname, net.blueva.luak.compiler.LexState.Companion.RDKCONST)
         this.checknext('='.code)
         this.exp1() /* initial value */
         this.checknext(','.code)
@@ -1699,24 +1899,28 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         /* forlist -> NAME {,NAME} IN explist1 forbody */
         val fs: FuncState = this.fs!!
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        var nvars = 4 /* gen, state, control, plus at least one declared var */
+        var nvars = 5 /* gen, state, control, closing, plus one declared var */
         val line: Int
         val base: Int = fs.freereg.toInt()
         /* create control variables */
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_GENERATOR)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_STATE)
         this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CONTROL)
+        this.new_localvarliteral(net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CLOSING)
         /* create declared variables */
-        this.new_localvar(indexname)
+        // The first one is the control variable, which the loop overwrites
+        // every pass, so Lua 5.5 refuses an assignment to it.
+        this.new_varkind(indexname, net.blueva.luak.compiler.LexState.Companion.RDKCONST)
         while (this.testnext(','.code)) {
             this.new_localvar(this.str_checkname())
             ++nvars
         }
         this.checknext(net.blueva.luak.compiler.LexState.Companion.TK_IN)
         line = this.linenumber
-        this.adjust_assign(3, this.explist(e), e)
+        val nexps: Int = this.explist(e)
+        this.adjust_assign(4, nexps, e)
         fs.checkstack(3) /* extra space to call generator */
-        this.forbody(base, line, nvars - 3, false)
+        this.forbody(base, line, nvars - 4, false)
     }
 
 
@@ -1745,36 +1949,28 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
 
+    /**
+     * `test_then_block -> [IF | ELSEIF] cond THEN block`
+     *
+     * Lua 5.2 had a special case here for a `goto` or `break` written as the
+     * first statement after `then`, which registered any labels that followed
+     * it before emitting the jump that skips the block - so a label could end
+     * up pointing at that jump. 5.5 dropped it; the ordinary block handles the
+     * same code correctly.
+     */
     fun test_then_block(escapelist: IntPtr?) {
-        /* test_then_block -> [IF | ELSEIF] cond THEN block */
         val v: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-        val bl: BlockCnt = BlockCnt()
-        val jf: Int /* instruction to skip 'then' code (if condition is false) */
         this.next() /* skip IF or ELSEIF */
-        expr(v) /* read expression */
+        expr(v) /* read condition */
+        if (v.k == net.blueva.luak.compiler.LexState.Companion.VNIL) v.k = net.blueva.luak.compiler.LexState.Companion.VFALSE /* 'falses' are all equal here */
+        fs!!.goiftrue(v)
+        val condtrue: Int = v.f.i
         this.checknext(net.blueva.luak.compiler.LexState.Companion.TK_THEN)
-        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_GOTO || t.token == net.blueva.luak.compiler.LexState.Companion.TK_BREAK) {
-            fs!!.goiffalse(v) /* will jump to label if condition is true */
-            fs!!.enterblock(bl, false) /* must enter block before 'goto' */
-            gotostat(v.t.i) /* handle goto/break */
-            skipnoopstat() /* skip other no-op statements */
-            if (block_follow(false)) { /* 'goto' is the entire block? */
-                fs!!.leaveblock()
-                return  /* and that is it */
-            } else  /* must skip over 'then' part if condition is false */
-                jf = fs!!.jump()
-        } else { /* regular case (not goto/break) */
-            fs!!.goiftrue(v) /* skip over block if condition is false */
-            fs!!.enterblock(bl, false)
-            jf = v.f.i
+        this.block() /* 'then' part */
+        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSE || t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSEIF) {
+            fs!!.concat((escapelist)!!, fs!!.jump()) /* must jump over it */
         }
-        statlist() /* `then' part */
-        fs!!.leaveblock()
-        if (t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSE || t.token == net.blueva.luak.compiler.LexState.Companion.TK_ELSEIF) fs!!.concat(
-            (escapelist)!!,
-            fs!!.jump()
-        ) /* must jump over it */
-        fs!!.patchtohere(jf)
+        fs!!.patchtohere(condtrue)
     }
 
 
@@ -1804,12 +2000,26 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
 
     fun localstat() {
-        /* stat -> LOCAL NAME {`,' NAME} [`=' explist1] */
+        /* stat -> LOCAL attrib NAME attrib {`,' NAME attrib} [`=' explist1] */
+        val fs: FuncState = this.fs!!
         var nvars = 0
+        var toclose = -1 /* index, among the new variables, of the <close> one */
         val nexps: Int
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        /* an attribute before the names is the default for all of them */
+        val defaultkind: Int = this.getlocalattribute(net.blueva.luak.compiler.LexState.Companion.VDKREG)
         do {
             this.new_localvar(this.str_checkname())
+            val kind = this.getlocalattribute(defaultkind)
+            this.dyd!!.actvar!![this.dyd!!.n_actvar - 1]!!.kind = kind
+            if (kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE) {
+                // One per statement: closing runs in reverse declaration order,
+                // which a single statement has no way to express for two.
+                if (toclose != -1) {
+                    this.semerror("multiple to-be-closed variables in local list")
+                }
+                toclose = fs.nactvar + nvars
+            }
             ++nvars
         } while (this.testnext(','.code))
         if (this.testnext('='.code)) nexps = this.explist(e)
@@ -1819,8 +2029,200 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
         this.adjust_assign(nvars, nexps, e)
         this.adjustlocalvars(nvars)
+        if (toclose != -1) {
+            // The enclosing block has to be left through a closing jump now,
+            // the same one that closes upvalues, so leaving it by any route
+            // runs the variable's __close.
+            fs.markblocktobeclosed()
+            fs.codeABC(Lua.OP_TBC, toclose, 0, 0)
+        }
     }
 
+
+    /**
+     * `attrib -> ['<' NAME '>']`, giving the kind of the local just declared.
+     *
+     * `<const>` marks the variable read-only, which is enforced in
+     * [check_readonly]. `<close>` does the same and additionally has the value
+     * registered as to-be-closed, so that leaving the block by any route runs
+     * its `__close` metamethod.
+     */
+    /** True when what follows `global` can only be a declaration. */
+    private fun startsglobalstat(): Boolean {
+        this.lookahead()
+        val next: Int = this.lookahead.token
+        return next == '<'.code || next == '*'.code ||
+            next == net.blueva.luak.compiler.LexState.Companion.TK_NAME ||
+            next == net.blueva.luak.compiler.LexState.Companion.TK_FUNCTION
+    }
+
+    /**
+     * `globalstatfunc -> GLOBAL (globalfunc | globalstat)`, from Lua 5.5.
+     *
+     * A `global` declaration says which globals a chunk means to use. Once one
+     * names anything, every other free name in the scope has to be declared as
+     * well, which turns a misspelt global from a silent nil into a compile
+     * error. `global *` declares them all and puts the old default back.
+     */
+    internal fun globalstatfunc(line: Int) {
+        this.next() /* skip 'global' */
+        if (this.testnext(net.blueva.luak.compiler.LexState.Companion.TK_FUNCTION)) this.globalfunc(line)
+        else this.globalstat()
+    }
+
+    /**
+     * `globalstat -> attrib '*' | attrib NAME attrib {',' NAME attrib} ['=' explist]`
+     */
+    private fun globalstat() {
+        val fs: FuncState = this.fs!!
+        /* an attribute before the names is the default for all of them */
+        val defaultkind: Int = this.getglobalattribute(net.blueva.luak.compiler.LexState.Companion.VDKREG)
+        if (this.testnext('*'.code)) {
+            fs.globals.add(
+                FuncState.Globaldesc(
+                    null,
+                    defaultkind == net.blueva.luak.compiler.LexState.Companion.RDKCONST,
+                    fs.nactvar.toInt(),
+                ),
+            )
+            return
+        }
+        val names: ArrayList<LuaString> = ArrayList()
+        val readonly: ArrayList<Boolean> = ArrayList()
+        do {
+            val varname: LuaString = this.str_checkname()!!
+            val kind: Int = this.getglobalattribute(defaultkind)
+            names.add(varname)
+            readonly.add(kind == net.blueva.luak.compiler.LexState.Companion.RDKCONST)
+        } while (this.testnext(','.code))
+        if (this.testnext('='.code)) this.initglobal(names, 0, this.linenumber)
+        /* the names come into scope only after their own initializers */
+        for (i in names.indices) {
+            fs.globals.add(FuncState.Globaldesc(names[i], readonly[i], fs.nactvar.toInt()))
+        }
+    }
+
+    /**
+     * Assigns an initializer list to freshly declared globals.
+     *
+     * The targets have to be built before the values are read, and the values
+     * are then taken off the stack from the top down, so the recursion walks
+     * out to the last name, reads the expression list there, and assigns on the
+     * way back.
+     */
+    private fun initglobal(names: ArrayList<LuaString>, index: Int, line: Int) {
+        if (index == names.size) {
+            val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+            val nexps: Int = this.explist(e)
+            this.adjust_assign(names.size, nexps, e)
+            return
+        }
+        val fs: FuncState = this.fs!!
+        val target: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(names[index], target)
+        this.enterlevel()
+        this.initglobal(names, index + 1, line)
+        this.leavelevel()
+        this.checkglobal(names[index], line)
+        val value: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        value.init(net.blueva.luak.compiler.LexState.Companion.VNONRELOC, fs.freereg - 1)
+        fs.storevar(target, value)
+    }
+
+    /**
+     * Emits the check that a global being declared with a value is still unset.
+     *
+     * Declaring the same global twice is nearly always a mistake, and it can
+     * only be caught when the chunk runs, since another chunk may have set it.
+     */
+    private fun checkglobal(varname: LuaString, line: Int) {
+        val fs: FuncState = this.fs!!
+        val `var`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(varname, `var`)
+        val nameindex: Int = fs.stringK(varname)
+        fs.exp2anyreg(`var`)
+        fs.fixline(line)
+        fs.codeABx(
+            Lua.OP_ERRNNIL,
+            `var`.u.info,
+            if (nameindex >= Lua.MAXARG_Bx) 0 else nameindex + 1,
+        )
+        fs.fixline(line)
+        fs.freeexp(`var`)
+    }
+
+    /** `globalfunc -> GLOBAL FUNCTION NAME body` */
+    private fun globalfunc(line: Int) {
+        val fs: FuncState = this.fs!!
+        val fname: LuaString = this.str_checkname()!!
+        fs.globals.add(FuncState.Globaldesc(fname, false, fs.nactvar.toInt()))
+        val `var`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(fname, `var`)
+        val b: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.body(b, false, this.linenumber)
+        this.checkglobal(fname, line)
+        fs.storevar(`var`, b)
+    }
+
+    /**
+     * `attrib` on a global, which accepts `<const>` but not `<close>`.
+     *
+     * There is no scope for a global to be closed at the end of, so `<close>`
+     * is rejected rather than quietly treated as `<const>`.
+     */
+    private fun getglobalattribute(default: Int): Int {
+        if (this.t.token != '<'.code) return default
+        val kind: Int = this.getlocalattribute(default)
+        if (kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE) {
+            this.semerror("global variables cannot be to-be-closed")
+        }
+        return kind
+    }
+
+    internal fun getlocalattribute(default: Int): Int {
+        if (this.testnext('<'.code)) {
+            val attribute: String? = this.str_checkname()?.tojstring()
+            this.checknext('>'.code)
+            if ("const" == attribute) return net.blueva.luak.compiler.LexState.Companion.RDKCONST
+            if ("close" == attribute) return net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE
+            this.lexerror("unknown attribute '" + attribute + "'", net.blueva.luak.compiler.LexState.Companion.TK_NAME)
+        }
+        return default
+    }
+
+    /** Rejects an assignment to a `<const>` or `<close>` local, or a `<const>` global. */
+    internal fun check_readonly(e: expdesc) {
+        val globalname: LuaString? = e.readonlyGlobal
+        if (globalname != null) {
+            this.semerror("attempt to assign to const variable '" + globalname.tojstring() + "'")
+        }
+        if (e.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL) {
+            // The same variable seen from an inner function.
+            val up = this.fs?.f?.upvalues?.getOrNull(e.u.info) ?: return
+            if (up.kind != net.blueva.luak.compiler.LexState.Companion.VDKREG) {
+                this.semerror(
+                    "attempt to assign to const variable '" + (up.name?.tojstring() ?: "?") + "'",
+                )
+            }
+            return
+        }
+        if (e.k != net.blueva.luak.compiler.LexState.Companion.VLOCAL) return
+        val fs: FuncState = this.fs!!
+        val index: Int = fs.firstlocal + e.u.info
+        val vars: Array<Vardesc?> = this.dyd?.actvar ?: return
+        if (index < 0 || index >= vars.size) return
+        // A <close> variable is read-only too: the value it holds is the one
+        // that will be closed, so it must be the one it was given.
+        val kind: Int = vars[index]?.kind ?: return
+        if (kind == net.blueva.luak.compiler.LexState.Companion.RDKCONST ||
+            kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE
+        ) {
+            val name: String = fs.getlocvar(e.u.info).varname?.tojstring() ?: "?"
+            // A semantic error, not a lexical one: the offending token has
+            // already been read, so there is no "near" to report.
+            this.semerror("attempt to assign to const variable '" + name + "'")
+        }
+    }
 
     internal fun funcname(v: expdesc): Boolean {
         /* funcname -> NAME {field} [`:' NAME] */
@@ -1842,6 +2244,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val b: expdesc = net.blueva.luak.compiler.LexState.expdesc()
         this.next() /* skip FUNCTION */
         needself = this.funcname(v)
+        // "function f() end" assigns to f, so a read-only f is as much an
+        // error here as it would be written out as an assignment.
+        this.check_readonly(v)
         this.body(b, needself, line)
         fs!!.storevar(v, b)
         fs!!.fixline(line) /* definition `happens' in the first line */
@@ -1875,7 +2280,11 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             nret = this.explist(e) /* optional return values */
             if (hasmultret(e.k)) {
                 fs.setmultret(e)
-                if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1) { /* tail call? */
+                // Inside the scope of a to-be-closed variable the frame has
+                // to outlive the call, so the return stays an ordinary one.
+                if (e.k == net.blueva.luak.compiler.LexState.Companion.VCALL && nret == 1 &&
+                    !fs.bl!!.insidetbc
+                ) { /* tail call? */
                     SET_OPCODE((fs.getcodePtr(e))!!, Lua.OP_TAILCALL)
                     _assert(Lua.GETARG_A(fs.getcode(e)) == fs.nactvar.toInt())
                 }
@@ -1964,6 +2373,17 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 this.gotostat(fs!!.jump())
             }
 
+            net.blueva.luak.compiler.LexState.Companion.TK_NAME -> {
+                // 'global' is a statement, not a reserved word: a program that
+                // already uses it as a name keeps working, and only the shapes
+                // a declaration can take are read as one.
+                if (this.t.seminfo.ts == this.glbn && this.startsglobalstat()) {
+                    this.globalstatfunc(line)
+                } else {
+                    this.exprstat()
+                }
+            }
+
             else -> {
                 this.exprstat()
             }
@@ -2006,8 +2426,17 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
     companion object {
         protected val RESERVED_LOCAL_VAR_FOR_CONTROL: String = "(for control)"
+
+        /** The slot every vararg function keeps for the table form of `...`. */
+        protected val RESERVED_LOCAL_VAR_FOR_VARARGS: String = "(vararg table)"
+
+        // The iterator, the state and the value the loop closes at the end all
+        // go by one name, as they do upstream, so code that walks a frame's
+        // locals counts them the way Lua's own test suite expects: the third
+        // "(for state)" is the closing one.
+        protected val RESERVED_LOCAL_VAR_FOR_CLOSING: String = "(for state)"
         protected val RESERVED_LOCAL_VAR_FOR_STATE: String = "(for state)"
-        protected val RESERVED_LOCAL_VAR_FOR_GENERATOR: String = "(for generator)"
+        protected val RESERVED_LOCAL_VAR_FOR_GENERATOR: String = "(for state)"
         protected val RESERVED_LOCAL_VAR_FOR_STEP: String = "(for step)"
         protected val RESERVED_LOCAL_VAR_FOR_LIMIT: String = "(for limit)"
         protected val RESERVED_LOCAL_VAR_FOR_INDEX: String = "(for index)"
@@ -2015,6 +2444,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         // keywords array
         protected val RESERVED_LOCAL_VAR_KEYWORDS: Array<String?> = arrayOf<String?>(
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CONTROL,
+            net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_CLOSING,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_GENERATOR,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_INDEX,
             net.blueva.luak.compiler.LexState.Companion.RESERVED_LOCAL_VAR_FOR_LIMIT,
@@ -2074,12 +2504,19 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         const val OPR_GE: Int = 12
         const val OPR_AND: Int = 13
         const val OPR_OR: Int = 14
-        const val OPR_NOBINOPR: Int = 15
+        const val OPR_IDIV: Int = 15
+        const val OPR_BAND: Int = 16
+        const val OPR_BOR: Int = 17
+        const val OPR_BXOR: Int = 18
+        const val OPR_SHL: Int = 19
+        const val OPR_SHR: Int = 20
+        const val OPR_NOBINOPR: Int = 21
 
         const val OPR_MINUS: Int = 0
         const val OPR_NOT: Int = 1
         const val OPR_LEN: Int = 2
-        const val OPR_NOUNOPR: Int = 3
+        const val OPR_BNOT: Int = 3
+        const val OPR_NOUNOPR: Int = 4
 
         /* exp kind */
         const val VVOID: Int = 0 /* no value */
@@ -2104,7 +2541,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             "in", "local", "nil", "not", "or", "repeat",
             "return", "then", "true", "until", "while",
             "..", "...", "==", ">=", "<=", "~=",
-            "::", "<eos>", "<number>", "<name>", "<string>", "<eof>",
+            "::", "<eof>", "<number>", "<name>", "<string>", "//", "<<", ">>",
         )
 
         const val  /* terminal symbols denoted by reserved words */TK_AND: Int = 257
@@ -2142,6 +2579,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         const val TK_NUMBER: Int = 287
         const val TK_NAME: Int = 288
         const val TK_STRING: Int = 289
+        const val TK_IDIV: Int = 290
+        const val TK_SHL: Int = 291
+        const val TK_SHR: Int = 292
 
         val FIRST_RESERVED: Int = net.blueva.luak.compiler.LexState.Companion.TK_AND
         val NUM_RESERVED: Int =
@@ -2160,8 +2600,15 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             }
         }
 
+        /**
+         * True for a byte that cannot be shown as itself.
+         *
+         * Only the printable ASCII range is shown as a character; anything
+         * else, a byte past 127 included, is written as its number, since
+         * what it looks like depends on how the text is being read.
+         */
         private fun iscntrl(token: Int): Boolean {
-            return token < ' '.code
+            return token < ' '.code || token > '~'.code
         }
 
         // =============================================================
@@ -2195,14 +2642,17 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
 
 
+        // Levels follow Lua 5.5's table so the operators added by the port have
+        // room between comparison and concatenation. The relative order of the
+        // operators that already existed is unchanged.
         internal var priority: Array<Priority?> =
-            arrayOf<Priority?>( /* ORDER OPR */net.blueva.luak.compiler.LexState.Priority(6, 6),
-                net.blueva.luak.compiler.LexState.Priority(6, 6),
-                net.blueva.luak.compiler.LexState.Priority(7, 7),
-                net.blueva.luak.compiler.LexState.Priority(7, 7),
-                net.blueva.luak.compiler.LexState.Priority(7, 7),  /* `+' `-' `/' `%' */
-                net.blueva.luak.compiler.LexState.Priority(10, 9),
-                net.blueva.luak.compiler.LexState.Priority(5, 4),  /* power and concat (right associative) */
+            arrayOf<Priority?>( /* ORDER OPR */net.blueva.luak.compiler.LexState.Priority(10, 10),
+                net.blueva.luak.compiler.LexState.Priority(10, 10),  /* `+' `-' */
+                net.blueva.luak.compiler.LexState.Priority(11, 11),
+                net.blueva.luak.compiler.LexState.Priority(11, 11),
+                net.blueva.luak.compiler.LexState.Priority(11, 11),  /* `*' `/' `%' */
+                net.blueva.luak.compiler.LexState.Priority(14, 13),
+                net.blueva.luak.compiler.LexState.Priority(9, 8),  /* power and concat (right associative) */
                 net.blueva.luak.compiler.LexState.Priority(3, 3),
                 net.blueva.luak.compiler.LexState.Priority(3, 3),  /* equality and inequality */
                 net.blueva.luak.compiler.LexState.Priority(3, 3),
@@ -2210,9 +2660,20 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
                 net.blueva.luak.compiler.LexState.Priority(3, 3),
                 net.blueva.luak.compiler.LexState.Priority(3, 3),  /* order */
                 net.blueva.luak.compiler.LexState.Priority(2, 2),
-                net.blueva.luak.compiler.LexState.Priority(1, 1) /* logical (and/or) */
+                net.blueva.luak.compiler.LexState.Priority(1, 1),  /* logical (and/or) */
+                net.blueva.luak.compiler.LexState.Priority(11, 11),  /* `//' */
+                net.blueva.luak.compiler.LexState.Priority(6, 6),  /* `&' */
+                net.blueva.luak.compiler.LexState.Priority(4, 4),  /* `|' */
+                net.blueva.luak.compiler.LexState.Priority(5, 5),  /* `~' */
+                net.blueva.luak.compiler.LexState.Priority(7, 7),
+                net.blueva.luak.compiler.LexState.Priority(7, 7) /* `<<' `>>' */
             )
 
-        const val UNARY_PRIORITY: Int = 8 /* priority for unary operators */
+        const val UNARY_PRIORITY: Int = 12 /* priority for unary operators */
+
+        /* kinds of local variable, from the attribute in its declaration */
+        const val VDKREG: Int = 0 /* regular */
+        const val RDKCONST: Int = 1 /* <const> */
+        const val RDKTOCLOSE: Int = 2 /* <close> */
     }
 }

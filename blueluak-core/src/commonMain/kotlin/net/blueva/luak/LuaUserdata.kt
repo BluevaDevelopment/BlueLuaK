@@ -19,6 +19,12 @@ package net.blueva.luak
 import kotlin.reflect.KClass
 
 open class LuaUserdata : LuaValue {
+    /** See [LuaValue.gckeeper]; a userdata is one of the two kinds that can have one. */
+    internal override var gckeeper: Any? = null
+
+    /** See [LuaValue.pinned]; a value of this kind can be a weak key. */
+    internal override var pinned: Any? = null
+
     var m_instance: Any
     var m_metatable: LuaValue? = null
 
@@ -118,9 +124,8 @@ open class LuaUserdata : LuaValue {
     override fun eq_b(`val`: LuaValue?): Boolean {
         val `val` = `val`!!
         if (`val`.raweq(this)) return true
-        if (m_metatable == null || !`val`.isuserdata()) return false
-        val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, m_metatable!!, `val`, valmt)
+        if (!`val`.isuserdata()) return false
+        return LuaValue.eqmtcall(this, `val`)
     }
 
     // equality w/o metatable processing
@@ -136,11 +141,6 @@ open class LuaUserdata : LuaValue {
 
     // __eq metatag processing
     fun eqmt(`val`: LuaValue): Boolean {
-        return if (m_metatable != null && `val`.isuserdata()) LuaValue.eqmtcall(
-            this,
-            m_metatable!!,
-            `val`,
-            `val`.getmetatable()!!
-        ) else false
+        return `val`.isuserdata() && LuaValue.eqmtcall(this, `val`)
     }
 }

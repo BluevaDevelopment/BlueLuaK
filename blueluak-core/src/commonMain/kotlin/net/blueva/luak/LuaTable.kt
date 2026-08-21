@@ -62,6 +62,12 @@ import net.blueva.luak.WeakReference
  * @see LuaValue
  */
 open class LuaTable : LuaValue, Metatable {
+    /** See [LuaValue.gckeeper]; a table is one of the two kinds that can have one. */
+    internal override var gckeeper: Any? = null
+
+    /** See [LuaValue.pinned]; a value of this kind can be a weak key. */
+    internal override var pinned: Any? = null
+
     /** the array values  */
     protected lateinit var array: Array<LuaValue?>
 
@@ -78,6 +84,7 @@ open class LuaTable : LuaValue, Metatable {
     constructor() {
         array = NOVALS
         hash = net.blueva.luak.LuaTable.Companion.NOBUCKETS
+        Memory.account(Memory.TABLE)
     }
 
     /**
@@ -156,12 +163,23 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     override fun presize(narray: Int) {
-        if (narray > array.size) array =
-            net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
+        if (narray > MAX_PART) LuaValue.error("table overflow")
+        if (narray > array.size) {
+            val was: Int = array.size
+            array =
+                net.blueva.luak.LuaTable.Companion.resize(array, 1 shl net.blueva.luak.LuaTable.Companion.log2(narray))
+            Memory.account(Memory.SLOT * (array.size - was))
+        }
     }
 
     fun presize(narray: Int, nhash: Int) {
         var nhash = nhash
+        // Rounded up to a power of two below, which is where a size close to
+        // the largest a host array can be would wrap around into a negative
+        // one. Lua refuses the same way.
+        if (narray > MAX_PART || nhash > MAX_PART) LuaValue.error("table overflow")
+        // Counted here rather than in each constructor, since every one of
+        // them that asks for room of its own comes through here.
         if (nhash > 0 && nhash < net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY) nhash =
             net.blueva.luak.LuaTable.Companion.MIN_HASH_CAPACITY
         // Size of both parts must be a power of two.
@@ -170,6 +188,7 @@ open class LuaTable : LuaValue, Metatable {
         hash =
             (if (nhash > 0) arrayOfNulls<Slot>(1 shl net.blueva.luak.LuaTable.Companion.log2(nhash)) else net.blueva.luak.LuaTable.Companion.NOBUCKETS)
         hashEntries = 0
+        Memory.account(Memory.TABLE + Memory.SLOT * array.size + Memory.NODE * hash.size)
     }
 
     protected val arrayLengthValue: Int
@@ -197,10 +216,26 @@ open class LuaTable : LuaValue, Metatable {
         if ((hadWeakKeys != (m_metatable != null && m_metatable!!.useWeakKeys())) ||
             (hadWeakValues != (m_metatable != null && m_metatable!!.useWeakValues()))
         ) {
-            // force a rehash
-            rehash(0)
+            // How weakly an entry is held is decided when it is stored, so the
+            // entries already there have to go in again to be held the new way.
+            restore()
         }
         return this
+    }
+
+    /** Puts every entry back in, so each is held the way the metatable asks. */
+    private fun restore() {
+        val keys: ArrayList<LuaValue> = ArrayList()
+        val values: ArrayList<LuaValue> = ArrayList()
+        var entry: Varargs = next(NIL)
+        while (!entry.arg1()!!.isnil()) {
+            val key: LuaValue = entry.arg1()!!
+            keys.add(key)
+            values.add(entry.arg(2)!!)
+            entry = next(key)
+        }
+        presize(keys.size, keys.size)
+        for (index in keys.indices) rawset(keys[index], values[index])
     }
 
     override fun get(key: Int): LuaValue {
@@ -217,13 +252,31 @@ open class LuaTable : LuaValue, Metatable {
         val key = key!!
         if (key > 0 && key <= array.size) {
             val v: LuaValue? = if (m_metatable == null) array[key - 1] else m_metatable!!.arrayget(array, key - 1)
-            return if (v != null) v else NIL
+            // An empty array slot is not proof the key is absent: growing the
+            // array part leaves earlier entries where they were, so the hash
+            // part still has to be asked.
+            if (v != null) return v
         }
         return hashget((LuaInteger.valueOf(key))!!)
     }
 
+    /**
+     * The key a lookup should really use.
+     *
+     * A float whose value is integral names the same slot as that integer, so
+     * `t[2.0]` and `t[2]` are one entry. With the two subtypes now distinct
+     * this has to be done explicitly; before the split the value model folded
+     * them together on its own.
+     */
+    private fun normalizeKey(key: LuaValue): LuaValue {
+        if (key.type() != TNUMBER || key.isinttype()) return key
+        val asDouble: Double = key.todouble()
+        val asLong: Long = asDouble.toLong()
+        return if (asLong.toDouble() == asDouble && !asDouble.isInfinite()) valueOf(asLong) else key
+    }
+
     override fun rawget(key: LuaValue?): LuaValue {
-        val key = key!!
+        val key = normalizeKey(key!!)
         if (key.isinttype()) {
             val ikey: Int = key.toint()
             if (ikey > 0 && ikey <= array.size) {
@@ -275,14 +328,23 @@ open class LuaTable : LuaValue, Metatable {
 
     /** caller must ensure key is not nil  */
     override fun rawset(key: LuaValue?, value: LuaValue?) {
-        val key = key!!
+        val key = normalizeKey(key!!)
         val value = value!!
         if (!key.isinttype() || !arrayset(key.toint(), value)) hashset(key, value)
     }
 
-    /** Set an array element  */
+    /**
+     * Sets an array element.
+     *
+     * @return false when the key is not one the array part holds, so the
+     *   caller has to go to the hash part instead. Erasing a slot that is
+     *   already empty counts as that: the key may be sitting in the hash with
+     *   an index the array part happens to cover, and that is where it has to
+     *   be removed from.
+     */
     private fun arrayset(key: Int, value: LuaValue): Boolean {
         if (key > 0 && key <= array.size) {
+            if (value.isnil() && array[key - 1] == null) return false
             array[key - 1] = if (value.isnil()) null else (if (m_metatable != null) m_metatable!!.wrap(value) else value)
             return true
         }
@@ -298,14 +360,16 @@ open class LuaTable : LuaValue, Metatable {
         var pos = pos
         val n = length()
         if (pos == 0) pos = n
-        else if (pos > n) return NONE
+        // Removing at #t+1 is allowed and answers what was there, which is
+        // nil - a value, not an absence, so the caller still gets one result.
+        else if (pos > n) return get(pos)
         val v: LuaValue = get(pos)
         var r: LuaValue = v
         while (!r.isnil()) {
             r = get(pos + 1)
             set(pos++, r)
         }
-        return if (v.isnil()) NONE else v
+        return v
     }
 
     /** Insert an element at a position in a list-table
@@ -355,7 +419,8 @@ open class LuaTable : LuaValue, Metatable {
 
     override fun len(): LuaValue {
         val h: LuaValue = metatag(LEN)
-        if (h.toboolean()) return h.call(this)!!
+        // Lua hands a unary operator its operand twice.
+        if (h.toboolean()) return h.call(this, this)!!
         return (LuaInteger.valueOf(rawlen()))!!
     }
 
@@ -697,9 +762,15 @@ open class LuaTable : LuaValue, Metatable {
             }
         }
 
+        val wasarray: Int = array.size
+        val washash: Int = hash.size
         hash = newHash
         array = newArray
         hashEntries -= movingToArray
+        // Only what the table grew by: what it gave up is for the host to
+        // reclaim, and the tally does not go down until a collection ends.
+        if (array.size > wasarray) Memory.account(Memory.SLOT * (array.size - wasarray))
+        if (hash.size > washash) Memory.account(Memory.NODE * (hash.size - washash))
     }
 
     override fun entry(key: LuaValue?, value: LuaValue?): Slot? {
@@ -715,50 +786,104 @@ open class LuaTable : LuaValue, Metatable {
     /** Sort the table using a comparator.
      * @param comparator [LuaValue] to be called to compare elements.
      */
-    fun sort(comparator: LuaValue) {
+    @kotlin.jvm.JvmOverloads
+    fun sort(comparator: LuaValue, debuglib: net.blueva.luak.lib.DebugLib? = null) {
         if (len().tolong() >= Int.MAX_VALUE.toLong()) throw LuaError("array too big: " + len().tolong())
         if (m_metatable != null && m_metatable!!.useWeakValues()) {
             dropWeakArrayValues()
         }
         val n = length()
-        if (n > 1) heapSort(n, if (comparator.isnil()) null else comparator)
+        if (n > 1) auxsort(1, n, if (comparator.isnil()) null else comparator, debuglib)
     }
 
-    private fun heapSort(count: Int, cmpfunc: LuaValue?) {
-        heapify(count, cmpfunc)
-        var end = count
-        while (end > 1) {
-            val a: LuaValue = get(end) // swap(end, 1)
-            set(end, get(1))
-            set(1, a)
-            siftDown(1, --end, cmpfunc)
+    /**
+     * The quicksort Lua sorts with, over `1..n` of this table.
+     *
+     * Written as Lua writes it, down to the median of three it takes its
+     * pivot from and the two ends it walks towards each other, because that
+     * is what lets it notice an order function that contradicts itself: a
+     * walk that runs past the pivot can only mean the answers it was given
+     * cannot all be true, and Lua says so rather than reading past the part
+     * of the table it was given.
+     *
+     * The larger half is looped on rather than recursed into, so what is on
+     * the host stack stays within the logarithm of the size.
+     */
+    private fun auxsort(from: Int, to: Int, cmpfunc: LuaValue?, debuglib: net.blueva.luak.lib.DebugLib?) {
+        var lo = from
+        var up = to
+        while (lo < up) {
+            /* sort elements 'lo', 'p', and 'up' */
+            if (compare(up, lo, cmpfunc, debuglib)) swap(lo, up)
+            if (up - lo == 1) return /* only 2 elements */
+            var p: Int = lo + (up - lo) / 2 /* middle point */
+            if (compare(p, lo, cmpfunc, debuglib)) swap(p, lo)
+            else if (compare(up, p, cmpfunc, debuglib)) swap(p, up)
+            if (up - lo == 2) return /* only 3 elements */
+            swap(p, up - 1) /* the pivot goes next to the end */
+            p = partition(lo, up, cmpfunc, debuglib)
+            /* a[lo .. p - 1] <= a[p] <= a[p + 1 .. up] */
+            if (p - lo < up - p) {
+                auxsort(lo, p - 1, cmpfunc, debuglib)
+                lo = p + 1
+            } else {
+                auxsort(p + 1, up, cmpfunc, debuglib)
+                up = p - 1
+            }
         }
     }
 
-    private fun heapify(count: Int, cmpfunc: LuaValue?) {
-        for (start in count / 2 downTo 1) siftDown(start, count, cmpfunc)
-    }
-
-    private fun siftDown(start: Int, end: Int, cmpfunc: LuaValue?) {
-        var root = start
-        while (root * 2 <= end) {
-            var child = root * 2
-            if (child < end && compare(child, child + 1, cmpfunc)) ++child
-            if (compare(root, child, cmpfunc)) {
-                val a: LuaValue = get(root) // swap(root, child)
-                set(root, get(child))
-                set(child, a)
-                root = child
-            } else return
+    /**
+     * Puts everything below the pivot before it and everything above after.
+     *
+     * The pivot is at `up - 1` when this starts, and at the index answered
+     * when it ends.
+     */
+    private fun partition(
+        lo: Int,
+        up: Int,
+        cmpfunc: LuaValue?,
+        debuglib: net.blueva.luak.lib.DebugLib?,
+    ): Int {
+        val pivot: Int = up - 1
+        var i: Int = lo
+        var j: Int = up - 1
+        while (true) {
+            /* repeat ++i while a[i] < P */
+            while (compare(++i, pivot, cmpfunc, debuglib)) {
+                if (i == up - 1) LuaValue.error("invalid order function for sorting")
+            }
+            /* repeat --j while P < a[j] */
+            while (compare(pivot, --j, cmpfunc, debuglib)) {
+                if (j < i) LuaValue.error("invalid order function for sorting")
+            }
+            if (j < i) {
+                swap(up - 1, i) /* the pivot takes its place */
+                return i
+            }
+            swap(i, j)
         }
     }
 
-    private fun compare(i: Int, j: Int, cmpfunc: LuaValue?): Boolean {
+    private fun swap(i: Int, j: Int) {
+        val held: LuaValue = get(i)
+        set(i, get(j))
+        set(j, held)
+    }
+
+    private fun compare(
+        i: Int,
+        j: Int,
+        cmpfunc: LuaValue?,
+        debuglib: net.blueva.luak.lib.DebugLib? = null,
+    ): Boolean {
         val a: LuaValue? = get(i)
         val b: LuaValue? = get(j)
         if (a == null || b == null) return false
         if (cmpfunc != null) {
-            return cmpfunc.call(a, b)!!.toboolean()
+            // Through the library's own way of calling back, so that an order
+            // function of the library's own can be named in an error.
+            return net.blueva.luak.lib.callback(debuglib, cmpfunc, varargsOf(a, b)!!).arg1()!!.toboolean()
         } else {
             return a.lt_b(b)
         }
@@ -804,9 +929,8 @@ open class LuaTable : LuaValue, Metatable {
     override fun eq_b(`val`: LuaValue?): Boolean {
         val `val` = `val`!!
         if (this === `val`) return true
-        if (m_metatable == null || !`val`.istable()) return false
-        val valmt: LuaValue? = `val`.getmetatable()
-        return valmt != null && LuaValue.eqmtcall(this, (m_metatable!!.toLuaValue())!!, `val`, valmt)
+        if (!`val`.istable()) return false
+        return LuaValue.eqmtcall(this, `val`)
     }
 
     /** Unpack all the elements of this table  */
@@ -1111,7 +1235,7 @@ open class LuaTable : LuaValue, Metatable {
         }
     }
 
-    private class IntKeyEntry(private val key: Int, value: LuaValue?) : Entry() {
+    private class IntKeyEntry(private val key: Long, value: LuaValue?) : Entry() {
         private var value: LuaValue?
 
         init {
@@ -1123,7 +1247,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun arraykey(max: Int): Int {
-            return if (key >= 1 && key <= max) key else 0
+            return if (key >= 1L && key <= max.toLong()) key.toInt() else 0
         }
 
         override fun value(): LuaValue {
@@ -1145,7 +1269,12 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     /**
-     * Entry class used with numeric values, but only when the key is not an integer.
+     * Entry class used with float values, but only when the key is not an integer.
+     *
+     * Unpacking the number into a raw `double` field saves an object, but it can
+     * only hold a float: an integer stored this way comes back rounded once it
+     * exceeds 2^53, and loses its subtype in every case. Integers therefore go
+     * to [NormalEntry] instead.
      */
     private class NumberValueEntry(key: LuaValue, value: Double) : Entry() {
         private var value: Double
@@ -1165,7 +1294,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         public override fun set(value: LuaValue?): Entry {
-            if (value!!.type() === TNUMBER) {
+            if (value!!.type() === TNUMBER && !value.isinttype()) {
                 val n: LuaValue = value!!.tonumber()
                 if (!n.isnil()) {
                     this.value = n.todouble()
@@ -1241,13 +1370,17 @@ open class LuaTable : LuaValue, Metatable {
             return if (next != null) next!!.add(newEntry) else newEntry
         }
 
-        override fun remove(target: StrongSlot?): Slot {
+        override fun remove(target: StrongSlot?): Slot? {
+            // The rest of the chain is searched either way: dropping this
+            // placeholder must not drop the removal along with it.
+            val rest: Slot? = next?.remove(target)
             if (key() != null) {
-                next = next!!.remove(target)
+                // The key is still reachable, so it can still be handed to
+                // next(), and this placeholder has to stay to answer it.
+                next = rest
                 return this
-            } else {
-                return (next)!!
             }
+            return rest
         }
 
         override fun relink(rest: Slot?): Slot? {
@@ -1294,6 +1427,9 @@ open class LuaTable : LuaValue, Metatable {
 
     companion object {
         private const val MIN_HASH_CAPACITY = 2
+
+        /** The largest either part of a table can be asked for. */
+        internal const val MAX_PART: Int = 1 shl 30
         private val N: LuaString? = valueOf("n")
 
         /** Resize the table  */
@@ -1378,8 +1514,8 @@ open class LuaTable : LuaValue, Metatable {
 
         internal fun defaultEntry(key: LuaValue, value: LuaValue): Entry {
             if (key.isinttype()) {
-                return net.blueva.luak.LuaTable.IntKeyEntry(key.toint(), value)
-            } else if (value.type() === TNUMBER) {
+                return net.blueva.luak.LuaTable.IntKeyEntry(key.tolong(), value)
+            } else if (value.type() === TNUMBER && !value.isinttype()) {
                 return net.blueva.luak.LuaTable.NumberValueEntry(key, value.todouble())
             } else {
                 return net.blueva.luak.LuaTable.NormalEntry(key, value)

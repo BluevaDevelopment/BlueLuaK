@@ -44,6 +44,35 @@ class LuaError : RuntimeException {
     internal var traceback: String? = null
 
     /**
+     * True once the error has been given the place it was raised.
+     *
+     * Only the first function the error unwinds through decides that, since it
+     * is the only one still standing on the whole stack the level counts
+     * from; every function after it would answer with itself.
+     */
+    internal var positioned: Boolean = false
+
+    /**
+     * True when this error is to carry no place at all.
+     *
+     * Lua points at the line that called the function which raised, and where
+     * that caller is not written in Lua there is no line to point at: an
+     * error raised in a function a library called stands on its own.
+     */
+    internal var nowhere: Boolean = false
+
+    /**
+     * The stack this error was raised on, one entry per frame.
+     *
+     * A coroutine keeps the stack it died on so a later
+     * `debug.traceback(co)` can still show it; by the time the error reaches
+     * whoever resumed the coroutine the frames themselves are gone, so they
+     * are written down here on the way out. Only errors leaving a coroutine
+     * carry this: nothing can look at the main thread's stack after the fact.
+     */
+    internal var luastack: List<String>? = null
+
+    /**
      * Get the cause, if any.
      */
     override var cause: Throwable? = null
@@ -68,9 +97,23 @@ class LuaError : RuntimeException {
             if (traceback != null) return traceback
             val m: String? = argMessageOverride ?: super.message
             if (m == null) return null
-            if (fileline != null) return fileline.toString() + " " + m
+            // "chunk:line: message", the shape luaG_addinfo gives every
+            // positioned error; scripts match on the colon.
+            if (fileline != null) return fileline.toString() + ": " + m
             return m
         }
+
+    /**
+     * Replaces what this error carries with what a message handler answered.
+     *
+     * The handler's result is the error from here on, whatever its type, so
+     * nothing that described the old one is kept.
+     */
+    internal fun replaceMessage(value: LuaValue) {
+        this.`object` = value
+        this.argMessageOverride = null
+        this.fileline = null
+    }
 
     val messageObject: LuaValue?
         /** Get the LuaValue that was provided in the constructor, or

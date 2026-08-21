@@ -23,6 +23,34 @@ internal expect fun platformProperty(name: String): String?
 internal expect fun platformEnvironment(name: String): String?
 internal expect fun platformExit(code: Int)
 internal expect fun platformCollectGarbage()
+
+/**
+ * Watches [target] so that it joins [pending] once nothing refers to it.
+ *
+ * This is what stands in for Lua marking an object for finalization. The
+ * answer is a keeper the caller has to hang on to from [target] itself: it
+ * lives exactly as long as the object does, and hands the object back when
+ * that ends, which is the resurrection a `__gc` handler needs to be given the
+ * object it is finalizing.
+ *
+ * Only a host that can resurrect an object it is about to reclaim can do this;
+ * where the host cannot, the answer is null and `__gc` never runs.
+ */
+internal expect fun watchForFinalization(target: LuaValue, pending: MutableList<LuaValue>): Any?
+
+/** Takes what has been collected out of [pending], emptying it. */
+internal expect fun takeFinalized(pending: MutableList<LuaValue>): List<LuaValue>
+
+/**
+ * True when [failure] is the host running out of call stack.
+ *
+ * The interpreter recurses on the host's stack, so a Lua program that recurses
+ * without bound exhausts that rather than a stack of Lua's own. That stack is
+ * this port's counterpart of the C stack a reference build runs out of, so it
+ * is reported the same way - "C stack overflow", which a `pcall` can catch -
+ * instead of letting a host error escape.
+ */
+internal expect fun platformIsStackOverflow(failure: Throwable): Boolean
 internal expect fun platformUsedMemory(): Long
 internal expect fun platformLoadLibrary(className: String, globals: Globals): LuaValue?
 internal expect fun platformTypeName(type: KClass<*>): String

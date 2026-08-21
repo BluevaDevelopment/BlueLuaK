@@ -167,15 +167,17 @@ class LuajavaClassMembersTest : TestCase() {
     fun testSetDoubleField() {
         val b = B()
         val i = JavaInstance(b)
+        // A Java double field reads back as a Lua float whatever its value, so
+        // 1.0 comes across as the float 1.0 and not as the integer 1.
         i.set("m_double_field", ONE)
         assertEquals(1.0, b.m_double_field)
-        assertEquals(ONE, i.get("m_double_field"))
+        assertEquals(LuaValue.valueOf(1.0), i.get("m_double_field"))
         i.set("m_double_field", PI)
         assertEquals(Math.PI, b.m_double_field)
         assertEquals(PI, i.get("m_double_field"))
         i.set("m_double_field", ABC)
         assertEquals(0.0, b.m_double_field)
-        assertEquals(ZERO, i.get("m_double_field"))
+        assertEquals(LuaValue.valueOf(0.0), i.get("m_double_field"))
     }
 
     fun testNoFactory() {

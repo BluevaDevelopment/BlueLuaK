@@ -34,6 +34,27 @@ package net.blueva.luak
  */
 abstract
 class LuaFunction : LuaValue() {
+    /** See [LuaValue.pinned]; a function can be a weak key. */
+    internal override var pinned: Any? = null
+
+    /**
+     * How many pieces of state this function carries: its upvalues.
+     *
+     * A Lua closure counts what it captured. A function of the library's own
+     * counts the state it was built with, which is none for most of them and
+     * one for the few - an iterator, a wrapper - that exist only to carry a
+     * position or a handle from one call to the next.
+     */
+    open fun nupvalues(): Int = 0
+
+    /**
+     * The state behind upvalue [n], counted from one.
+     *
+     * Only its identity is meant to be used: it is what `debug.upvalueid`
+     * answers with, so two functions can be found to share state.
+     */
+    open fun upvaluestate(n: Int): Any? = null
+
     override fun type(): Int {
         return TFUNCTION
     }

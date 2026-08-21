@@ -139,7 +139,12 @@ open class OsLib
                         )
                     )
 
-                    net.blueva.luak.lib.OsLib.Companion.EXECUTE -> return execute(args.optjstring(1, null))
+                    net.blueva.luak.lib.OsLib.Companion.EXECUTE -> {
+                        // Asked with nothing to run, the question is only
+                        // whether there is anything to run commands with.
+                        val command: String? = args.optjstring(1, null)
+                        return if (command == null) valueOf(hasshell())!! else execute(command)
+                    }
                     net.blueva.luak.lib.OsLib.Companion.EXIT -> {
                         exit(args.optint(1, 0))
                         return (NONE)!!
@@ -273,6 +278,14 @@ open class OsLib
     }
 
     /**
+     * True where the host can run a command for `os.execute`.
+     *
+     * Answered by `os.execute()` with nothing to run, which is how a program
+     * asks whether running anything is possible at all.
+     */
+    protected open fun hasshell(): Boolean = false
+
+    /**
      * Calls the C function exit, with an optional code, to terminate the host program.
      * @param code
      */
@@ -341,7 +354,12 @@ open class OsLib
      * cannot be honored.
      */
     protected fun setlocale(locale: String?, category: String?): String? {
-        return "C"
+        // This runtime has one locale and it is "C": numbers and dates are
+        // formatted the same way everywhere it runs. Reporting success for a
+        // locale that is not in force would tell a caller it can expect, say, a
+        // comma decimal separator that it will never get.
+        if (locale == null || locale == "C" || locale.isEmpty()) return "C"
+        return null
     }
 
     /**

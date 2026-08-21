@@ -85,32 +85,35 @@ open class MathLib : TwoArgFunction() {
         math.set("asin", net.blueva.luak.lib.MathLib.asin())
         val atan: LuaValue = net.blueva.luak.lib.MathLib.atan()
         math.set("atan", atan)
-        math.set("atan2", atan)
         math.set("ceil", net.blueva.luak.lib.MathLib.ceil())
         math.set("cos", net.blueva.luak.lib.MathLib.cos())
-        math.set("cosh", net.blueva.luak.lib.MathLib.cosh())
         math.set("deg", net.blueva.luak.lib.MathLib.deg())
         math.set("exp", net.blueva.luak.lib.MathLib.exp())
         math.set("floor", net.blueva.luak.lib.MathLib.floor())
         math.set("fmod", net.blueva.luak.lib.MathLib.fmod())
         math.set("frexp", net.blueva.luak.lib.MathLib.frexp())
         math.set("huge", LuaDouble.POSINF)
+        math.set("maxinteger", LuaValue.valueOf(Long.MAX_VALUE))
+        math.set("mininteger", LuaValue.valueOf(Long.MIN_VALUE))
         math.set("ldexp", net.blueva.luak.lib.MathLib.ldexp())
         math.set("log", net.blueva.luak.lib.MathLib.log())
         math.set("max", net.blueva.luak.lib.MathLib.max())
         math.set("min", net.blueva.luak.lib.MathLib.min())
         math.set("modf", net.blueva.luak.lib.MathLib.modf())
         math.set("pi", kotlin.math.PI)
-        math.set("pow", net.blueva.luak.lib.MathLib.pow())
         val r: random?
         math.set("random", net.blueva.luak.lib.MathLib.random().also { r = it })
         math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed((r)!!))
         math.set("rad", net.blueva.luak.lib.MathLib.rad())
         math.set("sin", net.blueva.luak.lib.MathLib.sin())
-        math.set("sinh", net.blueva.luak.lib.MathLib.sinh())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
         math.set("tan", net.blueva.luak.lib.MathLib.tan())
-        math.set("tanh", net.blueva.luak.lib.MathLib.tanh())
+        math.set("tointeger", net.blueva.luak.lib.MathLib.tointeger())
+        math.set("type", net.blueva.luak.lib.MathLib.type())
+        math.set("ult", net.blueva.luak.lib.MathLib.ult())
+        // math.atan2, math.cosh, math.pow, math.sinh and math.tanh were
+        // deprecated in 5.3 and removed in 5.4; the classes behind them stay
+        // for embedders that want to put them back.
         env!!.set("math", math)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("math", math)
         return math
@@ -132,9 +135,54 @@ open class MathLib : TwoArgFunction() {
         protected abstract fun call(x: Double, y: Double): Double
     }
 
-    internal class abs : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.abs(d)
+    /** `math.abs`; an integer argument gives an integer, wrapping on mininteger. */
+    internal class abs : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) {
+                val v: Long = x.tolong()
+                return valueOf(if (v < 0L) -v else v) // -mininteger wraps, as in C
+            }
+            return valueOf(kotlin.math.abs(x.checkdouble()))
+        }
+    }
+
+    /** `math.type`: `"integer"`, `"float"`, or nil for anything else. */
+    internal class type : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (!x.isnumber() || x.isstring() && !x.isnumber()) return NIL
+            if (x.type() != LuaValue.TNUMBER) return NIL
+            return valueOf(if (x.isinttype()) "integer" else "float")
+        }
+    }
+
+    /** `math.tointeger`: the integer a value denotes exactly, or nil. */
+    internal class tointeger : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            val n: LuaValue = x.tonumber()
+            if (n.isnil()) return NIL
+            // A numeral that already denotes an integer is one, whatever its
+            // magnitude; only a float has to be checked for a whole value.
+            if (n.isinttype()) return n
+            val d: Double = n.todouble()
+            // Range as well as round trip: converting a double past the
+            // integer range saturates, and converting that back matches.
+            if (d < -9.2233720368547758E18 || d >= 9.2233720368547758E18) return NIL
+            val l: Long = d.toLong()
+            return if (l.toDouble() == d) valueOf(l) else NIL
+        }
+    }
+
+    /** `math.ult`: compares two integers as unsigned. */
+    internal class ult : TwoArgFunction() {
+        override fun call(x: LuaValue?, y: LuaValue?): LuaValue? {
+            val a: Long = x!!.checklong()
+            val b: Long = y!!.checklong()
+            // Flipping the sign bit orders the values as if unsigned.
+            return valueOf((a xor Long.MIN_VALUE) < (b xor Long.MIN_VALUE))
         }
     }
 
@@ -187,9 +235,12 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class ceil : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.ceil(d)
+    /** `math.ceil`; the result is an integer whenever it fits in one. */
+    internal class ceil : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            return net.blueva.luak.lib.MathLib.Companion.narrowToInteger(kotlin.math.ceil(x.checkdouble()))
         }
     }
 
@@ -205,9 +256,12 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class floor : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.floor(d)
+    /** `math.floor`; the result is an integer whenever it fits in one. */
+    internal class floor : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            return net.blueva.luak.lib.MathLib.Companion.narrowToInteger(kotlin.math.floor(x.checkdouble()))
         }
     }
 
@@ -243,17 +297,47 @@ open class MathLib : TwoArgFunction() {
 
     internal class fmod : TwoArgFunction() {
         override fun call(xv: LuaValue?, yv: LuaValue?): LuaValue? {
-            if (xv!!.islong() && yv!!.islong() && yv!!.tolong() != 0L) {
-                return valueOf((xv!!.tolong() % yv!!.tolong()).toDouble())
+            if (xv!!.isinttype() && yv!!.isinttype()) {
+                // Two integers give an integer, and there is no integer answer
+                // to a division by zero - unlike the float case, which has NaN.
+                val y: Long = yv.tolong()
+                if (y == 0L) LuaValue.argerror(2, "zero")
+                if (y == -1L) return valueOf(0L) // avoids overflow on the minimum
+                // Long remainder already takes the sign of the dividend, like C fmod.
+                return valueOf(xv.tolong() % y)
             }
-            return valueOf(xv!!.checkdouble() % yv!!.checkdouble())
+            return valueOf(xv.checkdouble() % yv!!.checkdouble())
         }
     }
 
+    /**
+     * `math.ldexp (m, e)`: `m * 2^e`.
+     *
+     * Split into steps that each stay inside the double range, so a large
+     * exponent does not go through an infinity on the way and lose the value.
+     */
     internal class ldexp : BinaryOp() {
         override fun call(x: Double, y: Double): Double {
-            // This is the behavior on os-x, windows differs in rounding behavior.
-            return x * Double.fromBits(((y.toLong()) + 1023) shl 52)
+            if (x == 0.0 || x.isNaN() || x.isInfinite()) return x
+            var result: Double = x
+            var remaining: Int = y.toInt()
+            while (remaining > 1000) {
+                result *= net.blueva.luak.lib.MathLib.Companion.TWO_POW_1000
+                remaining -= 1000
+            }
+            while (remaining < -1000) {
+                result /= net.blueva.luak.lib.MathLib.Companion.TWO_POW_1000
+                remaining += 1000
+            }
+            var step = 1.0
+            var factor = 2.0
+            var count: Int = if (remaining < 0) -remaining else remaining
+            while (count > 0) {
+                if (count and 1 == 1) step *= factor
+                factor *= factor
+                count = count shr 1
+            }
+            return if (remaining < 0) result / step else result * step
         }
     }
 
@@ -267,6 +351,9 @@ open class MathLib : TwoArgFunction() {
         override fun invoke(args: Varargs): Varargs {
             val x: Double = args.checkdouble(1)
             if (x == 0.0) return (varargsOf(ZERO, (ZERO)!!))!!
+            // An infinity and a NaN have no mantissa and exponent to split
+            // into; C answers the value itself with a zero exponent.
+            if (x.isNaN() || x.isInfinite()) return (varargsOf(valueOf(x), (ZERO)!!))!!
             val bits: Long = (x).toBits()
             val m =
                 ((bits and ((-1L shl 52).inv()).toLong()) + (1L shl 52)) * (if (bits >= 0) (.5 / (1L shl 52)) else (-.5 / (1L shl 52)))
@@ -277,6 +364,9 @@ open class MathLib : TwoArgFunction() {
 
     internal class max : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            // With nothing to compare there is no answer, and the complaint is
+            // about the missing argument rather than about its type.
+            if (args.narg() < 1) LuaValue.argerror(1, "value expected")
             var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
@@ -291,6 +381,9 @@ open class MathLib : TwoArgFunction() {
 
     internal class min : VarArgFunction() {
         override fun invoke(args: Varargs): Varargs {
+            // With nothing to compare there is no answer, and the complaint is
+            // about the missing argument rather than about its type.
+            if (args.narg() < 1) LuaValue.argerror(1, "value expected")
             var m: LuaValue = args.checknumber(1)
             var i = 2
             val n: Int = args.narg()
@@ -317,31 +410,136 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class random : LibFunction() {
-        var random: Random = Random.Default
-        override fun call(): LuaValue? {
-            return valueOf(random.nextDouble())
+    /**
+     * The generator Lua 5.5 uses: xoshiro256**.
+     *
+     * Reproduced exactly, seeding included, so a chunk that seeds the generator
+     * and records what came out gets the same sequence here as it would from
+     * the reference interpreter.
+     */
+    internal class Xoshiro256 {
+        private var s0: Long = 0
+        private var s1: Long = 0
+        private var s2: Long = 0
+        private var s3: Long = 0
+
+        init {
+            // Something varying, so an unseeded program does not repeat itself.
+            seed(Random.Default.nextLong(), Random.Default.nextLong())
         }
 
-        override fun call(a: LuaValue?): LuaValue? {
-            val m: Int = a!!.checkint()
-            if (m < 1) argerror(1, "interval is empty")
-            return valueOf(1 + random.nextInt(m))
+        fun seed(n1: Long, n2: Long) {
+            s0 = n1
+            s1 = 0xFF // never all-zero, which the generator cannot leave
+            s2 = n2
+            s3 = 0
+            // Discarded, to spread the seed through the whole state.
+            repeat(16) { next() }
         }
 
-        override fun call(a: LuaValue?, b: LuaValue?): LuaValue? {
-            val m: Int = a!!.checkint()
-            val n: Int = b!!.checkint()
-            if (n < m) argerror(2, "interval is empty")
-            return valueOf(m + random.nextInt(n + 1 - m))
+        fun next(): Long {
+            val result: Long = rotl(s1 * 5L, 7) * 9L
+            val t: Long = s1 shl 17
+            s2 = s2 xor s0
+            s3 = s3 xor s1
+            s1 = s1 xor s2
+            s0 = s0 xor s3
+            s2 = s2 xor t
+            s3 = rotl(s3, 45)
+            return result
+        }
+
+        /** A float in `[0,1)`, taking the top 53 bits - a double's whole mantissa. */
+        fun nextDouble(): Double = (next() ushr 11).toDouble() * SCALE
+
+        private fun rotl(x: Long, n: Int): Long = (x shl n) or (x ushr (64 - n))
+
+        private companion object {
+            /** 2^-53: one unit in the last place of the mantissa. */
+            const val SCALE: Double = 1.0 / 9007199254740992.0
         }
     }
 
-    internal class randomseed(val random: MathLib.random) : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            val seed: Long = arg!!.checklong()
-            random.random = kotlin.random.Random(seed)
-            return (NONE)!!
+    /**
+     * `math.random ([m [, n]])`.
+     *
+     * With no argument a float in `[0,1)`; with one, an integer in `[1,m]`;
+     * with two, one in `[m,n]`. The whole 64-bit range is available, so
+     * `math.random(1, math.maxinteger)` works, and `math.random(0)` answers an
+     * integer with every bit drawn at random.
+     */
+    internal class random : VarArgFunction() {
+        var generator: Xoshiro256 = Xoshiro256()
+
+        override fun invoke(args: Varargs): Varargs {
+            // Drawn before the arguments are examined, as upstream draws it, so
+            // the sequence does not depend on how the call was written.
+            val draw: Long = generator.next()
+            val low: Long
+            val high: Long
+            when (args.narg()) {
+                0 -> return valueOf((draw ushr 11).toDouble() * (1.0 / 9007199254740992.0))!!
+                1 -> {
+                    val m: Long = args.checklong(1)
+                    // random(0) is the one case that is not a range: it asks
+                    // for an integer with all of its bits set at random.
+                    if (m == 0L) return valueOf(draw)!!
+                    low = 1L
+                    high = m
+                }
+
+                2 -> {
+                    low = args.checklong(1)
+                    high = args.checklong(2)
+                }
+
+                else -> return LuaValue.error("wrong number of arguments")!!
+            }
+            args.argcheck(low <= high, 1, "interval is empty")
+            return valueOf(low + project(draw, high - low))!!
+        }
+
+        /**
+         * An unbiased draw in `[0, span]`, treating both as unsigned.
+         *
+         * Taking a remainder would favour the low end of the range, so the
+         * draw is masked down to the next power of two minus one and retried
+         * until it lands inside, as upstream does.
+         */
+        private fun project(draw: Long, span: Long): Long {
+            if (span and (span + 1) == 0L) return draw and span // span + 1 is a power of two
+            var limit = span
+            limit = limit or (limit ushr 1)
+            limit = limit or (limit ushr 2)
+            limit = limit or (limit ushr 4)
+            limit = limit or (limit ushr 8)
+            limit = limit or (limit ushr 16)
+            limit = limit or (limit ushr 32)
+            var value = draw and limit
+            while (value.toULong() > span.toULong()) value = generator.next() and limit
+            return value
+        }
+    }
+
+    /**
+     * `math.randomseed ([x [, y]])`.
+     *
+     * Seeds the generator and answers the two halves of the seed it used, so a
+     * run that wants to be repeatable can record them.
+     */
+    internal class randomseed(val random: MathLib.random) : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x: Long
+            val y: Long
+            if (args.isnoneornil(1)) {
+                x = Random.Default.nextLong()
+                y = random.generator.next()
+            } else {
+                x = args.checklong(1)
+                y = args.optlong(2, 0L)
+            }
+            random.generator.seed(x, y)
+            return varargsOf(valueOf(x), valueOf(y))!!
         }
     }
 
@@ -354,6 +552,30 @@ open class MathLib : TwoArgFunction() {
     }
 
     companion object {
+        /** 2^1000, the largest step ldexp can take without leaving the range. */
+        internal val TWO_POW_1000: Double = run {
+            var result = 1.0
+            repeat(1000) { result *= 2.0 }
+            result
+        }
+
+        /** A float result becomes an integer when it is representable as one. */
+        /**
+         * The integer [value] denotes, or the float itself when it denotes none.
+         *
+         * The range has to be checked as well as the round trip: converting a
+         * double past the integer range saturates at the end, and converting
+         * that back lands on the same double, so `2^63` would otherwise look
+         * like an integer.
+         */
+        internal fun narrowToInteger(value: Double): LuaValue {
+            if (value < -9.2233720368547758E18 || value >= 9.2233720368547758E18) {
+                return LuaValue.valueOf(value)
+            }
+            val asLong: Long = value.toLong()
+            return if (asLong.toDouble() == value) LuaValue.valueOf(asLong) else LuaValue.valueOf(value)
+        }
+
         /** Pointer to the latest MathLib instance, used only to dispatch
          * math.exp to tha correct platform math library.
          */

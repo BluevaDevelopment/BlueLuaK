@@ -81,6 +81,8 @@ class CoroutineLib : TwoArgFunction() {
         coroutine.set("status", net.blueva.luak.lib.CoroutineLib.status())
         coroutine.set("yield", YieldFunction())
         coroutine.set("wrap", wrap())
+        coroutine.set("close", close())
+        coroutine.set("isyieldable", isyieldable())
         env!!.set("coroutine", coroutine)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
         return coroutine
@@ -113,6 +115,35 @@ class CoroutineLib : TwoArgFunction() {
         }
     }
 
+    /**
+     * `coroutine.close (co)`, from Lua 5.4.
+     *
+     * Ends a suspended or dead coroutine, running any to-be-closed variables it
+     * was still holding.
+     */
+    internal inner class close : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            // With no argument it is the running coroutine that is closed.
+            val thread: LuaThread =
+                if (args.isnoneornil(1)) globals!!.running else args.checkthread(1)
+            return thread.close()
+        }
+    }
+
+    /**
+     * `coroutine.isyieldable ([co])`, from Lua 5.2.
+     *
+     * True when [co], or the running coroutine if none is given, could yield -
+     * that is, when it is not the main thread and no library call it is inside
+     * of stands in the way.
+     */
+    internal inner class isyieldable : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val thread: LuaThread = if (args.isnoneornil(1)) globals!!.running else args.checkthread(1)
+            return valueOf(!thread.isMainThread && thread.state.noyield == 0)!!
+        }
+    }
+
     internal inner class YieldFunction : VarArgFunction() {
         // Reached only when yield() is called from outside the suspend-aware
         // interpreter dispatch (e.g. from a library function's own callback,
@@ -141,14 +172,25 @@ class CoroutineLib : TwoArgFunction() {
             this.luathread = luathread
         }
 
+        // The coroutine is what this wrapper carries, which is what an upvalue
+        // is.
+        override fun nupvalues(): Int = 1
+
+        override fun upvaluestate(n: Int): Any? = if (n == 1) luathread else null
+
         override fun invoke(args: Varargs): Varargs {
             val result: Varargs = luathread.resume(args)
             if (result.arg1()!!.toboolean()) {
                 return (result.subargs(2))!!
-            } else {
-                return (error(result.arg(2)!!.tojstring()))!!
             }
+            // Raised as it stands, object and all: a wrapped coroutine passes
+            // its failure straight on to whoever called it.
+            throw LuaError(result.arg(2)!!)
         }
+
+        // The coroutine's own run is where a yield inside it belongs, so this
+        // must not stand in the way; see BaseLib.pcall.invokeSuspend().
+        override suspend fun invokeSuspend(args: Varargs): Varargs = invoke(args)
     }
 
     companion object {

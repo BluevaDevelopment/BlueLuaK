@@ -66,6 +66,8 @@ abstract class OneArgFunction
     }
 
     override fun invoke(varargs: Varargs): Varargs {
-        return call(varargs.arg1())!!
+        // A one-argument function can only ever be complaining about argument
+        // one, so the index is attached here rather than left off the message.
+        return net.blueva.luak.withArgIndex(1) { call(varargs.arg1())!! }
     }
 }

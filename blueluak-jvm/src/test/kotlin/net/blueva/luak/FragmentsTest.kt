@@ -153,7 +153,8 @@ object FragmentsTest : TestSuite() {
 
         fun testSetListWithOffsetAndVarargs() {
             runFragment(
-                LuaValue.valueOf(1003),
+                // math.sqrt is a float function, so the sum is a float too.
+                LuaValue.valueOf(1003.0),
                 "local bar = {1000, math.sqrt(9)}\n" +
                         "return bar[1]+bar[2]\n"
             )
@@ -397,13 +398,19 @@ object FragmentsTest : TestSuite() {
             )
         }
 
+        /**
+         * A loop variable captured by a closure inside the loop.
+         *
+         * The captured value is a copy: since Lua 5.5 the loop's own variable
+         * is a constant and cannot be assigned to.
+         */
         fun testNumericForUpvalues() {
             runFragment(
                 LuaValue.valueOf(8),
                 "for i = 3,4 do\n" +
-                        "	i = i + 5\n" +
+                        "	local j = i + 5\n" +
                         "	local a = function()\n" +
-                        "		return i\n" +
+                        "		return j\n" +
                         "	end\n" +
                         "	return a()\n" +
                         "end\n"
@@ -663,8 +670,9 @@ object FragmentsTest : TestSuite() {
         }
 
         fun testNullError() {
+            // A nil error object becomes text at the point it is raised.
             runFragment(
-                LuaValue.varargsOf(LuaValue.FALSE, LuaValue.NIL)!!,
+                LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf("<no error object>"))!!,
                 "return pcall(error)\n"
             )
         }
@@ -691,7 +699,10 @@ object FragmentsTest : TestSuite() {
 
         fun testErrorArgIsNil() {
             runFragment(
-                LuaValue.varargsOf(LuaValue.valueOf("nil"), LuaValue.NIL)!!,
+                LuaValue.varargsOf(
+                    LuaValue.valueOf("string"),
+                    LuaValue.valueOf("<no error object>"),
+                )!!,
                 "a,b = pcall(error); return type(b), b\n"
             )
         }
@@ -703,11 +714,12 @@ object FragmentsTest : TestSuite() {
             )
         }
 
+        /** Only a string error object gets a position, so a number stays one. */
         fun testErrorArgIsNumber() {
             runFragment(
                 LuaValue.varargsOf(
-                    net.blueva.luak.LuaValue.valueOf("string"),
-                    net.blueva.luak.LuaValue.valueOf("1")
+                    net.blueva.luak.LuaValue.valueOf("number"),
+                    net.blueva.luak.LuaValue.valueOf(1L)
                 )!!,
                 "a,b = pcall(error, 1); return type(b), b\n"
             )
@@ -743,7 +755,8 @@ object FragmentsTest : TestSuite() {
         }
 
         fun testReturnValueForTableRemove() {
-            runFragment(LuaValue.NONE!!, "return table.remove({ })")
+            // One value, which happens to be nil - not an absence of values.
+            runFragment(LuaValue.NIL, "return table.remove({ })")
         }
 
         fun testTypeOfTableRemoveReturnValue() {

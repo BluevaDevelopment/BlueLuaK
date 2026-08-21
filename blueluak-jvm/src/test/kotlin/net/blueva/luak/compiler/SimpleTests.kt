@@ -18,6 +18,7 @@ import junit.framework.TestCase
 import net.blueva.luak.Globals
 import net.blueva.luak.LuaDouble
 import net.blueva.luak.LuaInteger
+import net.blueva.luak.LuaTable
 import net.blueva.luak.LuaValue
 import net.blueva.luak.lib.jvm.JvmPlatform.standardGlobals
 
@@ -71,9 +72,16 @@ class SimpleTests : TestCase() {
     }
 
     fun testShebang() {
+        // A '#!' line is stripped while Lua reads a *file*, so the chunk has to
+        // be named as one; `load` of the same text is an ordinary chunk that
+        // starts with the length operator and does not compile.
         val s = "#!../lua\n" +
                 "print( 2 )\n"
-        doTest(s)
+        try {
+            globals!!.load(s, "@script")!!.call()
+        } catch (e: Exception) {
+            fail("i/o exception: " + e)
+        }
     }
 
     fun testInlineTable() {
@@ -87,13 +95,26 @@ class SimpleTests : TestCase() {
         doTest(s)
     }
 
-    fun testDoubleHashCode() {
+    /**
+     * An integer and a float of the same value hash apart, and index alike.
+     *
+     * They used to be the same object, so equal hash codes were unavoidable.
+     * Now they are distinct values and the compiler's constant pool relies on
+     * telling them apart, so their hash codes are free to differ - what still
+     * has to hold is the Lua-level rule that `t[2]` and `t[2.0]` are one key.
+     */
+    fun testIntegerAndFloatKeysAgree() {
         for (i in samehash.indices) {
-            val j: LuaValue = LuaInteger.valueOf(samehash[i])!!
-            val d: LuaValue = LuaDouble.valueOf(samehash[i].toDouble())!!
-            val hj = j.hashCode()
-            val hd = d.hashCode()
-            TestCase.assertEquals(hj, hd)
+            val integer: LuaValue = LuaInteger.valueOf(samehash[i])!!
+            val float: LuaValue = LuaDouble.valueOf(samehash[i].toDouble())!!
+            TestCase.assertFalse("subtypes must stay apart", integer == float)
+
+            val table = LuaTable()
+            table.set(integer, LuaValue.valueOf("by integer"))
+            TestCase.assertEquals("by integer", table.get(float).tojstring())
+            table.set(float, LuaValue.valueOf("by float"))
+            TestCase.assertEquals("by float", table.get(integer).tojstring())
+            TestCase.assertEquals(1, table.keys().size)
         }
         var i = 0
         while (i < diffhash.size) {
@@ -105,6 +126,7 @@ class SimpleTests : TestCase() {
             i += 2
         }
     }
+
 
     companion object {
         private val samehash = intArrayOf(0, 1, -1, 2, -2, 4, 8, 16, 32, Int.MAX_VALUE, Int.MIN_VALUE)

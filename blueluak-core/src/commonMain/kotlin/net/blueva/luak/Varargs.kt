@@ -24,12 +24,25 @@ import kotlin.reflect.KClass
  * so it reads like real Lua's "bad argument #N: ...".
  * The interpreter may further enrich it with the calling function's name.
  */
-private inline fun <T> withArgIndex(i: Int, block: () -> T): T {
+/**
+ * Runs [block], stamping argument index [i] onto any argument error it raises.
+ *
+ * A check made on a value alone - `arg.checkdouble()` rather than
+ * `args.checkdouble(1)` - has no way to know which argument the value came
+ * from, so the index is attached here, where it is known.
+ */
+/** What a conversion says when a float denotes no integer. */
+private const val NOT_AN_INTEGER = "number has no integer representation"
+
+internal inline fun <T> withArgIndex(i: Int, block: () -> T): T {
     try {
         return block()
     } catch (e: LuaError) {
+        // Only the complaints a conversion raises about the value itself.
+        // Anything else the call raised is its own error and must not be
+        // relabelled as a complaint about the arguments it was given.
         val m = e.message
-        if (m != null && !m.startsWith("bad argument #")) {
+        if (m != null && (m.startsWith("bad argument: ") || m == NOT_AN_INTEGER)) {
             e.argMessageOverride = "bad argument #" + i + ": " + m.removePrefix("bad argument: ")
         }
         throw e

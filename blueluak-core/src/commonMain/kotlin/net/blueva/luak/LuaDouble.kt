@@ -100,20 +100,23 @@ class LuaDouble
         return v
     }
 
+    // The opt forms differ from the check forms only in what a missing
+    // argument does, which cannot happen once there is a value here, so they
+    // hold this float to the same standard.
     override fun optint(defval: Int): Int {
-        return v.toLong().toInt()
+        return checkint()
     }
 
     override fun optinteger(defval: LuaInteger?): LuaInteger {
-        return (LuaInteger.valueOf(v.toLong().toInt()))!!
+        return checkinteger()
     }
 
     override fun optlong(defval: Long): Long {
-        return v.toLong()
+        return checklong()
     }
 
     override fun checkinteger(): LuaInteger {
-        return (LuaInteger.valueOf(v.toLong().toInt()))!!
+        return (LuaInteger.valueOf(checklong()))!!
     }
 
     // unary operators
@@ -148,9 +151,8 @@ class LuaDouble
         return v == `val`
     }
 
-    override fun raweq(`val`: Int): Boolean {
-        val `val` = `val`!!
-        return v == `val`.toDouble()
+    override fun raweq(`val`: Long): Boolean {
+        return luaIntegerEqualsFloat(`val`, v)
     }
 
     // basic binary arithmetic
@@ -162,6 +164,10 @@ class LuaDouble
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs + v))!!
     }
 
+    override fun add(rhs: Long): LuaValue {
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(rhs + v))!!
+    }
+
     override fun sub(rhs: LuaValue): LuaValue {
         return rhs.subFrom(v)
     }
@@ -170,11 +176,15 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.valueOf(v - rhs)
     }
 
-    override fun sub(rhs: Int): LuaValue? {
+    override fun sub(rhs: Long): LuaValue? {
         return net.blueva.luak.LuaDouble.Companion.valueOf(v - rhs)
     }
 
     override fun subFrom(lhs: Double): LuaValue {
+        return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v))!!
+    }
+
+    override fun subFrom(lhs: Long): LuaValue {
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs - v))!!
     }
 
@@ -186,7 +196,7 @@ class LuaDouble
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v))!!
     }
 
-    override fun mul(lhs: Int): LuaValue {
+    override fun mul(lhs: Long): LuaValue {
         return (net.blueva.luak.LuaDouble.Companion.valueOf(lhs * v))!!
     }
 
@@ -198,7 +208,7 @@ class LuaDouble
         return MathLib.dpow(v, rhs)
     }
 
-    override fun pow(rhs: Int): LuaValue {
+    override fun pow(rhs: Long): LuaValue {
         return MathLib.dpow(v, (rhs).toDouble())
     }
 
@@ -206,8 +216,35 @@ class LuaDouble
         return MathLib.dpow(lhs, v)
     }
 
-    override fun powWith(lhs: Int): LuaValue {
+    override fun powWith(lhs: Long): LuaValue {
         return MathLib.dpow((lhs).toDouble(), v)
+    }
+
+    override fun band(rhs: LuaValue): LuaValue = bitwise(net.blueva.luak.LuaValue.Companion.BAND, rhs)
+    override fun bor(rhs: LuaValue): LuaValue = bitwise(net.blueva.luak.LuaValue.Companion.BOR, rhs)
+    override fun bxor(rhs: LuaValue): LuaValue = bitwise(net.blueva.luak.LuaValue.Companion.BXOR, rhs)
+    override fun shl(rhs: LuaValue): LuaValue = bitwise(net.blueva.luak.LuaValue.Companion.SHL, rhs)
+    override fun shr(rhs: LuaValue): LuaValue = bitwise(net.blueva.luak.LuaValue.Companion.SHR, rhs)
+
+    override fun bnot(): LuaValue = LuaValue.valueOf(luaBitwiseOperand(this).inv())
+
+    private fun bitwise(tag: LuaString, rhs: LuaValue): LuaValue {
+        if (!rhs.isnumber() || rhs is LuaString) return arithmt(tag, rhs)
+        val x: Long = luaBitwiseOperand(this)
+        val y: Long = luaBitwiseOperand(rhs)
+        return when (tag) {
+            net.blueva.luak.LuaValue.Companion.BAND -> LuaValue.valueOf(x and y)
+            net.blueva.luak.LuaValue.Companion.BOR -> LuaValue.valueOf(x or y)
+            net.blueva.luak.LuaValue.Companion.BXOR -> LuaValue.valueOf(x xor y)
+            net.blueva.luak.LuaValue.Companion.SHL -> LuaValue.valueOf(luaShiftLeft(x, y))
+            else -> LuaValue.valueOf(luaShiftLeft(x, -y))
+        }
+    }
+
+    override fun idiv(rhs: LuaValue): LuaValue {
+        val other: LuaValue = rhs.tonumber()
+        if (other.isnil()) return arithmt(net.blueva.luak.LuaValue.Companion.IDIV, rhs)
+        return luaFloorDiv(this, other)
     }
 
     override fun div(rhs: LuaValue): LuaValue {
@@ -218,7 +255,7 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.ddiv(v, rhs)
     }
 
-    override fun div(rhs: Int): LuaValue? {
+    override fun div(rhs: Long): LuaValue? {
         return net.blueva.luak.LuaDouble.Companion.ddiv(v, rhs.toDouble())
     }
 
@@ -234,7 +271,7 @@ class LuaDouble
         return net.blueva.luak.LuaDouble.Companion.dmod(v, rhs)
     }
 
-    override fun mod(rhs: Int): LuaValue? {
+    override fun mod(rhs: Long): LuaValue? {
         return net.blueva.luak.LuaDouble.Companion.dmod(v, rhs.toDouble())
     }
 
@@ -252,16 +289,16 @@ class LuaDouble
         return (if (v < rhs) TRUE else FALSE)!!
     }
 
-    override fun lt(rhs: Int): LuaValue {
-        return (if (v < rhs) TRUE else FALSE)!!
+    override fun lt(rhs: Long): LuaValue {
+        return (if (luaFloatLessThanInteger(v, rhs)) TRUE else FALSE)!!
     }
 
     override fun lt_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.gt_b(v) else super.lt_b(rhs)
     }
 
-    override fun lt_b(rhs: Int): Boolean {
-        return v < rhs
+    override fun lt_b(rhs: Long): Boolean {
+        return luaFloatLessThanInteger(v, rhs)
     }
 
     override fun lt_b(rhs: Double): Boolean {
@@ -276,16 +313,16 @@ class LuaDouble
         return (if (v <= rhs) TRUE else FALSE)!!
     }
 
-    override fun lteq(rhs: Int): LuaValue {
-        return (if (v <= rhs) TRUE else FALSE)!!
+    override fun lteq(rhs: Long): LuaValue {
+        return (if (luaFloatLessOrEqualInteger(v, rhs)) TRUE else FALSE)!!
     }
 
     override fun lteq_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.gteq_b(v) else super.lteq_b(rhs)
     }
 
-    override fun lteq_b(rhs: Int): Boolean {
-        return v <= rhs
+    override fun lteq_b(rhs: Long): Boolean {
+        return luaFloatLessOrEqualInteger(v, rhs)
     }
 
     override fun lteq_b(rhs: Double): Boolean {
@@ -300,16 +337,16 @@ class LuaDouble
         return (if (v > rhs) TRUE else FALSE)!!
     }
 
-    override fun gt(rhs: Int): LuaValue {
-        return (if (v > rhs) TRUE else FALSE)!!
+    override fun gt(rhs: Long): LuaValue {
+        return (if (luaIntegerLessThanFloat(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gt_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.lt_b(v) else super.gt_b(rhs)
     }
 
-    override fun gt_b(rhs: Int): Boolean {
-        return v > rhs
+    override fun gt_b(rhs: Long): Boolean {
+        return luaIntegerLessThanFloat(rhs, v)
     }
 
     override fun gt_b(rhs: Double): Boolean {
@@ -324,16 +361,16 @@ class LuaDouble
         return (if (v >= rhs) TRUE else FALSE)!!
     }
 
-    override fun gteq(rhs: Int): LuaValue {
-        return (if (v >= rhs) TRUE else FALSE)!!
+    override fun gteq(rhs: Long): LuaValue {
+        return (if (luaIntegerLessOrEqualFloat(rhs, v)) TRUE else FALSE)!!
     }
 
     override fun gteq_b(rhs: LuaValue): Boolean {
         return if (rhs is LuaNumber) rhs.lteq_b(v) else super.gteq_b(rhs)
     }
 
-    override fun gteq_b(rhs: Int): Boolean {
-        return v >= rhs
+    override fun gteq_b(rhs: Long): Boolean {
+        return luaIntegerLessOrEqualFloat(rhs, v)
     }
 
     override fun gteq_b(rhs: Double): Boolean {
@@ -347,22 +384,7 @@ class LuaDouble
     }
 
     override fun tojstring(): String {
-        /*
-		if ( v == 0.0 ) { // never occurs in J2me
-			long bits = ( v ).toBits();
-			return ( bits >> 63 == 0 ) ? "0" : "-0";
-		}
-		*/
-        val l = v.toLong()
-        if (l.toDouble() == v) return l.toString()
-        if ((v).isNaN()) return net.blueva.luak.LuaDouble.Companion.JSTR_NAN
-        if ((v).isInfinite()) return (if (v < 0) net.blueva.luak.LuaDouble.Companion.JSTR_NEGINF else net.blueva.luak.LuaDouble.Companion.JSTR_POSINF)
-        val f = v.toFloat()
-        // v is finite but exceeds Float range: narrowing to Float would wrongly
-        // produce "Infinity". Fall back to full double precision instead of
-        // reporting a finite number as infinite.
-        if (f.isInfinite()) return v.toString()
-        return f.toString()
+        return DecimalFormat.luaFloat(v)
     }
 
     override fun strvalue(): LuaString {
@@ -398,11 +420,19 @@ class LuaDouble
     }
 
     override fun checkint(): Int {
-        return v.toLong().toInt()
+        return checklong().toInt()
     }
 
+    /**
+     * The integer this float denotes, or an error if it denotes none.
+     *
+     * Truncating silently would let `string.rep("x", 2.5)` mean `2`, where Lua
+     * requires a value that is exactly an integer.
+     */
     override fun checklong(): Long {
-        return v.toLong()
+        val whole: Long = v.toLong()
+        if (whole.toDouble() != v) LuaValue.error("number has no integer representation")
+        return whole
     }
 
     override fun checknumber(): LuaNumber {
@@ -444,9 +474,17 @@ class LuaDouble
         /** Constant String representation for negative infinity, "-inf"  */
         val JSTR_NEGINF: String = "-inf"
 
+        /**
+         * A float stays a float.
+         *
+         * BlueLuaK inherited LuaJ's habit of folding a double with an integral
+         * value into a [LuaInteger], which made sense when Lua 5.2 had a single
+         * number type. Since 5.3 the two subtypes are distinguishable from Lua
+         * (`math.type`, `2.0` printing as `2.0`, `1 // 0.0` giving `inf`), so
+         * the fold has to go.
+         */
         fun valueOf(d: Double): LuaNumber? {
-            val id = d.toInt()
-            return if (d == id.toDouble()) LuaInteger.valueOf(id) as LuaNumber? else net.blueva.luak.LuaDouble(d) as LuaNumber
+            return net.blueva.luak.LuaDouble(d)
         }
 
         /** Divide two double numbers according to lua math, and return a [LuaValue] result.
@@ -457,7 +495,9 @@ class LuaDouble
          * @see .ddiv_d
          */
         fun ddiv(lhs: Double, rhs: Double): LuaValue? {
-            return if (rhs != 0.0) net.blueva.luak.LuaDouble.Companion.valueOf(lhs / rhs) else if (lhs > 0) net.blueva.luak.LuaDouble.Companion.POSINF else if (lhs == 0.0) net.blueva.luak.LuaDouble.Companion.NAN else net.blueva.luak.LuaDouble.Companion.NEGINF
+            // Plain IEEE division. Special-casing a zero divisor lost the sign
+            // of the zero, so 1/-0.0 came out positive.
+            return net.blueva.luak.LuaDouble.Companion.valueOf(lhs / rhs)
         }
 
         /** Divide two double numbers according to lua math, and return a double result.
@@ -467,7 +507,7 @@ class LuaDouble
          * @see .ddiv
          */
         fun ddiv_d(lhs: Double, rhs: Double): Double {
-            return if (rhs != 0.0) lhs / rhs else if (lhs > 0) Double.POSITIVE_INFINITY else if (lhs == 0.0) Double.NaN else Double.NEGATIVE_INFINITY
+            return lhs / rhs
         }
 
         /** Take modulo double numbers according to lua math, and return a [LuaValue] result.
@@ -476,20 +516,10 @@ class LuaDouble
          * @return [LuaValue] for the result of the modulo,
          * using lua's rules for modulo
          * @see .dmod_d
+         * @see luaFloatMod
          */
         fun dmod(lhs: Double, rhs: Double): LuaValue? {
-            if (rhs == 0.0 || lhs == Double.POSITIVE_INFINITY || lhs == Double.NEGATIVE_INFINITY) return net.blueva.luak.LuaDouble.Companion.NAN
-            if (rhs == Double.POSITIVE_INFINITY) {
-                return if (lhs < 0) net.blueva.luak.LuaDouble.Companion.POSINF else net.blueva.luak.LuaDouble.Companion.valueOf(
-                    lhs
-                )
-            }
-            if (rhs == Double.NEGATIVE_INFINITY) {
-                return if (lhs > 0) net.blueva.luak.LuaDouble.Companion.NEGINF else net.blueva.luak.LuaDouble.Companion.valueOf(
-                    lhs
-                )
-            }
-            return net.blueva.luak.LuaDouble.Companion.valueOf(lhs - rhs * kotlin.math.floor(lhs / rhs))
+            return net.blueva.luak.LuaDouble.Companion.valueOf(luaFloatMod(lhs, rhs))
         }
 
         /** Take modulo for double numbers according to lua math, and return a double result.
@@ -500,14 +530,7 @@ class LuaDouble
          * @see .dmod
          */
         fun dmod_d(lhs: Double, rhs: Double): Double {
-            if (rhs == 0.0 || lhs == Double.POSITIVE_INFINITY || lhs == Double.NEGATIVE_INFINITY) return Double.NaN
-            if (rhs == Double.POSITIVE_INFINITY) {
-                return if (lhs < 0) Double.POSITIVE_INFINITY else lhs
-            }
-            if (rhs == Double.NEGATIVE_INFINITY) {
-                return if (lhs > 0) Double.NEGATIVE_INFINITY else lhs
-            }
-            return lhs - rhs * kotlin.math.floor(lhs / rhs)
+            return luaFloatMod(lhs, rhs)
         }
     }
 }

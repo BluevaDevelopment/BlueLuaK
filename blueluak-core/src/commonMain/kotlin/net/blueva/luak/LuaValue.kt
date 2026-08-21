@@ -101,6 +101,34 @@ import kotlin.reflect.KClass
  */
 abstract
 open class LuaValue : Varargs() {
+    /**
+     * What keeps this value watched for finalization, or null.
+     *
+     * Only a table or a userdata can have a `__gc` handler, so only those keep
+     * one; everything else answers null and ignores what it is given. Holding
+     * it here is the point: the keeper has to live exactly as long as the
+     * value does. See [Globals.markforfinalization].
+     */
+    internal open var gckeeper: Any?
+        get() = null
+        set(value) {}
+
+    /**
+     * What this value keeps alive by being the key of a weak-key table.
+     *
+     * Such a table holds its value only for as long as the key lives, and it
+     * is the key itself that holds it: an entry whose key can be reached only
+     * through its own value is then a ring that nothing outside refers to, and
+     * goes as a whole. That is what makes a weak-key table an ephemeron table
+     * rather than one that keeps its keys alive through their values.
+     *
+     * Holds one value, or a list of them for a key used in several tables.
+     * Only the kinds that can be a weak key keep one; see [WeakTable].
+     */
+    internal open var pinned: Any?
+        get() = null
+        set(value) {}
+
     // type
     /** Get the enumeration value for the type of this value.
      * @return value for this type, one of
@@ -1055,7 +1083,23 @@ open class LuaValue : Varargs() {
      * @throws LuaError in all cases
      */
     protected fun argerror(expected: String?): LuaValue? {
-        throw LuaError("bad argument: " + expected + " expected, got " + typename())
+        throw LuaError("bad argument: " + expected + " expected, got " + argtypename())
+    }
+
+    /**
+     * The type name an argument error calls this value.
+     *
+     * A `__name` field renames the type, and a light userdata is named as one
+     * so a script told "userdata expected" can see what it actually passed.
+     */
+    internal fun argtypename(): String {
+        val mt: LuaValue? = getmetatable()
+        if (mt != null) {
+            val name: LuaValue = mt.rawget(net.blueva.luak.LuaValue.Companion.NAME)
+            if (name.type() == net.blueva.luak.LuaValue.Companion.TSTRING) return name.tojstring()
+        }
+        if (this is LuaLightUserdata) return "light userdata"
+        return typename()!!
     }
 
     /**
@@ -1064,7 +1108,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError in all cases
      */
     protected fun typerror(expected: String?): LuaValue? {
-        throw LuaError(expected.toString() + " expected, got " + typename())
+        throw LuaError(expected.toString() + " expected, got " + argtypename())
     }
 
     /**
@@ -1500,7 +1544,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(): LuaValue? {
-        return callmt().call(this)
+        return invoke(net.blueva.luak.LuaValue.Companion.NONE!!).arg1()!!
     }
 
     /** Call `this` with 1 argument, including metatag processing,
@@ -1531,7 +1575,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(arg: LuaValue?): LuaValue? {
-        return callmt().call(this, arg)
+        return invoke(arg!!).arg1()!!
     }
 
     /** Convenience function which calls a luavalue with a single, string argument.
@@ -1572,7 +1616,7 @@ open class LuaValue : Varargs() {
      * @see .method
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
-        return callmt().call(this, arg1, arg2)
+        return invoke(net.blueva.luak.LuaValue.Companion.varargsOf(arg1, arg2!!)).arg1()!!
     }
 
     /** Call `this` with 3 arguments, including metatag processing,
@@ -1605,7 +1649,9 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun call(arg1: LuaValue?, arg2: LuaValue?, arg3: LuaValue?): LuaValue? {
-        return (callmt().invoke(arrayOf<LuaValue?>(this, arg1, arg2, arg3))!!.arg1())!!
+        return invoke(
+            net.blueva.luak.LuaValue.Companion.varargsOf(arrayOf<LuaValue?>(arg1, arg2, arg3)),
+        ).arg1()!!
     }
 
     /** Suspending counterpart to the `call`/`invoke`/`onInvoke` family, used by
@@ -1881,7 +1927,13 @@ open class LuaValue : Varargs() {
      * @see .invokemethod
      */
     open fun invoke(args: Varargs): Varargs {
-        return callmt().invoke(this, args)
+        val prefix: ArrayList<LuaValue> = ArrayList()
+        val target: LuaValue = resolvecall(prefix)
+        // Prepended outermost first, so the innermost handler's own value
+        // ends up in front: Lua hands them over in the order it walked them.
+        var all: Varargs = args
+        for (self in prefix) all = net.blueva.luak.LuaValue.Companion.varargsOf(self, all)
+        return target.invoke(all)
     }
 
     /** Suspending counterpart to [.invoke]; see [.callSuspend] for why this
@@ -2227,6 +2279,31 @@ open class LuaValue : Varargs() {
      * @return [LuaValue] value if metatag is defined
      * @throws LuaError if [.CALL] metatag is not defined.
      */
+    /**
+     * The function a call on this value really reaches, through `__call`.
+     *
+     * Each handler on the way takes the value it was found on as its first
+     * argument, so [prefix] collects them in order. The chain is bounded: Lua
+     * allows a fixed number of handlers between the value that was written and
+     * the function that runs, and refuses a longer one rather than following
+     * it forever.
+     */
+    internal fun resolvecall(prefix: ArrayList<LuaValue>): LuaValue {
+        var target: LuaValue = this
+        var depth = 0
+        while (target !is LuaFunction) {
+            val handler: LuaValue = target.metatag(net.blueva.luak.LuaValue.Companion.CALL)
+            // Nothing to call: reported against the value as it was written.
+            if (handler.isnil()) target.callmt()
+            if (++depth > net.blueva.luak.LuaValue.Companion.MAX_CALL_CHAIN) {
+                net.blueva.luak.LuaValue.Companion.error("'__call' chain too long")
+            }
+            prefix.add(target)
+            target = handler
+        }
+        return target
+    }
+
     protected fun callmt(): LuaValue {
         return checkmetatag(net.blueva.luak.LuaValue.Companion.CALL, "attempt to call ")
     }
@@ -2245,7 +2322,11 @@ open class LuaValue : Varargs() {
      * @throws LuaError if  `this` is not a table or string, and has no [.UNM] metatag
      */
     open fun neg(): LuaValue {
-        return checkmetatag(net.blueva.luak.LuaValue.Companion.UNM, "attempt to perform arithmetic on ").call(this)!!
+        // Lua hands a unary operator its operand twice.
+        return checkmetatag(
+            net.blueva.luak.LuaValue.Companion.UNM,
+            "attempt to perform arithmetic on ",
+        ).call(this, this)!!
     }
 
     /** Length operator: return lua length of object `(#this)` including metatag processing as java int
@@ -2254,7 +2335,8 @@ open class LuaValue : Varargs() {
      * @throws LuaError if  `this` is not a table or string, and has no [.LEN] metatag
      */
     open fun len(): LuaValue {
-        return checkmetatag(net.blueva.luak.LuaValue.Companion.LEN, "attempt to get length of ").call(this)!!
+        // Lua hands a unary operator its operand twice.
+        return checkmetatag(net.blueva.luak.LuaValue.Companion.LEN, "attempt to get length of ").call(this, this)!!
     }
 
     /** Length operator: return lua length of object `(#this)` including metatag processing as java int
@@ -2401,7 +2483,7 @@ open class LuaValue : Varargs() {
      * whose value equals val,
      * otherwise false
      */
-    open fun raweq(`val`: Int): Boolean {
+    open fun raweq(`val`: Long): Boolean {
         return false
     }
 
@@ -2451,8 +2533,8 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .add
      */
-    open fun add(rhs: Int): LuaValue {
-        return add(rhs.toDouble())
+    open fun add(rhs: Long): LuaValue {
+        return arithmtwith(net.blueva.luak.LuaValue.Companion.ADD, rhs)
     }
 
     /** Subtract: Perform numeric subtract operation with another value
@@ -2502,7 +2584,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .sub
      */
-    open fun sub(rhs: Int): LuaValue? {
+    open fun sub(rhs: Long): LuaValue? {
         return aritherror("sub")
     }
 
@@ -2541,8 +2623,8 @@ open class LuaValue : Varargs() {
      * @see .sub
      * @see .sub
      */
-    open fun subFrom(lhs: Int): LuaValue {
-        return subFrom(lhs.toDouble())
+    open fun subFrom(lhs: Long): LuaValue {
+        return arithmtwith(net.blueva.luak.LuaValue.Companion.SUB, lhs)
     }
 
     /** Multiply: Perform numeric multiply operation with another value
@@ -2592,8 +2674,8 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mul
      */
-    open fun mul(rhs: Int): LuaValue {
-        return mul(rhs.toDouble())
+    open fun mul(rhs: Long): LuaValue {
+        return arithmtwith(net.blueva.luak.LuaValue.Companion.MUL, rhs)
     }
 
     /** Raise to power: Raise this value to a power
@@ -2642,7 +2724,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .pow
      */
-    open fun pow(rhs: Int): LuaValue? {
+    open fun pow(rhs: Long): LuaValue? {
         return aritherror("pow")
     }
 
@@ -2678,8 +2760,8 @@ open class LuaValue : Varargs() {
      * @see .pow
      * @see .pow
      */
-    open fun powWith(lhs: Int): LuaValue {
-        return powWith(lhs.toDouble())
+    open fun powWith(lhs: Long): LuaValue {
+        return arithmtwith(net.blueva.luak.LuaValue.Companion.POW, lhs)
     }
 
     /** Divide: Perform numeric divide operation by another value
@@ -2735,8 +2817,109 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .div
      */
-    open fun div(rhs: Int): LuaValue? {
+    open fun div(rhs: Long): LuaValue? {
         return aritherror("div")
+    }
+
+    /** Floor divide: perform the `//` operation with metatag processing.
+     *
+     * Integer operands produce an integer, rounding towards negative infinity;
+     * if either side is a float the result is a float. Dividing an integer by
+     * an integer zero is an error, while the float form yields an infinity, all
+     * as specified since Lua 5.3.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this // rhs)`
+     * @throws LuaError if either operand is not a number and has no `__idiv`
+     */
+    open fun idiv(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.IDIV, rhs)
+    }
+
+
+    /** Bitwise and: perform the `&` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this & rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__band` metamethod
+     */
+    open fun band(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BAND, rhs)
+    }
+
+    /** Bitwise or: perform the `|` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this | rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__bor` metamethod
+     */
+    open fun bor(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BOR, rhs)
+    }
+
+    /** Bitwise exclusive or: perform the `~` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this ~ rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__bxor` metamethod
+     */
+    open fun bxor(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BXOR, rhs)
+    }
+
+    /** Bitwise left shift: perform the `<<` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this << rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__shl` metamethod
+     */
+    open fun shl(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.SHL, rhs)
+    }
+
+    /** Bitwise right shift: perform the `>>` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this >> rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__shr` metamethod
+     */
+    open fun shr(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.SHR, rhs)
+    }
+
+    /** Bitwise not: perform the unary `~` operation with metatag processing.
+     *
+     * @return value of `(~this)`
+     * @throws LuaError if this has no integer representation and there is no
+     *   `__bnot` metamethod
+     */
+    open fun bnot(): LuaValue {
+        val h: LuaValue = metatag(net.blueva.luak.LuaValue.Companion.BNOT)
+        if (h.isnil()) {
+            net.blueva.luak.LuaValue.Companion.operandError(
+                net.blueva.luak.LuaValue.Companion.BNOT,
+                this,
+                this,
+            )
+        }
+        // Lua hands a unary operator its operand twice.
+        checkcallable(net.blueva.luak.LuaValue.Companion.BNOT, h)
+        return h.call(this, this)!!
     }
 
     /** Reverse-divide: Perform numeric divide operation into another value
@@ -2810,7 +2993,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mod
      */
-    open fun mod(rhs: Int): LuaValue? {
+    open fun mod(rhs: Long): LuaValue? {
         return aritherror("mod")
     }
 
@@ -2863,9 +3046,58 @@ open class LuaValue : Varargs() {
         var h = this.metatag(tag)
         if (h.isnil()) {
             h = op2.metatag(tag)
-            if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on " + typename() + " and " + op2.typename())
+            if (h.isnil()) net.blueva.luak.LuaValue.Companion.operandError(tag, this, op2)
         }
+        checkcallable(tag, h)
         return h.call(this, op2)!!
+    }
+
+    /**
+     * Refuses a metamethod that cannot be called, naming it as Lua does.
+     *
+     * Whatever sits under a metatag is called without being looked at first,
+     * so on its own the failure would read `attempt to call a number value`
+     * and say nothing about which metamethod was reached for.
+     */
+    /**
+     * The type name Lua puts in messages, which a metatable can override.
+     *
+     * A `__name` field lets a library give its own objects a name: a file
+     * handle reports itself as `FILE*` rather than as a bare `userdata`.
+     */
+    fun objtypename(): String {
+        val mt: LuaValue? = getmetatable()
+        if (mt != null) {
+            val name: LuaValue = mt.rawget(net.blueva.luak.LuaValue.Companion.NAME)
+            if (name.type() == net.blueva.luak.LuaValue.Companion.TSTRING) return name.tojstring()
+        }
+        return typename()!!
+    }
+
+    /**
+     * Refuses a comparison between two values Lua cannot order.
+     *
+     * The two type names are given in the order the operands were written,
+     * which for `a > b` is the order of the `b < a` the compiler turned it
+     * into, and a pair of the same type is said once rather than twice.
+     */
+    internal fun ordererror(op1: LuaValue, op2: LuaValue): LuaValue? {
+        val first: String = op1.objtypename()
+        val second: String = op2.objtypename()
+        return if (first == second) {
+            net.blueva.luak.LuaValue.Companion.error("attempt to compare two " + first + " values")
+        } else {
+            net.blueva.luak.LuaValue.Companion.error("attempt to compare " + first + " with " + second)
+        }
+    }
+
+    internal fun checkcallable(tag: LuaValue?, h: LuaValue) {
+        if (h.isfunction()) return
+        if (!h.metatag(net.blueva.luak.LuaValue.Companion.CALL).isnil()) return
+        net.blueva.luak.LuaValue.Companion.error(
+            "attempt to call a " + h.objtypename() + " value (metamethod '" +
+                tag!!.tojstring().substring(2) + "')",
+        )
     }
 
     /** Perform metatag processing for arithmetic operations when the left-hand-side is a number.
@@ -2895,9 +3127,35 @@ open class LuaValue : Varargs() {
      * 
      * @see .MOD
      */
+    /**
+     * As [arithmtwith], for an integer left-hand side.
+     *
+     * Kept apart from the float version so the metamethod sees the operand
+     * with the subtype it was written with: `5 + t` hands it an integer.
+     */
+    protected fun arithmtwith(tag: LuaValue?, op1: Long): LuaValue {
+        val h = metatag(tag)
+        if (h.isnil()) {
+            net.blueva.luak.LuaValue.Companion.operandError(
+                tag,
+                net.blueva.luak.LuaValue.Companion.valueOf(op1),
+                this,
+            )
+        }
+        checkcallable(tag, h)
+        return h.call(net.blueva.luak.LuaValue.Companion.valueOf(op1), this)!!
+    }
+
     protected fun arithmtwith(tag: LuaValue?, op1: Double): LuaValue {
         val h = metatag(tag)
-        if (h.isnil()) net.blueva.luak.LuaValue.Companion.error("attempt to perform arithmetic " + tag + " on number and " + typename())
+        if (h.isnil()) {
+            net.blueva.luak.LuaValue.Companion.operandError(
+                tag,
+                net.blueva.luak.LuaValue.Companion.valueOf(op1),
+                this,
+            )
+        }
+        checkcallable(tag, h)
         return h.call(net.blueva.luak.LuaValue.Companion.valueOf(op1), this)!!
     }
 
@@ -2955,7 +3213,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun lt(rhs: Int): LuaValue? {
+    open fun lt(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -2995,7 +3253,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun lt_b(rhs: Int): Boolean {
+    open fun lt_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3075,7 +3333,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun lteq(rhs: Int): LuaValue? {
+    open fun lteq(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -3115,7 +3373,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun lteq_b(rhs: Int): Boolean {
+    open fun lteq_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3195,7 +3453,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun gt(rhs: Int): LuaValue? {
+    open fun gt(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -3235,7 +3493,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun gt_b(rhs: Int): Boolean {
+    open fun gt_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3315,7 +3573,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun gteq(rhs: Int): LuaValue? {
+    open fun gteq(rhs: Long): LuaValue? {
         return net.blueva.luak.LuaValue.Companion.valueOf(todouble() >= rhs)
     }
 
@@ -3355,7 +3613,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun gteq_b(rhs: Int): Boolean {
+    open fun gteq_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3401,13 +3659,19 @@ open class LuaValue : Varargs() {
         var h: LuaValue?
         if (!(metatag(tag).also { h = it }).isnil() || !(op1.metatag(tag)
                 .also { h = it }).isnil()
-        ) return h!!.call(this, op1)
+        ) {
+            checkcallable(tag, h!!)
+            return h!!.call(this, op1)
+        }
         if (net.blueva.luak.LuaValue.Companion.LE.raweq(tag) && (!(metatag(net.blueva.luak.LuaValue.Companion.LT).also {
                 h = it
             }).isnil() || !(op1.metatag(net.blueva.luak.LuaValue.Companion.LT)
                 .also { h = it }).isnil())
-        ) return h!!.call(op1, this)!!.not()
-        return net.blueva.luak.LuaValue.Companion.error("attempt to compare " + tag + " on " + typename() + " and " + op1.typename())
+        ) {
+            checkcallable(net.blueva.luak.LuaValue.Companion.LT, h!!)
+            return h!!.call(op1, this)!!.not()
+        }
+        return ordererror(this, op1)
     }
 
     /** Perform string comparison with another value
@@ -3554,7 +3818,15 @@ open class LuaValue : Varargs() {
         var h = metatag(net.blueva.luak.LuaValue.Companion.CONCAT)
         if (h.isnil() && (rhs.metatag(net.blueva.luak.LuaValue.Companion.CONCAT)
                 .also { h = it }).isnil()
-        ) net.blueva.luak.LuaValue.Companion.error("attempt to concatenate " + typename() + " and " + rhs.typename())
+        ) {
+            // Blame the operand that is not concatenable, the way Lua does,
+            // rather than naming both.
+            val culprit: LuaValue = if (!this.isstring() || this is LuaTable) this else rhs
+            net.blueva.luak.LuaValue.Companion.error(
+                "attempt to concatenate a " + culprit.objtypename() + " value",
+            )
+        }
+        checkcallable(net.blueva.luak.LuaValue.Companion.CONCAT, h)
         return h.call(this, rhs)!!
     }
 
@@ -3632,15 +3904,21 @@ open class LuaValue : Varargs() {
      */
     protected fun checkmetatag(tag: LuaValue?, reason: String?): LuaValue {
         val h = this.metatag(tag)
-        if (h.isnil()) throw LuaError(reason.toString() + "a " + typename() + " value")
+        if (h.isnil()) throw LuaError(reason.toString() + "a " + objtypename() + " value")
         return h
     }
 
     /** Throw [LuaError] indicating index was attempted on illegal type
      * @throws LuaError when called.
      */
+    /**
+     * Reports indexing something that cannot be indexed.
+     *
+     * The key is not named here: Lua names where the *value* came from, which
+     * only the interpreter can work out, and it adds that afterwards.
+     */
     private fun indexerror(key: String?) {
-        net.blueva.luak.LuaValue.Companion.error("attempt to index ? (a " + typename() + " value) with key '" + key + "'")
+        net.blueva.luak.LuaValue.Companion.error("attempt to index a " + objtypename() + " value")
     }
 
     /**
@@ -3852,6 +4130,35 @@ open class LuaValue : Varargs() {
         val DIV: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__div")
 
+        /** LuaString constant with value "__idiv" for use as metatag  */
+        val IDIV: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__idiv")
+
+
+        /** LuaString constant with value "__band" for use as metatag  */
+        val BAND: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__band")
+
+        /** LuaString constant with value "__bor" for use as metatag  */
+        val BOR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bor")
+
+        /** LuaString constant with value "__bxor" for use as metatag  */
+        val BXOR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bxor")
+
+        /** LuaString constant with value "__shl" for use as metatag  */
+        val SHL: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__shl")
+
+        /** LuaString constant with value "__shr" for use as metatag  */
+        val SHR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__shr")
+
+        /** LuaString constant with value "__bnot" for use as metatag  */
+        val BNOT: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bnot")
+
         /** LuaString constant with value "__mul" for use as metatag  */
         val MUL: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__mul")
@@ -3867,6 +4174,24 @@ open class LuaValue : Varargs() {
         /** LuaString constant with value "__unm" for use as metatag  */
         val UNM: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__unm")
+
+        /* see gckeeper */
+
+        /** LuaString constant with value "__gc" for use as metatag  */
+        val GC: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__gc")
+
+        /** LuaString constant with value "__close" for use as metatag  */
+        val CLOSE: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__close")
+
+        /** LuaString constant with value "__pairs" for use as metatag  */
+        val PAIRS: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__pairs")
+
+        /** LuaString constant with value "__name" for use as metatag  */
+        val NAME: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__name")
 
         /** LuaString constant with value "__len" for use as metatag  */
         val LEN: LuaString
@@ -3936,28 +4261,54 @@ open class LuaValue : Varargs() {
          * @param msg String providing information about the invalid argument
          * @throws LuaError in all cases
          */
+        /**
+         * Reports an operator applied to something it cannot work on.
+         *
+         * The blame goes to the first operand that is not a number, which is
+         * the one the reader needs to know about; a bitwise operator says so
+         * rather than calling itself arithmetic.
+         */
+        fun operandError(tag: LuaValue?, op1: LuaValue, op2: LuaValue): Nothing {
+            val bitwise: Boolean = tag != null && (
+                tag == net.blueva.luak.LuaValue.Companion.BAND ||
+                    tag == net.blueva.luak.LuaValue.Companion.BOR ||
+                    tag == net.blueva.luak.LuaValue.Companion.BXOR ||
+                    tag == net.blueva.luak.LuaValue.Companion.SHL ||
+                    tag == net.blueva.luak.LuaValue.Companion.SHR ||
+                    tag == net.blueva.luak.LuaValue.Companion.BNOT
+                )
+            val what: String = if (bitwise) "perform bitwise operation on" else "perform arithmetic on"
+            val culprit: LuaValue =
+                if (op1.type() != net.blueva.luak.LuaValue.Companion.TNUMBER) op1 else op2
+            net.blueva.luak.LuaValue.Companion.error(
+                "attempt to " + what + " a " + culprit.objtypename() + " value",
+            )
+            throw IllegalStateException()
+        }
+
         fun argerror(iarg: Int, msg: String?): LuaValue? {
             throw LuaError("bad argument #" + iarg + ": " + msg)
         }
 
-        /** Perform equality testing metatag processing
-         * @param lhs left-hand-side of equality expression
-         * @param lhsmt metatag value for left-hand-side
-         * @param rhs right-hand-side of equality expression
-         * @param rhsmt metatag value for right-hand-side
-         * @return true if metatag processing result is not [.NIL] or [.FALSE]
-         * @throws LuaError if metatag was not defined for either operand
+        /**
+         * Runs `__eq` for two values raw equality has already turned down.
+         *
+         * The handler is the left operand's, or the right one's when the left
+         * has none: the two metatables no longer have to agree on it, as they
+         * did before Lua 5.3.
+         *
+         * @return true if the handler returned anything other than nil or false
          * @see .equals
          * @see .eq
          * @see .raweq
          * @see .EQ
          */
-        fun eqmtcall(lhs: LuaValue?, lhsmt: LuaValue, rhs: LuaValue?, rhsmt: LuaValue): Boolean {
-            val h: LuaValue = lhsmt.rawget(net.blueva.luak.LuaValue.Companion.EQ)
-            return if (h.isnil() || h !== rhsmt.rawget(net.blueva.luak.LuaValue.Companion.EQ)) false else h.call(
-                lhs,
-                rhs
-            )!!.toboolean()
+        fun eqmtcall(lhs: LuaValue, rhs: LuaValue): Boolean {
+            var h: LuaValue = lhs.metatag(net.blueva.luak.LuaValue.Companion.EQ)
+            if (h.isnil()) h = rhs.metatag(net.blueva.luak.LuaValue.Companion.EQ)
+            if (h.isnil()) return false
+            h.checkcallable(net.blueva.luak.LuaValue.Companion.EQ, h)
+            return h.call(lhs, rhs)!!.toboolean()
         }
 
         /** Convert java boolean to a [LuaValue].
@@ -3978,6 +4329,19 @@ open class LuaValue : Varargs() {
         @kotlin.jvm.JvmStatic
         fun valueOf(i: Int): LuaInteger {
             return (LuaInteger.valueOf(i))!!
+        }
+
+        /** Convert a long to a [LuaValue].
+         *
+         * Lua's integer subtype is 64 bits wide, so every long is representable
+         * exactly and this never yields a float.
+         *
+         * @param l long value to convert
+         * @return [LuaInteger] instance, possibly pooled, whose value is l
+         */
+        @kotlin.jvm.JvmStatic
+        fun valueOf(l: Long): LuaInteger {
+            return (LuaInteger.valueOf(l))!!
         }
 
         /** Convert java double to a [LuaValue].
@@ -4130,7 +4494,10 @@ open class LuaValue : Varargs() {
         }
 
         /** Constant limiting metatag loop processing  */
-        private const val MAXTAGLOOP = 100
+        internal const val MAXTAGLOOP = 100
+
+        /** As many `__call` handlers as Lua follows before refusing the chain. */
+        const val MAX_CALL_CHAIN: Int = 15
 
         /**
          * Return value for field reference including metatag processing, or [NIL] if it doesn't exist.
@@ -4182,7 +4549,7 @@ open class LuaValue : Varargs() {
                     }
                 } else if ((t.metatag(net.blueva.luak.LuaValue.Companion.NEWINDEX)
                         .also { tm = it }).isnil()
-                ) throw LuaError("table expected for set index ('" + key + "') value, got " + t.typename())
+                ) throw LuaError("attempt to index a " + t.objtypename() + " value")
                 if (tm!!.isfunction()) {
                     tm.call(t, key, value)
                     return true

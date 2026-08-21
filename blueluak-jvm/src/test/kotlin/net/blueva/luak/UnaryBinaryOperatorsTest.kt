@@ -95,8 +95,16 @@ class UnaryBinaryOperatorsTest : TestCase() {
         assertEquals(2.0, sb.neg().todouble())
     }
 
-    fun testDoublesBecomeInts() {
-        // DoubleValue.valueOf should return int
+    /**
+     * A float keeps its subtype even when its value is a whole number.
+     *
+     * `LuaDouble.valueOf` used to hand back a [LuaInteger] whenever the double
+     * had no fractional part, which is how Lua behaved up to 5.2 when there was
+     * only one number type. Since 5.3 the two are distinct: `345.0` is a float
+     * that happens to equal the integer `345`, and it has to stay one, or
+     * `math.type` and `tostring` both answer for the wrong subtype.
+     */
+    fun testDoublesKeepTheirSubtype() {
         val ia: LuaValue = LuaInteger.valueOf(345)!!
         val da: LuaValue = LuaDouble.valueOf(345.0)!!
         val db: LuaValue = LuaDouble.valueOf(345.5)!!
@@ -105,14 +113,20 @@ class UnaryBinaryOperatorsTest : TestCase() {
         val sc: LuaValue = LuaValue.valueOf("-2.0")
         val sd: LuaValue = LuaValue.valueOf("-2")
 
-        assertEquals(ia, da)
         assertTrue(ia is LuaInteger)
-        assertTrue(da is LuaInteger)
+        assertTrue(da is LuaDouble)
         assertTrue(db is LuaDouble)
+        // Equal as Lua numbers, and still of different subtypes.
+        assertTrue(ia.eq_b(da))
+        assertTrue(da.eq_b(ia))
+        assertTrue(ia.isinttype())
+        assertTrue(!da.isinttype())
         TestCase.assertEquals(ia.toint(), 345)
         TestCase.assertEquals(da.toint(), 345)
         assertEquals(da.todouble(), 345.0)
         assertEquals(db.todouble(), 345.5)
+        TestCase.assertEquals("345", ia.tojstring())
+        TestCase.assertEquals("345.0", da.tojstring())
 
         assertTrue(sa is LuaString)
         assertTrue(sb is LuaString)
@@ -122,6 +136,11 @@ class UnaryBinaryOperatorsTest : TestCase() {
         assertEquals(3.0, sb.todouble())
         assertEquals(-2.0, sc.todouble())
         assertEquals(-2.0, sd.todouble())
+        // The numeral a string denotes carries a subtype of its own.
+        assertTrue(!sa.tonumber().isinttype())
+        assertTrue(sb.tonumber().isinttype())
+        assertTrue(!sc.tonumber().isinttype())
+        assertTrue(sd.tonumber().isinttype())
     }
 
 
@@ -310,11 +329,13 @@ class UnaryBinaryOperatorsTest : TestCase() {
             assertEquals(nilb, tbl2.eq(tbl))
             assertEquals(nilb, uda.eq(uda2))
             assertEquals(nilb, uda2.eq(uda))
-            // same type, different metatag ops.  not comparable
-            assertEquals(fal, tbl.eq(tbl3))
-            assertEquals(fal, tbl3.eq(tbl))
-            assertEquals(fal, uda.eq(uda3))
-            assertEquals(fal, uda3.eq(uda))
+            // Same type, different metatag ops: since Lua 5.3 the two
+            // metatables no longer have to agree, and the left operand's
+            // handler is the one that answers.
+            assertEquals(nilb, tbl.eq(tbl3))
+            assertEquals(oneb, tbl3.eq(tbl))
+            assertEquals(nilb, uda.eq(uda3))
+            assertEquals(oneb, uda3.eq(uda))
 
             // always use right argument
             LuaBoolean.s_metatable = LuaValue.tableOf(arrayOf<LuaValue>(LuaValue.EQ, RETURN_ONE))
@@ -365,11 +386,12 @@ class UnaryBinaryOperatorsTest : TestCase() {
             assertEquals(oneb, tbl2.eq(tbl))
             assertEquals(oneb, uda.eq(uda2))
             assertEquals(oneb, uda2.eq(uda))
-            // same type, different metatag ops.  not comparable
-            assertEquals(fal, tbl.eq(tbl3))
-            assertEquals(fal, tbl3.eq(tbl))
-            assertEquals(fal, uda.eq(uda3))
-            assertEquals(fal, uda3.eq(uda))
+            // Same type, different metatag ops: the left operand's handler
+            // answers, so the two directions now disagree.
+            assertEquals(oneb, tbl.eq(tbl3))
+            assertEquals(nilb, tbl3.eq(tbl))
+            assertEquals(oneb, uda.eq(uda3))
+            assertEquals(nilb, uda3.eq(uda))
         } finally {
             LuaBoolean.s_metatable = null
             LuaNumber.s_metatable = null
@@ -545,18 +567,36 @@ class UnaryBinaryOperatorsTest : TestCase() {
             for (j in vals.indices) {
                 for (k in numerics.indices) {
                     checkArithError(vals[j]!!, numerics[k]!!, ops[i]!!, vals[j]!!.typename()!!)
-                    checkArithError(numerics[k]!!, vals[j]!!, ops[i]!!, vals[j]!!.typename()!!)
+                    // Lua blames the left operand whenever it is not a number,
+                    // and a numeral written as a string is not one: the string
+                    // metatable is what makes "22.125" + 1 work, so without it
+                    // the string is the operand at fault.
+                    val blamed: LuaValue = if (numerics[k] is LuaString) numerics[k]!! else vals[j]!!
+                    checkArithError(numerics[k]!!, vals[j]!!, ops[i]!!, blamed.typename()!!)
                 }
             }
         }
     }
 
+    /**
+     * Checks that an arithmetic operation with a [type] operand is rejected.
+     *
+     * Two wordings are accepted because Lua has two. When neither operand is a
+     * string the VM reports the generic "attempt to perform arithmetic"; when
+     * one is, the string metatable's own handler takes over and names both
+     * types instead, as in "attempt to add a 'nil' with a 'string'". Either
+     * way the offending type has to appear in the message.
+     */
     private fun checkArithError(a: LuaValue, b: LuaValue, op: String, type: String) {
         try {
             LuaValue::class.java.getMethod(op, *arrayOf<Class<*>>(LuaValue::class.java)).invoke(a, *arrayOf<Any?>(b))
         } catch (ite: InvocationTargetException) {
             val actual: String = ite.getTargetException().message!!
-            if ((!actual.startsWith("attempt to perform arithmetic")) || actual.indexOf(type) < 0) fail("(" + a.typename() + "," + op + "," + b.typename() + ") reported '" + actual + "'")
+            val recognised = actual.startsWith("attempt to perform arithmetic") ||
+                actual.startsWith("attempt to " + op + " a ")
+            if (!recognised || actual.indexOf(type) < 0) {
+                fail("(" + a.typename() + "," + op + "," + b.typename() + ") reported '" + actual + "'")
+            }
         } catch (e: Exception) {
             fail("(" + a.typename() + "," + op + "," + b.typename() + ") threw " + e)
         }

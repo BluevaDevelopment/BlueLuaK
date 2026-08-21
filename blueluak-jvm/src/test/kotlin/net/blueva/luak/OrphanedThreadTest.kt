@@ -76,10 +76,9 @@ class OrphanedThreadTest : TestCase() {
                     "print('in abnormal.2, arg is', arg)\n" +
                     "error('abnormal condition', 0)\n"
         function = globals!!.load(script, "script")
-        // The interpreter's generic error hook always attaches a "chunk:line "
-        // prefix once an error reaches a LuaClosure's catch, regardless of
-        // error()'s own level argument.
-        doTest(LuaValue.FALSE, LuaValue.valueOf("script:4 abnormal condition"))
+        // Level 0 asks for the message exactly as written, so no position is
+        // added to it.
+        doTest(LuaValue.FALSE, LuaValue.valueOf("abnormal condition"))
     }
 
     @Throws(Exception::class)

@@ -15,6 +15,15 @@
 package net.blueva.luak.compiler
 
 
+/**
+ * Compiles the Lua 5.2.1 test suite, as a check that the front end accepts
+ * a large body of real code.
+ *
+ * A few of those files are no longer valid Lua: `attrib.lua` and
+ * `closure.lua` assign to a `for` loop's own variable, which 5.5 made a
+ * constant, and `goto.lua` relies on the label rule 5.5 dropped. They have no
+ * test of their own rather than being carried as known failures.
+ */
 open class CompilerUnitTests : AbstractUnitTests("test/lua", "luaj3.0-tests.zip", "lua5.2.1-tests") {
     fun testAll() {
         doTest("all.lua")
@@ -22,10 +31,6 @@ open class CompilerUnitTests : AbstractUnitTests("test/lua", "luaj3.0-tests.zip"
 
     fun testApi() {
         doTest("api.lua")
-    }
-
-    fun testAttrib() {
-        doTest("attrib.lua")
     }
 
     fun testBig() {
@@ -42,10 +47,6 @@ open class CompilerUnitTests : AbstractUnitTests("test/lua", "luaj3.0-tests.zip"
 
     fun testChecktable() {
         doTest("checktable.lua")
-    }
-
-    fun testClosure() {
-        doTest("closure.lua")
     }
 
     fun testCode() {
@@ -80,9 +81,10 @@ open class CompilerUnitTests : AbstractUnitTests("test/lua", "luaj3.0-tests.zip"
         doTest("gc.lua")
     }
 
-    fun testGoto() {
-        doTest("goto.lua")
-    }
+    // testGoto is gone: its script has "::l3::" at function level and then
+    // "do goto l3; ::l3:: end", which 5.5 rejects because an inner block can
+    // see the outer label - checked against lua-5.5.1, which reports the same
+    // "label 'l3' already defined". The script stays in the archive.
 
     fun testLiterals() {
         doTest("literals.lua")

@@ -123,12 +123,16 @@ class Prototype {
         return null /* not found */
     }
 
-    fun shortsource(): String {
-        var name: String = source?.tojstring() ?: "?"
-        if (name.startsWith("@") || name.startsWith("=")) name = name.substring(1)
-        else if (name.startsWith("\u001b")) name = "binary string"
-        return name
-    }
+    /**
+     * The source name as it appears in an error message or a traceback.
+     *
+     * This is upstream's `luaO_chunkid`. A name given as `@file` or `=text`
+     * loses its marker and is shortened from the front or the back as needed;
+     * anything else is the chunk's own text, which is quoted as
+     * `[string "..."]` and cut at the first newline so a message stays on one
+     * line.
+     */
+    fun shortsource(): String = Lua.chunkid(source?.tojstring() ?: "=?")
 
     companion object {
         private val NOUPVALUES: Array<Upvaldesc?> = arrayOf<Upvaldesc?>()

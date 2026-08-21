@@ -21,7 +21,7 @@ import net.blueva.luak.compiler.LuaC
 /**
  * Builds a ready-to-use [Globals] on any Kotlin Multiplatform target.
  *
- * This is the entry point to reach for first: it loads the Lua 5.2 standard
+ * This is the entry point to reach for first: it loads the Lua 5.5 standard
  * libraries in the right order and installs both the source compiler and the
  * binary-chunk undumper, so `load`, `loadfile`, `require`, and `string.dump`
  * round-trips all work out of the box.
@@ -48,9 +48,14 @@ import net.blueva.luak.compiler.LuaC
  */
 object LuaPlatform {
     /**
-     * Creates a [Globals] with the Lua 5.2 standard libraries: `base`,
-     * `package`, `bit32`, `table`, `string`, `coroutine`, `math`, `io`, and
+     * Creates a [Globals] with the Lua 5.5 standard libraries: `base`,
+     * `package`, `table`, `string`, `coroutine`, `math`, `utf8`, `io`, and
      * `os`, plus the [LuaC] compiler and the [LoadState] undumper.
+     *
+     * `bit32` is not among them: it was deprecated in 5.3 and removed in 5.4,
+     * having no purpose once integers are 64 bits wide and the operators are
+     * built into the language. [Bit32Lib] is still there for an embedder that
+     * wants to load it back.
      *
      * @return globals initialized with the standard libraries
      * @see debugGlobals
@@ -59,11 +64,11 @@ object LuaPlatform {
         val globals = Globals()
         globals.load(BaseLib())
         globals.load(PackageLib())
-        globals.load(Bit32Lib())
         globals.load(TableLib())
         globals.load(StringLib())
         globals.load(CoroutineLib())
         globals.load(MathLib())
+        globals.load(Utf8Lib())
         globals.load(IoLib())
         globals.load(OsLib())
         LoadState.install(globals)

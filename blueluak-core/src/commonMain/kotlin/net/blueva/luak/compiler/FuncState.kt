@@ -30,10 +30,19 @@ import net.blueva.luak.compiler.LexState.expdesc
 internal class FuncState internal constructor() : Constants() {
     internal class BlockCnt {
         var previous: BlockCnt? = null /* chain */
+        var firstglobal: Int = 0 /* number of global declarations outside the block */
         var firstlabel: Short = 0 /* index of first label in this block */
         var firstgoto: Short = 0 /* index of first pending goto in this block */
         var nactvar: Short = 0 /* # active locals outside the breakable structure */
         var upval: Boolean = false /* true if some variable in the block is an upvalue */
+
+        /**
+         * True inside the scope of a to-be-closed variable.
+         *
+         * A return from here cannot be a tail call: the frame has to stay
+         * around long enough to run the pending `__close` handlers.
+         */
+        var insidetbc: Boolean = false
         var isloop: Boolean = false /* true if `block' is a loop */
     }
 
@@ -48,6 +57,7 @@ internal class FuncState internal constructor() : Constants() {
     var nk: Int = 0 /* number of elements in `k' */
     var np: Int = 0 /* number of elements in `p' */
     var firstlocal: Int = 0 /* index of first local var (in Dyndata array) */
+    var firstlabel: Int = 0 /* index of first label of this function */
     var nlocvars: Short = 0 /* number of elements in `locvars' */
     var nactvar: Short = 0 /* number of active local variables */
     var nups: Short = 0 /* number of upvalues */
@@ -76,14 +86,20 @@ internal class FuncState internal constructor() : Constants() {
     // =============================================================
     // from lparser.c
     // =============================================================
-    /* check for repeated labels on the same block */
+    /**
+     * Rejects a label already defined anywhere in the current function.
+     *
+     * The search starts at the function's first label rather than the block's:
+     * an inner block can see a label declared outside it, so repeating the name
+     * there would leave two candidates for the same `goto`.
+     */
     fun checkrepeated(ll: Array<LexState.Labeldesc?>, ll_n: Int, label: LuaString) {
         var i: Int
-        i = bl!!.firstlabel.toInt()
+        i = firstlabel
         while (i < ll_n) {
             if (label.eq_b(ll[i]!!.name)) {
                 val msg: String? = ls!!.L!!.pushfstring(
-                    "label '" + label + " already defined on line " + ll[i]!!.line
+                    "label '" + label + "' already defined on line " + ll[i]!!.line
                 )
                 ls!!.semerror(msg)
             }
@@ -96,13 +112,16 @@ internal class FuncState internal constructor() : Constants() {
         if (v > l) errorlimit(l, msg)
     }
 
+    /**
+     * Refuses a function that needs more of something than Lua allows.
+     *
+     * The message names the function it is about, since a limit is reached by
+     * the shape of a whole function rather than at any one place in it.
+     */
     fun errorlimit(limit: Int, what: String?) {
-        // TODO: report message logic.
-        val msg: String? =
-            if (f!!.linedefined === 0) ls!!.L!!.pushfstring("main function has more than " + limit + " " + what) else ls!!.L!!.pushfstring(
-                "function at line " + f!!.linedefined + " has more than " + limit + " " + what
-            )
-        ls!!.lexerror(msg, 0)
+        val line: Int = f!!.linedefined
+        val where: String = if (line == 0) "main function" else "function at line " + line
+        ls!!.syntaxerror("too many " + what + " (limit is " + limit + ") in " + where)
     }
 
     fun getlocvar(i: Int): LocVars {
@@ -128,12 +147,20 @@ internal class FuncState internal constructor() : Constants() {
         return -1 /* not found */
     }
 
-    fun newupvalue(name: LuaString?, v: expdesc): Int {
+    fun newupvalue(name: LuaString?, v: expdesc, kind: Int = 0): Int {
         checklimit(nups + 1, LUAI_MAXUPVAL, "upvalues")
         if (f!!.upvalues == null || nups + 1 > f!!.upvalues!!.size) f!!.upvalues =
             realloc(f!!.upvalues, if (nups > 0) nups * 2 else 1)
-        f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info)
+        f!!.upvalues!![nups.toInt()] = Upvaldesc(name, v.k === LexState.VLOCAL, v.u.info, kind)
         return (nups++).toInt()
+    }
+
+    /** How the local at [index] of this function was declared. */
+    fun localkind(index: Int): Int {
+        val vars: Array<LexState.Vardesc?> = ls?.dyd?.actvar ?: return 0
+        val at: Int = firstlocal + index
+        if (at < 0 || at >= vars.size) return 0
+        return vars[at]?.kind ?: 0
     }
 
     fun searchvar(n: LuaString): Int {
@@ -176,23 +203,85 @@ internal class FuncState internal constructor() : Constants() {
     fun enterblock(bl: BlockCnt, isloop: Boolean) {
         bl.isloop = isloop
         bl.nactvar = nactvar
+        bl.firstglobal = globals.size
         bl.firstlabel = ls!!.dyd.n_label.toShort()
         bl.firstgoto = ls!!.dyd.n_gt.toShort()
         bl.upval = false
+        bl.insidetbc = this.bl?.insidetbc ?: false
         bl.previous = this.bl
         this.bl = bl
         _assert(this.freereg == this.nactvar)
     }
 
+    /**
+     * One `global` declaration in scope.
+     *
+     * A [name] of `null` is the collective form, `global *`, which declares
+     * every global at once. [readonly] comes from a `<const>` attribute and
+     * makes assignment to the global a compile error.
+     */
+    /**
+     * @param nactvar how many locals were in scope when this was declared, so
+     *   a declaration can be told apart from a local of the same name that came
+     *   before it - `local X` then `global X` means the global from there on
+     */
+    internal class Globaldesc(val name: LuaString?, val readonly: Boolean, val nactvar: Int = 0)
+
+    /**
+     * How far a name search has got, across the chain of enclosing functions.
+     *
+     * A `global` declaration is not confined to the function it appears
+     * in - an inner function sees the declarations around it - so the
+     * three things a search learns on the way have to survive the step
+     * from one [FuncState] to the next.
+     */
+    internal class Globalsearch {
+        /** The innermost `global *` seen, which declares every name. */
+        var collective: Globaldesc? = null
+
+        /** Whether a `global` named something other than what is sought. */
+        var named: Boolean = false
+
+        /** The declaration that names the variable, once one turns up. */
+        var found: Globaldesc? = null
+    }
+
+
+    /**
+     * The `global` declarations in scope, outermost first.
+     *
+     * Kept apart from the local variables rather than interleaved with them as
+     * upstream does: a declaration takes no register, and the rest of this
+     * compiler reads `nactvar` as the register level.
+     */
+    internal val globals: ArrayList<Globaldesc> = ArrayList()
+
+    /**
+     * Marks the current block as one that has to be left through a closing jump.
+     *
+     * That is the same jump [leaveblock] already emits when a block holds an
+     * upvalue, and reusing it means every way out of the block - falling off
+     * the end, `break`, or a `goto` - passes through the instruction that runs
+     * the pending `__close` handlers.
+     */
+    fun markblocktobeclosed() {
+        this.bl!!.upval = true
+        this.bl!!.insidetbc = true
+    }
+
     fun leaveblock() {
         val bl: BlockCnt = this.bl!!
+        // The break label goes in first, so a 'break' lands on the closing
+        // jump rather than past it: leaving a loop early still closes what the
+        // block was holding.
+        if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
         if (bl.previous != null && bl.upval) {
             /* create a 'jump to here' to close upvalues */
             val j = this.jump()
             this.patchclose(j, bl.nactvar.toInt())
             this.patchtohere(j)
         }
-        if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
+        while (globals.size > bl.firstglobal) globals.removeAt(globals.size - 1)
         this.bl = bl.previous
         this.removevars(bl.nactvar.toInt())
         _assert(bl.nactvar == this.nactvar)
@@ -268,6 +357,7 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun ret(first: Int, nret: Int) {
+        checklimit(nret + 1, MAX_RETURNS, "returns")
         this.codeABC(OP_RETURN, first, nret + 1, 0)
     }
 
@@ -405,10 +495,12 @@ internal class FuncState internal constructor() : Constants() {
     fun checkstack(n: Int) {
         val newstack = this.freereg + n
         if (newstack > this.f!!.maxstacksize) {
-            if (newstack >= MAXSTACK) ls!!.syntaxerror("function or expression too complex")
+            checklimit(newstack, MAX_FSTACK, "registers")
             this.f!!.maxstacksize = newstack
         }
     }
+
+
 
     fun reserveregs(n: Int) {
         this.checkstack(n)
@@ -443,12 +535,10 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun numberK(r: LuaValue): Int {
-        var r: LuaValue = r
-        if (r is LuaDouble) {
-            val d: Double = r.todouble()
-            val i = d.toInt()
-            if (d == i.toDouble()) r = LuaInteger.valueOf(i)!!
-        }
+        // A float constant stays a float. Folding 2.0 onto the integer 2 here
+        // was safe while Lua had one number type; since 5.3 it would make the
+        // constant's subtype depend on its value, so `2.0` would report as an
+        // integer and print without its fractional part.
         return this.addk(r)
     }
 
@@ -683,9 +773,19 @@ internal class FuncState internal constructor() : Constants() {
         val func: Int
         this.exp2anyreg(e)
         this.freeexp(e)
+        val receiver: Int = e.u.info
         func = this.freereg.toInt()
         this.reserveregs(2)
-        this.codeABC(OP_SELF, func, e.u.info, this.exp2RK(key))
+        val rk: Int = this.exp2RK(key)
+        if (ISK(rk)) {
+            this.codeABC(OP_SELF, func, receiver, rk)
+        } else {
+            // The method name did not fit in the instruction's constant
+            // operand, so the call is built the long way: the receiver is
+            // copied into place and the method looked up as an ordinary field.
+            this.codeABC(OP_MOVE, func + 1, receiver, 0)
+            this.codeABC(OP_GETTABLE, func, receiver, rk)
+        }
         this.freeexp(key)
         e.u.info = func
         e.k = LexState.VNONRELOC
@@ -799,6 +899,9 @@ internal class FuncState internal constructor() : Constants() {
 
     fun indexed(t: expdesc, k: expdesc) {
         t.u.ind_t = t.u.info.toShort()
+        // Indexing a read-only global yields an ordinary table access: it is
+        // `t.field` that is being assigned, not the variable `t`.
+        t.readonlyGlobal = null
         t.u.ind_idx = this.exp2RK(k).toShort()
         _assert(t.k === LexState.VUPVAL || net.blueva.luak.compiler.FuncState.Companion.vkisinreg(t.k))
         t.u.ind_vt = (if (t.k === LexState.VUPVAL) LexState.VUPVAL else LexState.VLOCAL).toShort()
@@ -810,16 +913,33 @@ internal class FuncState internal constructor() : Constants() {
         val v2: LuaValue
         var r: LuaValue? = null
         if (!e1.isnumeral() || !e2.isnumeral()) return false
-        if ((op == OP_DIV || op == OP_MOD) && e2.u.nval()
+        if ((op == OP_DIV || op == OP_MOD || op == OP_IDIV) && e2.u.nval()
                 !!.eq_b(LuaValue.ZERO)
         ) return false /* do not attempt to divide by 0 */
         v1 = e1.u.nval()!!
         v2 = e2.u.nval()!!
+        // A bitwise operand that denotes no integer is a run-time error, not a
+        // compile-time one: leave it for the VM so pcall can catch it.
+        when (op) {
+            OP_BAND, OP_BOR, OP_BXOR, OP_SHL, OP_SHR ->
+                if (!net.blueva.luak.luaHasIntegerRepresentation(v1) ||
+                    !net.blueva.luak.luaHasIntegerRepresentation(v2)
+                ) return false
+
+            OP_BNOT -> if (!net.blueva.luak.luaHasIntegerRepresentation(v1)) return false
+        }
         when (op) {
             OP_ADD -> r = v1.add(v2)
             OP_SUB -> r = v1.sub(v2)
             OP_MUL -> r = v1.mul(v2)
             OP_DIV -> r = v1.div(v2)
+            OP_IDIV -> r = v1.idiv(v2)
+            OP_BAND -> r = v1.band(v2)
+            OP_BOR -> r = v1.bor(v2)
+            OP_BXOR -> r = v1.bxor(v2)
+            OP_SHL -> r = v1.shl(v2)
+            OP_SHR -> r = v1.shr(v2)
+            OP_BNOT -> r = v1.bnot()
             OP_MOD -> r = v1.mod(v2)
             OP_POW -> r = v1.pow(v2)
             OP_UNM -> r = v1.neg()
@@ -831,7 +951,15 @@ internal class FuncState internal constructor() : Constants() {
                 r = null
             }
         }
-        if ((r!!.todouble()).isNaN()) return false /* do not attempt to produce NaN */
+        if (!r!!.isinttype()) {
+            // Neither NaN nor a zero float is folded. NaN has no literal to
+            // fold into, and the constant pool compares floats with `==`, under
+            // which -0.0 and 0.0 are the same key: folding `-0.0` would let it
+            // share a slot with a plain `0.0` elsewhere in the chunk and flip
+            // the sign of whichever one was written second.
+            val d: Double = r.todouble()
+            if (d.isNaN() || d == 0.0) return false
+        }
         e1.u.setNval(r)
         return true
     }
@@ -839,7 +967,9 @@ internal class FuncState internal constructor() : Constants() {
     fun codearith(op: Int, e1: expdesc, e2: expdesc, line: Int) {
         if (constfolding(op, e1, e2)) return
         else {
-            val o2 = if (op != OP_UNM && op != OP_LEN)
+            // The unary opcodes take no C operand; emitting one trips the
+            // operand-mode assertion in codeABC.
+            val o2 = if (op != OP_UNM && op != OP_LEN && op != OP_BNOT)
                 this.exp2RK(e2)
             else
                 0
@@ -875,15 +1005,18 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun prefix( /* UnOpr */op: Int, e: expdesc, line: Int) {
+        // A stand-in second operand, as upstream keeps, so the unary operators
+        // fold through constfolding and inherit its guards instead of carrying
+        // their own weaker copies.
         val e2: expdesc = expdesc()
         e2.init(LexState.VKNUM, 0)
+        e2.u.setNval(LuaValue.ZERO)
         when (op) {
-            LexState.OPR_MINUS -> {
-                if (e.isnumeral())  /* minus constant? */
-                    e.u.setNval(e.u.nval()!!.neg()) /* fold it */
-                else {
+            LexState.OPR_MINUS, LexState.OPR_BNOT -> {
+                val opcode = if (op == LexState.OPR_MINUS) OP_UNM else OP_BNOT
+                if (!this.constfolding(opcode, e, e2)) {
                     this.exp2anyreg(e)
-                    this.codearith(OP_UNM, e, e2, line)
+                    this.codearith(opcode, e, e2, line)
                 }
             }
 
@@ -911,7 +1044,9 @@ internal class FuncState internal constructor() : Constants() {
                 this.exp2nextreg(v) /* operand must be on the `stack' */
             }
 
-            LexState.OPR_ADD, LexState.OPR_SUB, LexState.OPR_MUL, LexState.OPR_DIV, LexState.OPR_MOD, LexState.OPR_POW -> {
+            LexState.OPR_ADD, LexState.OPR_SUB, LexState.OPR_MUL, LexState.OPR_DIV, LexState.OPR_MOD, LexState.OPR_POW,
+            LexState.OPR_IDIV, LexState.OPR_BAND, LexState.OPR_BOR, LexState.OPR_BXOR,
+            LexState.OPR_SHL, LexState.OPR_SHR -> {
                 if (!v.isnumeral()) this.exp2RK(v)
             }
 
@@ -960,6 +1095,12 @@ internal class FuncState internal constructor() : Constants() {
             LexState.OPR_SUB -> this.codearith(OP_SUB, e1, e2, line)
             LexState.OPR_MUL -> this.codearith(OP_MUL, e1, e2, line)
             LexState.OPR_DIV -> this.codearith(OP_DIV, e1, e2, line)
+            LexState.OPR_IDIV -> this.codearith(OP_IDIV, e1, e2, line)
+            LexState.OPR_BAND -> this.codearith(OP_BAND, e1, e2, line)
+            LexState.OPR_BOR -> this.codearith(OP_BOR, e1, e2, line)
+            LexState.OPR_BXOR -> this.codearith(OP_BXOR, e1, e2, line)
+            LexState.OPR_SHL -> this.codearith(OP_SHL, e1, e2, line)
+            LexState.OPR_SHR -> this.codearith(OP_SHR, e1, e2, line)
             LexState.OPR_MOD -> this.codearith(OP_MOD, e1, e2, line)
             LexState.OPR_POW -> this.codearith(OP_POW, e1, e2, line)
             LexState.OPR_EQ -> this.codecomp(OP_EQ, 1, e1, e2)
@@ -1036,27 +1177,75 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     companion object {
-        fun singlevaraux(fs: FuncState?, n: LuaString, `var`: expdesc, base: Int): Int {
+        /** As many registers as one function may use, as Lua allows. */
+        const val MAX_FSTACK: Int = 255
+
+        /** As many values as one `return` may hand back, as Lua allows. */
+        const val MAX_RETURNS: Int = 255
+
+        /**
+         * Looks for [n] among one function's variables, innermost first.
+         *
+         * Locals and `global` declarations are walked together in the order
+         * they were written, since a `global x` after a `local x` refers to
+         * the global from there on and the other way round.
+         *
+         * @return [LexState.VLOCAL] when a local matched, -1 when nothing did;
+         *   a global declaration reports itself through [search] instead
+         */
+        private fun searchvaraux(fs: FuncState, n: LuaString, `var`: expdesc, search: Globalsearch): Int {
+            var globalIndex = fs.globals.size
+            var localIndex = fs.nactvar - 1
+            while (globalIndex > 0 || localIndex >= 0) {
+                // A declaration made when this many locals were in scope is
+                // the more recent of the two whenever the counts are level.
+                val takeGlobal: Boolean = globalIndex > 0 &&
+                    (localIndex < 0 || fs.globals[globalIndex - 1].nactvar >= localIndex + 1)
+                if (takeGlobal) {
+                    val declaration: Globaldesc = fs.globals[--globalIndex]
+                    val name: LuaString? = declaration.name
+                    if (name == null) {
+                        if (search.collective == null) search.collective = declaration
+                    } else if (name == n) {
+                        search.found = declaration
+                        return -1
+                    } else {
+                        search.named = true
+                    }
+                } else {
+                    if (n.eq_b(fs.getlocvar(localIndex).varname)) {
+                        `var`.init(LexState.VLOCAL, localIndex)
+                        return LexState.VLOCAL
+                    }
+                    localIndex--
+                }
+            }
+            return -1 /* not found */
+        }
+
+        fun singlevaraux(fs: FuncState?, n: LuaString, `var`: expdesc, base: Int, search: Globalsearch): Int {
             if (fs == null)  /* no more levels? */
                 return LexState.VVOID /* default is global */
-            val v = fs.searchvar(n) /* look up at current level */
+            val v = searchvaraux(fs, n, `var`, search) /* look up at current level */
+            if (search.found != null)  /* a global declaration names it? */
+                return LexState.VVOID
             if (v >= 0) {
-                `var`.init(LexState.VLOCAL, v)
-                if (base == 0) fs.markupval(v) /* local will be used as an upval */
+                if (base == 0) fs.markupval(`var`.u.info) /* local will be used as an upval */
                 return LexState.VLOCAL
             } else { /* not found at current level; try upvalues */
                 var idx = fs.searchupvalue(n) /* try existing upvalues */
                 if (idx < 0) {  /* not found? */
-                    if (net.blueva.luak.compiler.FuncState.Companion.singlevaraux(
-                            fs.prev,
-                            n,
-                            `var`,
-                            0
-                        ) == LexState.VVOID
-                    )  /* try upper levels */
+                    if (singlevaraux(fs.prev, n, `var`, 0, search) == LexState.VVOID)
                         return LexState.VVOID /* not found; is a global */
                     /* else was LOCAL or UPVAL */
-                    idx = fs.newupvalue(n, `var`) /* will be a new upvalue */
+                    // The declaration kind travels with the upvalue, so an
+                    // inner function still knows the variable is read-only.
+                    val kind: Int = if (`var`.k == LexState.VLOCAL) {
+                        fs.prev?.localkind(`var`.u.info) ?: 0
+                    } else {
+                        fs.prev?.f?.upvalues?.getOrNull(`var`.u.info)?.kind ?: 0
+                    }
+                    idx = fs.newupvalue(n, `var`, kind) /* will be a new upvalue */
                 }
                 `var`.init(LexState.VUPVAL, idx)
                 return LexState.VUPVAL

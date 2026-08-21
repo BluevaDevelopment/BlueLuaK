@@ -135,6 +135,78 @@ class Globals : LuaTable() {
     /** The DebugLib instance loaded into this Globals, or null if debugging is not enabled  */
     var debuglib: DebugLib? = null
 
+    /**
+     * Objects the host has reclaimed whose `__gc` handler has still to run.
+     *
+     * Filled by the host, off whatever thread it reclaims on, and emptied here
+     * where Lua code can safely be run - which is what [runfinalizers] does.
+     */
+    internal val finalized: MutableList<LuaValue> = ArrayList()
+
+    /** True once anything at all has been marked for finalization. */
+    internal var marksfinalizers: Boolean = false
+
+    /** True while a finalizer runs, so that one cannot set off another. */
+    private var finalizing: Boolean = false
+
+    /**
+     * Marks [target] to have its `__gc` handler run once it is unreachable.
+     *
+     * As in Lua this happens when the metatable is set, and only then: a
+     * `__gc` added to a metatable that is already in use has no effect on
+     * objects that were given it earlier.
+     */
+    internal fun markforfinalization(target: LuaValue) {
+        if (target.gckeeper != null) return
+        val keeper: Any? = watchForFinalization(target, finalized)
+        if (keeper == null) return // a host that cannot finalize at all
+        target.gckeeper = keeper
+        marksfinalizers = true
+    }
+
+    /**
+     * Runs the `__gc` handler of everything the host has reclaimed.
+     *
+     * Called where the interpreter allocates, which is where Lua runs a step
+     * of its own collector, and again whenever `collectgarbage` is asked to
+     * collect. A handler that raises is reported as a warning and does not
+     * disturb what was running, which is what Lua does with one.
+     */
+    internal fun runfinalizers() {
+        if (!marksfinalizers || finalizing) return
+        var due: List<LuaValue> = takeFinalized(finalized)
+        if (due.isEmpty()) {
+            // Nothing reclaimed yet. Where enough has been allocated that Lua
+            // would have run a cycle of its own by now, the host is asked for
+            // one: a program waiting for a finalizer to run has nothing else
+            // to wait for, and the host collects when it sees fit rather than
+            // when Lua would.
+            if (Memory.sincecollect < Memory.COLLECT_EVERY) return
+            Memory.collected()
+            platformCollectGarbage()
+            due = takeFinalized(finalized)
+            if (due.isEmpty()) return
+        }
+        finalizing = true
+        try {
+            for (target in due) {
+                val handler: LuaValue = target.metatag(LuaValue.GC)
+                if (handler.isnil()) continue
+                val state: LuaThread.State = running.state
+                state.finalizerframepending = true
+                try {
+                    handler.call(target)
+                } catch (failure: LuaError) {
+                    baselib?.warning("error in __gc metamethod (" + failure.message + ")")
+                } finally {
+                    state.finalizerframepending = false
+                }
+            }
+        } finally {
+            finalizing = false
+        }
+    }
+
     /** Interface for module that converts a Prototype into a LuaFunction with an environment.  */
     interface Loader {
         /** Convert the prototype into a LuaFunction with the supplied environment.  */
@@ -185,6 +257,10 @@ class Globals : LuaTable() {
         try {
             val stream = finder?.findResource(filename) ?: throw LuaError("load $filename: no resource")
             return load(stream, "@" + filename, "bt", this)
+        } catch (l: LuaError) {
+            // Already says what is wrong in Lua's own words - where in the
+            // file, and what about it - so nothing is added to it here.
+            throw l
         } catch (e: Exception) {
             return error("load " + filename + ": " + e)
         }
@@ -256,7 +332,12 @@ class Globals : LuaTable() {
     fun load(`is`: InputStream, chunkname: String?, mode: String, environment: LuaValue?): LuaValue? {
         try {
             val p: Prototype? = loadPrototype(`is`, chunkname, mode)
-            return loader!!.load(p, chunkname, environment)
+            val loaded: LuaValue? = loader!!.load(p, chunkname, environment)
+            // A chunk given an environment of its own still runs in this
+            // state: what it reads its globals from and what it runs in are
+            // two different things.
+            if (loaded is LuaClosure && loaded.globals == null) loaded.globals = this
+            return loaded
         } catch (l: LuaError) {
             throw l
         } catch (e: Exception) {
@@ -274,19 +355,25 @@ class Globals : LuaTable() {
     @kotlin.Throws(IOException::class)
     fun loadPrototype(`is`: InputStream, chunkname: String?, mode: String): Prototype? {
         var `is`: InputStream = `is`
-        if (mode.indexOf('b') >= 0) {
+        if (!`is`.markSupported()) `is` = net.blueva.luak.Globals.BufferedStream(`is`)
+        `is`.mark(4)
+        val first: Int = `is`.read()
+        `is`.reset()
+        // The signature byte says which kind of chunk is really there, so the
+        // mode is checked against that rather than against what the caller
+        // hoped for: asking for text and handing over a dump is refused, not
+        // parsed as source.
+        if (first == LoadState.LUA_SIGNATURE[0].toInt()) {
+            if (mode.indexOf('b') < 0) {
+                error("attempt to load a binary chunk (mode is '" + mode + "')")
+            }
             if (undumper == null) error("No undumper.")
-            if (!`is`.markSupported()) `is` = net.blueva.luak.Globals.BufferedStream(`is`)
-            `is`.mark(4)
-            val p: Prototype? = undumper!!.undump(`is`, chunkname)
-            if (p != null) return p
-            `is`.reset()
+            return undumper!!.undump(`is`, chunkname)
         }
-        if (mode.indexOf('t') >= 0) {
-            return compilePrototype(`is`, chunkname)
+        if (mode.indexOf('t') < 0) {
+            error("attempt to load a text chunk (mode is '" + mode + "')")
         }
-        error("Failed to load prototype " + chunkname + " using mode '" + mode + "'")
-        return null
+        return compilePrototype(`is`, chunkname)
     }
 
     /** Compile lua source from a Reader into a Prototype. The characters in the reader
@@ -319,13 +406,13 @@ class Globals : LuaTable() {
      * @return Values supplied as arguments to the resume() call that reactivates this thread.
      */
     fun yield(args: Varargs?): Varargs {
-        if (running.isMainThread) throw LuaError("cannot yield main thread")
+        if (running.isMainThread) throw LuaError("attempt to yield from outside a coroutine")
         return runLuaSync { yieldSuspend(args) }
     }
 
     /** Suspending counterpart to [yield]; see its doc for details. */
     suspend fun yieldSuspend(args: Varargs?): Varargs {
-        if (running.isMainThread) throw LuaError("cannot yield main thread")
+        if (running.isMainThread) throw LuaError("attempt to yield from outside a coroutine")
         val s: LuaThread.State = running.state
         return s.lua_yield(args)
     }

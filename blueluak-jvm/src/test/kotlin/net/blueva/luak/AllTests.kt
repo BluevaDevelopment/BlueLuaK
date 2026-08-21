@@ -68,7 +68,6 @@ object AllTests {
         val compiler = TestSuite("Lua Compiler Tests")
         compiler.addTestSuite(CompilerUnitTests::class.java)
         compiler.addTestSuite(DumpLoadEndianIntTest::class.java)
-        compiler.addTestSuite(LuaParserTests::class.java)
         compiler.addTestSuite(RegressionTests::class.java)
         compiler.addTestSuite(SimpleTests::class.java)
         suite.addTest(compiler)

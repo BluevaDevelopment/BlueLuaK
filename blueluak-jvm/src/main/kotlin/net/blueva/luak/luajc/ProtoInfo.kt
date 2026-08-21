@@ -346,6 +346,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
                         v[a++]!![pc]!!.isreferenced = true
                         v[a++]!![pc]!!.isreferenced = true
                         v[a++]!![pc]!!.isreferenced = true
+                        a++ // the closing control value, read only at loop end
                         var j = 0
                         while (j < c) {
                             v[a]!![pc] = VarInfo(a, pc)
@@ -360,7 +361,7 @@ class ProtoInfo private constructor(// the prototype that this info is about
 
                     Lua.OP_TFORLOOP -> {
                         a = Lua.GETARG_A(ins)
-                        v[a + 1]!![pc]!!.isreferenced = true
+                        v[a + 2]!![pc]!!.isreferenced = true
                         v[a]!![pc] = VarInfo(a, pc)
                     }
 
