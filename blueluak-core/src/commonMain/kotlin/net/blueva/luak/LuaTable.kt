@@ -222,8 +222,23 @@ open class LuaTable : LuaValue, Metatable {
         return hashget((LuaInteger.valueOf(key))!!)
     }
 
+    /**
+     * The key a lookup should really use.
+     *
+     * A float whose value is integral names the same slot as that integer, so
+     * `t[2.0]` and `t[2]` are one entry. With the two subtypes now distinct
+     * this has to be done explicitly; before the split the value model folded
+     * them together on its own.
+     */
+    private fun normalizeKey(key: LuaValue): LuaValue {
+        if (key.type() != TNUMBER || key.isinttype()) return key
+        val asDouble: Double = key.todouble()
+        val asLong: Long = asDouble.toLong()
+        return if (asLong.toDouble() == asDouble && !asDouble.isInfinite()) valueOf(asLong) else key
+    }
+
     override fun rawget(key: LuaValue?): LuaValue {
-        val key = key!!
+        val key = normalizeKey(key!!)
         if (key.isinttype()) {
             val ikey: Int = key.toint()
             if (ikey > 0 && ikey <= array.size) {
@@ -275,7 +290,7 @@ open class LuaTable : LuaValue, Metatable {
 
     /** caller must ensure key is not nil  */
     override fun rawset(key: LuaValue?, value: LuaValue?) {
-        val key = key!!
+        val key = normalizeKey(key!!)
         val value = value!!
         if (!key.isinttype() || !arrayset(key.toint(), value)) hashset(key, value)
     }
@@ -1111,7 +1126,7 @@ open class LuaTable : LuaValue, Metatable {
         }
     }
 
-    private class IntKeyEntry(private val key: Int, value: LuaValue?) : Entry() {
+    private class IntKeyEntry(private val key: Long, value: LuaValue?) : Entry() {
         private var value: LuaValue?
 
         init {
@@ -1123,7 +1138,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         override fun arraykey(max: Int): Int {
-            return if (key >= 1 && key <= max) key else 0
+            return if (key >= 1L && key <= max.toLong()) key.toInt() else 0
         }
 
         override fun value(): LuaValue {
@@ -1145,7 +1160,12 @@ open class LuaTable : LuaValue, Metatable {
     }
 
     /**
-     * Entry class used with numeric values, but only when the key is not an integer.
+     * Entry class used with float values, but only when the key is not an integer.
+     *
+     * Unpacking the number into a raw `double` field saves an object, but it can
+     * only hold a float: an integer stored this way comes back rounded once it
+     * exceeds 2^53, and loses its subtype in every case. Integers therefore go
+     * to [NormalEntry] instead.
      */
     private class NumberValueEntry(key: LuaValue, value: Double) : Entry() {
         private var value: Double
@@ -1165,7 +1185,7 @@ open class LuaTable : LuaValue, Metatable {
         }
 
         public override fun set(value: LuaValue?): Entry {
-            if (value!!.type() === TNUMBER) {
+            if (value!!.type() === TNUMBER && !value.isinttype()) {
                 val n: LuaValue = value!!.tonumber()
                 if (!n.isnil()) {
                     this.value = n.todouble()
@@ -1378,8 +1398,8 @@ open class LuaTable : LuaValue, Metatable {
 
         internal fun defaultEntry(key: LuaValue, value: LuaValue): Entry {
             if (key.isinttype()) {
-                return net.blueva.luak.LuaTable.IntKeyEntry(key.toint(), value)
-            } else if (value.type() === TNUMBER) {
+                return net.blueva.luak.LuaTable.IntKeyEntry(key.tolong(), value)
+            } else if (value.type() === TNUMBER && !value.isinttype()) {
                 return net.blueva.luak.LuaTable.NumberValueEntry(key, value.todouble())
             } else {
                 return net.blueva.luak.LuaTable.NormalEntry(key, value)

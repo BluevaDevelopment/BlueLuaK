@@ -124,7 +124,12 @@ class LuaConformanceReport {
      * instead of calling [System.exit].
      */
     private fun sandbox(suite: File): Globals {
-        val globals = JvmPlatform.standardGlobals()
+        // debugGlobals, not standardGlobals: the reference interpreter's
+        // luaL_openlibs includes the debug library, and several suite files
+        // require it outright. BlueLuaK leaves it out of standardGlobals on
+        // purpose, which is a sound choice for embedders but not what the suite
+        // is written against.
+        val globals = JvmPlatform.debugGlobals()
         globals.finder = ResourceFinder { filename ->
             val name = filename ?: return@ResourceFinder null
             val direct = File(name)

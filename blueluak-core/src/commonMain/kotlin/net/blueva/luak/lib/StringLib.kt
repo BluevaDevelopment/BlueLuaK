@@ -98,9 +98,66 @@ open class StringLib
         env!!.set("string", string)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("string", string)
         if (LuaString.s_metatable == null) {
-            LuaString.s_metatable = LuaValue.tableOf(arrayOf<LuaValue?>(INDEX, string))
+            val metatable: LuaTable = LuaValue.tableOf(arrayOf<LuaValue?>(INDEX, string))!!
+            // Since 5.4 the arithmetic coercion of strings lives here rather
+            // than in the VM, which is what makes `"a" + 1` report "attempt to
+            // add a 'string' with a 'number'" instead of a generic arithmetic
+            // error, and what lets the other operand's metamethod have a turn.
+            metatable.set(ADD, StringArith(ADD, "add"))
+            metatable.set(SUB, StringArith(SUB, "sub"))
+            metatable.set(MUL, StringArith(MUL, "mul"))
+            metatable.set(MOD, StringArith(MOD, "mod"))
+            metatable.set(POW, StringArith(POW, "pow"))
+            metatable.set(DIV, StringArith(DIV, "div"))
+            metatable.set(IDIV, StringArith(IDIV, "idiv"))
+            metatable.set(UNM, StringArith(UNM, "unm"))
+            LuaString.s_metatable = metatable
         }
         return string
+    }
+
+    /**
+     * One arithmetic metamethod of the string metatable.
+     *
+     * It mirrors upstream's `arith` in `lstrlib.c`: if both operands denote
+     * numbers the operation goes ahead on those numbers, and otherwise the
+     * right-hand operand is offered its own metamethod - unless it is a string
+     * too, in which case there is nothing left to try and the operation is an
+     * error naming both types.
+     *
+     * @param event the metatag this handler is registered under
+     * @param opname the name that appears in the error message
+     */
+    internal class StringArith(private val event: LuaString, private val opname: String) : TwoArgFunction() {
+        override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue {
+            val left: LuaValue = arg1 ?: NIL
+            // Lua hands a unary operator its operand twice, so a caller that
+            // passed only one gets the same value for both.
+            // Compared by value: the metatag constants are getters that build a
+            // fresh LuaString on every read, so identity never holds.
+            val right: LuaValue = if (event == UNM) left else (arg2 ?: NIL)
+            val leftNumber: LuaValue = left.tonumber()
+            val rightNumber: LuaValue = right.tonumber()
+            if (!leftNumber.isnil() && !rightNumber.isnil()) return apply(leftNumber, rightNumber)
+            if (right.type() != LuaValue.TSTRING) {
+                val handler: LuaValue = right.metatag(event)
+                if (!handler.isnil()) return handler.call(left, right)!!
+            }
+            return LuaValue.error(
+                "attempt to " + opname + " a '" + left.typename() + "' with a '" + right.typename() + "'",
+            )!!
+        }
+
+        private fun apply(left: LuaValue, right: LuaValue): LuaValue = when (event) {
+            ADD -> left.add(right)
+            SUB -> left.sub(right)
+            MUL -> left.mul(right)
+            MOD -> left.mod(right)
+            POW -> left.pow(right)
+            DIV -> left.div(right)
+            IDIV -> left.idiv(right)
+            else -> left.neg()
+        }
     }
 
     /**
@@ -405,7 +462,36 @@ open class StringLib
         }
 
         fun format(buf: Buffer, x: Double) {
-            buf.append(this@StringLib.format(src, x))
+            // C's float conversions, rendered from the exact decimal digits of
+            // the double. Going through a host formatter instead would follow
+            // the host's locale, so a machine set to a comma decimal separator
+            // produced "3,14" where Lua specifies "3.14".
+            val digits: Int = if (precision < 0) 6 else precision
+            var text: String = when (conversion.toChar()) {
+                'e' -> net.blueva.luak.DecimalFormat.e(x, digits, upper = false)
+                'E' -> net.blueva.luak.DecimalFormat.e(x, digits, upper = true)
+                'f', 'F' -> net.blueva.luak.DecimalFormat.f(x, digits)
+                'G' -> net.blueva.luak.DecimalFormat.g(x, digits).uppercase()
+                else -> net.blueva.luak.DecimalFormat.g(x, digits)
+            }
+            if (!text.startsWith("-")) {
+                if (explicitPlus) text = "+" + text else if (space) text = " " + text
+            }
+            val padding: Int = width - text.length
+            if (padding > 0) {
+                when {
+                    leftAdjust -> text = text + " ".repeat(padding)
+                    // Zero padding goes after the sign, and never applies to
+                    // 'inf' or 'nan', which have no digits to pad.
+                    zeroPad && x.isFinite() -> {
+                        val signLength: Int = if (text[0] == '-' || text[0] == '+' || text[0] == ' ') 1 else 0
+                        text = text.substring(0, signLength) + "0".repeat(padding) + text.substring(signLength)
+                    }
+
+                    else -> text = " ".repeat(padding) + text
+                }
+            }
+            buf.append(text)
         }
 
         fun format(buf: Buffer, s: LuaString) {
@@ -421,10 +507,6 @@ open class StringLib
             while (n-- > 0) buf.append(b)
         }
 
-    }
-
-    protected open fun format(src: String?, x: Double): String {
-        return (x).toString()
     }
 
     /**

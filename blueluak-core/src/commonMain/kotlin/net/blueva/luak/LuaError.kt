@@ -68,7 +68,9 @@ class LuaError : RuntimeException {
             if (traceback != null) return traceback
             val m: String? = argMessageOverride ?: super.message
             if (m == null) return null
-            if (fileline != null) return fileline.toString() + " " + m
+            // "chunk:line: message", the shape luaG_addinfo gives every
+            // positioned error; scripts match on the colon.
+            if (fileline != null) return fileline.toString() + ": " + m
             return m
         }
 

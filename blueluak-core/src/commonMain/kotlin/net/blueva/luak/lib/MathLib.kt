@@ -95,6 +95,8 @@ open class MathLib : TwoArgFunction() {
         math.set("fmod", net.blueva.luak.lib.MathLib.fmod())
         math.set("frexp", net.blueva.luak.lib.MathLib.frexp())
         math.set("huge", LuaDouble.POSINF)
+        math.set("maxinteger", LuaValue.valueOf(Long.MAX_VALUE))
+        math.set("mininteger", LuaValue.valueOf(Long.MIN_VALUE))
         math.set("ldexp", net.blueva.luak.lib.MathLib.ldexp())
         math.set("log", net.blueva.luak.lib.MathLib.log())
         math.set("max", net.blueva.luak.lib.MathLib.max())
@@ -110,6 +112,9 @@ open class MathLib : TwoArgFunction() {
         math.set("sinh", net.blueva.luak.lib.MathLib.sinh())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
         math.set("tan", net.blueva.luak.lib.MathLib.tan())
+        math.set("tointeger", net.blueva.luak.lib.MathLib.tointeger())
+        math.set("type", net.blueva.luak.lib.MathLib.type())
+        math.set("ult", net.blueva.luak.lib.MathLib.ult())
         math.set("tanh", net.blueva.luak.lib.MathLib.tanh())
         env!!.set("math", math)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("math", math)
@@ -132,9 +137,48 @@ open class MathLib : TwoArgFunction() {
         protected abstract fun call(x: Double, y: Double): Double
     }
 
-    internal class abs : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.abs(d)
+    /** `math.abs`; an integer argument gives an integer, wrapping on mininteger. */
+    internal class abs : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) {
+                val v: Long = x.tolong()
+                return valueOf(if (v < 0L) -v else v) // -mininteger wraps, as in C
+            }
+            return valueOf(kotlin.math.abs(x.checkdouble()))
+        }
+    }
+
+    /** `math.type`: `"integer"`, `"float"`, or nil for anything else. */
+    internal class type : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (!x.isnumber() || x.isstring() && !x.isnumber()) return NIL
+            if (x.type() != LuaValue.TNUMBER) return NIL
+            return valueOf(if (x.isinttype()) "integer" else "float")
+        }
+    }
+
+    /** `math.tointeger`: the integer a value denotes exactly, or nil. */
+    internal class tointeger : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            val n: LuaValue = x.tonumber()
+            if (n.isnil()) return NIL
+            val d: Double = n.todouble()
+            val l: Long = d.toLong()
+            return if (l.toDouble() == d) valueOf(l) else NIL
+        }
+    }
+
+    /** `math.ult`: compares two integers as unsigned. */
+    internal class ult : TwoArgFunction() {
+        override fun call(x: LuaValue?, y: LuaValue?): LuaValue? {
+            val a: Long = x!!.checklong()
+            val b: Long = y!!.checklong()
+            // Flipping the sign bit orders the values as if unsigned.
+            return valueOf((a xor Long.MIN_VALUE) < (b xor Long.MIN_VALUE))
         }
     }
 
@@ -187,9 +231,12 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class ceil : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.ceil(d)
+    /** `math.ceil`; the result is an integer whenever it fits in one. */
+    internal class ceil : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            return net.blueva.luak.lib.MathLib.Companion.narrowToInteger(kotlin.math.ceil(x.checkdouble()))
         }
     }
 
@@ -205,9 +252,12 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class floor : UnaryOp() {
-        override fun call(d: Double): Double {
-            return kotlin.math.floor(d)
+    /** `math.floor`; the result is an integer whenever it fits in one. */
+    internal class floor : OneArgFunction() {
+        override fun call(arg: LuaValue?): LuaValue? {
+            val x: LuaValue = arg!!
+            if (x.isinttype()) return x
+            return net.blueva.luak.lib.MathLib.Companion.narrowToInteger(kotlin.math.floor(x.checkdouble()))
         }
     }
 
@@ -243,8 +293,9 @@ open class MathLib : TwoArgFunction() {
 
     internal class fmod : TwoArgFunction() {
         override fun call(xv: LuaValue?, yv: LuaValue?): LuaValue? {
-            if (xv!!.islong() && yv!!.islong() && yv!!.tolong() != 0L) {
-                return valueOf((xv!!.tolong() % yv!!.tolong()).toDouble())
+            if (xv!!.isinttype() && yv!!.isinttype() && yv!!.tolong() != 0L) {
+                // Long remainder already takes the sign of the dividend, like C fmod.
+                return valueOf(xv!!.tolong() % yv!!.tolong())
             }
             return valueOf(xv!!.checkdouble() % yv!!.checkdouble())
         }
@@ -354,6 +405,12 @@ open class MathLib : TwoArgFunction() {
     }
 
     companion object {
+        /** A float result becomes an integer when it is representable as one. */
+        internal fun narrowToInteger(value: Double): LuaValue {
+            val asLong: Long = value.toLong()
+            return if (asLong.toDouble() == value) LuaValue.valueOf(asLong) else LuaValue.valueOf(value)
+        }
+
         /** Pointer to the latest MathLib instance, used only to dispatch
          * math.exp to tha correct platform math library.
          */

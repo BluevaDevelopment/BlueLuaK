@@ -124,11 +124,13 @@ object ScriptEngineTests : TestSuite() {
         }
 
         @Throws(ScriptException::class)
-        fun testSqrtIntResult() {
+        fun testSqrtFloatResult() {
+            // math.sqrt is a float function: its result is 5.0, not 5, and
+            // crosses into Java as a Double.
             e!!.put("x", 25)
             e!!.eval("y = math.sqrt(x)")
             val y = e!!.get("y")
-            assertEquals(5, y)
+            assertEquals(5.0, y)
         }
 
         @Throws(ScriptException::class)
@@ -136,7 +138,7 @@ object ScriptEngineTests : TestSuite() {
             e!!.put("x", 25)
             e!!.eval("y = math.sqrt(x)")
             val y = e!!.get("y")
-            assertEquals(5, y)
+            assertEquals(5.0, y)
             e!!.put("f", object : OneArgFunction() {
                 override fun call(arg: LuaValue?): LuaValue {
                     return valueOf(arg!!.toString() + "123")
@@ -150,7 +152,7 @@ object ScriptEngineTests : TestSuite() {
         fun testCompiledScript() {
             val cs = (e as Compilable).compile("y = math.sqrt(x); return y")
             b!!.put("x", 144)
-            assertEquals(12, cs.eval(b))
+            assertEquals(12.0, cs.eval(b))
         }
 
         fun testBuggyLuaScript() {
@@ -292,14 +294,14 @@ object ScriptEngineTests : TestSuite() {
         @Throws(ScriptException::class)
         fun testUncompiledScript() {
             b!!.put("x", 144)
-            assertEquals(12, e!!.eval("z = math.sqrt(x); return z", b))
-            assertEquals(12, b!!.get("z"))
+            assertEquals(12.0, e!!.eval("z = math.sqrt(x); return z", b))
+            assertEquals(12.0, b!!.get("z"))
             assertEquals(null, e!!.getBindings(ScriptContext.ENGINE_SCOPE).get("z"))
             assertEquals(null, e!!.getBindings(ScriptContext.GLOBAL_SCOPE).get("z"))
 
             b!!.put("x", 25)
-            assertEquals(5, e!!.eval("z = math.sqrt(x); return z", c))
-            assertEquals(5, b!!.get("z"))
+            assertEquals(5.0, e!!.eval("z = math.sqrt(x); return z", c))
+            assertEquals(5.0, b!!.get("z"))
             assertEquals(null, e!!.getBindings(ScriptContext.ENGINE_SCOPE).get("z"))
             assertEquals(null, e!!.getBindings(ScriptContext.GLOBAL_SCOPE).get("z"))
         }
@@ -309,12 +311,12 @@ object ScriptEngineTests : TestSuite() {
             val cs = (e as Compilable).compile("z = math.sqrt(x); return z")
 
             b!!.put("x", 144)
-            assertEquals(12, cs.eval(b))
-            assertEquals(12, b!!.get("z"))
+            assertEquals(12.0, cs.eval(b))
+            assertEquals(12.0, b!!.get("z"))
 
             b!!.put("x", 25)
-            assertEquals(5, cs.eval(c))
-            assertEquals(5, b!!.get("z"))
+            assertEquals(5.0, cs.eval(c))
+            assertEquals(5.0, b!!.get("z"))
         }
     }
 

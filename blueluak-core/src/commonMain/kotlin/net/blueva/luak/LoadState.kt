@@ -188,6 +188,7 @@ class LoadState private constructor(
                     (if (0 != `is`.readUnsignedByte()) LuaValue.TRUE else LuaValue.FALSE)
 
                 net.blueva.luak.LoadState.Companion.LUA_TINT -> values[i] = LuaInteger.valueOf(loadInt())!!
+                net.blueva.luak.LoadState.Companion.LUA_TNUMINT -> values[i] = LuaInteger.valueOf(loadInt64())!!
                 net.blueva.luak.LoadState.Companion.LUA_TNUMBER -> values[i] = loadNumber()
                 net.blueva.luak.LoadState.Companion.LUA_TSTRING -> values[i] = loadString()
                 else -> throw IllegalStateException("bad constant")
@@ -319,6 +320,16 @@ class LoadState private constructor(
         const val LUA_TBOOLEAN: Int = 1
         const val LUA_TLIGHTUSERDATA: Int = 2
         const val LUA_TNUMBER: Int = 3
+
+        /**
+         * Constant tag for the integer subtype of a number.
+         *
+         * Upstream tags a dumped constant with its full type tag, of which the
+         * number type has two variants: `LUA_VNUMFLT` is the plain number tag
+         * and `LUA_VNUMINT` sets the variant bit. Without the distinction a
+         * dumped chunk cannot say which subtype a numeral had.
+         */
+        const val LUA_TNUMINT: Int = 3 or (1 shl 4)
         const val LUA_TSTRING: Int = 4
         const val LUA_TTABLE: Int = 5
         const val LUA_TFUNCTION: Int = 6
@@ -374,22 +385,10 @@ class LoadState private constructor(
          * @return [LuaInteger] or [LuaDouble] whose value corresponds to the bits provided.
          */
         fun longBitsToLuaNumber(bits: Long): LuaValue {
-            if ((bits and ((1L shl 63) - 1)) == 0L) {
-                return LuaValue.ZERO!!
-            }
-
-            val e = ((bits shr 52) and 0x7ffL).toInt() - 1023
-
-            if (e >= 0 && e < 31) {
-                val f = bits and 0xFFFFFFFFFFFFFL
-                val shift = 52 - e
-                val intPrecMask = (1L shl shift) - 1
-                if ((f and intPrecMask) == 0L) {
-                    val intValue = (f shr shift).toInt() or (1 shl e)
-                    return LuaInteger.valueOf(if ((bits shr 63) != 0L) -intValue else intValue)!!
-                }
-            }
-
+            // A float constant stays a float. This used to hand back an integer
+            // whenever the double had no fractional part, which turned a dumped
+            // `2.0` into a `2` on the way back in, and a dumped `-0.0` into a
+            // plain zero.
             return LuaValue.valueOf(Double.fromBits(bits))
         }
 

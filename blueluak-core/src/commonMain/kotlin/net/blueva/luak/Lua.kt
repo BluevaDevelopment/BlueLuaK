@@ -234,7 +234,18 @@ open class Lua {
 
     const val OP_EXTRAARG: Int = 39 /* Ax	extra (larger) argument for previous opcode	*/
 
-    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_EXTRAARG + 1
+    /* Opcodes added by the port past Lua 5.2. They are appended rather than
+       slotted into upstream's order so existing 5.2 bytecode keeps loading;
+       renumbering to match 5.5 belongs with the instruction-set rewrite. */
+    const val OP_IDIV: Int = 40 /*	A B C	R(A) := RK(B) // RK(C)				*/
+    const val OP_BAND: Int = 41 /*	A B C	R(A) := RK(B) & RK(C)				*/
+    const val OP_BOR: Int = 42 /*	A B C	R(A) := RK(B) | RK(C)				*/
+    const val OP_BXOR: Int = 43 /*	A B C	R(A) := RK(B) ~ RK(C)				*/
+    const val OP_SHL: Int = 44 /*	A B C	R(A) := RK(B) << RK(C)				*/
+    const val OP_SHR: Int = 45 /*	A B C	R(A) := RK(B) >> RK(C)				*/
+    const val OP_BNOT: Int = 46 /*	A B	R(A) := ~R(B)					*/
+
+    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_BNOT + 1
 
     /* pseudo-opcodes used in parsing only.  */
     const val OP_GT: Int = 63 // >
@@ -318,6 +329,13 @@ open class Lua {
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABx),  /* OP_CLOSURE */
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_VARARG */
         (0 shl 7) or (0 shl 6) or (net.blueva.luak.Lua.OpArgU shl 4) or (net.blueva.luak.Lua.OpArgU shl 2) or (net.blueva.luak.Lua.iAx),  /* OP_EXTRAARG */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_IDIV */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BAND */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BOR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BXOR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHL */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHR */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgR shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BNOT */
     )
 
     fun getOpMode(m: Int): Int {

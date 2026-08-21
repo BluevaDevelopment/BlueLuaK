@@ -455,6 +455,66 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         continue
                     }
 
+                    Lua.OP_IDIV -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .idiv(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_BAND -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .band(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_BOR -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .bor(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_BXOR -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .bxor(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_SHL -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .shl(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_SHR -> {
+                        b = i ushr 23
+                        c = (i shr 14) and 0x1ff
+                        stack[a] = (if (b > 0xff) k[b and 0x0ff]!! else stack[b])
+                            .shr(if (c > 0xff) k[c and 0x0ff]!! else stack[c])
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_BNOT -> {
+                        stack[a] = stack[i ushr 23].bnot()
+                        ++pc
+                        continue
+                    }
+
                     Lua.OP_MOD -> {
                         b = i ushr 23
                         c = (i shr 14) and 0x1ff
@@ -646,11 +706,14 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                     }
 
                     Lua.OP_FORPREP -> {
-                        val init: LuaValue = stack[a].checknumber("'for' initial value must be a number")!!
-                        val limit: LuaValue? = stack[a + 1].checknumber("'for' limit must be a number")
-                        val step: LuaValue? = stack[a + 2].checknumber("'for' step must be a number")
-                        stack[a] = init.sub((step)!!)
-                        stack[a + 1] = limit!!
+                        // Checked in upstream's order - limit, step, then the
+                        // initial value - so a loop with more than one bad
+                        // bound names the same one Lua would.
+                        val limit: LuaValue = forNumber(stack[a + 1], "limit")
+                        val step: LuaValue = forNumber(stack[a + 2], "step")
+                        val init: LuaValue = forNumber(stack[a], "initial value")
+                        stack[a] = init.sub(step)
+                        stack[a + 1] = limit
                         stack[a + 2] = step
                         pc += (i ushr 14) - 0x1ffff
                         ++pc
@@ -774,9 +837,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     fun errorHook(msg: String?, level: Int): String? {
         if (globals == null) return msg
         val r: LuaThread = globals.running
-        if (r.errorfunc == null) return if (globals.debuglib != null) msg.toString() + "\n" + globals.debuglib!!.traceback(
-            level
-        ) else msg
+        // No message handler means no traceback. Lua only builds one when a
+        // handler asks for it, as `xpcall(f, debug.traceback)` does; appending
+        // it here would put a traceback inside the message a plain `pcall`
+        // hands back, which is not what the caller asked for and not what
+        // upstream returns.
+        if (r.errorfunc == null) return msg
         val e: LuaValue = r.errorfunc!!
         r.errorfunc = null
         try {
@@ -839,6 +905,15 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         }
         le.fileline = file.toString() + ":" + line
         le.traceback = errorHook(le.message, le.level)
+    }
+
+    /** One bound of a numeric `for`, or the error Lua reports for a bad one. */
+    private fun forNumber(value: LuaValue, what: String): LuaValue {
+        val number: LuaValue = value.tonumber()
+        if (number.isnil()) {
+            LuaValue.error("bad 'for' " + what + " (number expected, got " + value.typename() + ")")
+        }
+        return number
     }
 
     private fun findupval(stack: Array<LuaValue>, idx: Short, openups: Array<UpValue?>): UpValue? {

@@ -795,8 +795,12 @@ open class IoLib : TwoArgFunction() {
 
                 LuaValue.TSTRING -> {
                     fmt = ai!!.checkstring()!!
-                    if (fmt.m_length >= 2 && fmt.m_bytes[fmt.m_offset] == '*'.code.toByte()) {
-                        when (fmt.m_bytes[fmt.m_offset + 1]) {
+                    // Since 5.3 the leading '*' is optional, so "n" and "*n"
+                    // name the same format.
+                    val star: Int =
+                        if (fmt.m_length >= 1 && fmt.m_bytes[fmt.m_offset] == '*'.code.toByte()) 1 else 0
+                    if (fmt.m_length >= star + 1) {
+                        when (fmt.m_bytes[fmt.m_offset + star]) {
                             'n'.code.toByte() -> {
                                 vi = net.blueva.luak.lib.IoLib.Companion.freadnumber(f)
                                 return@item
@@ -1033,35 +1037,63 @@ open class IoLib : TwoArgFunction() {
             }
         }
 
+        /**
+         * `io.read("n")`: the next numeral in the stream, or nil.
+         *
+         * The numeral is assembled one piece at a time, the way upstream's
+         * `read_number` does, so no more of the stream is consumed than the
+         * numeral itself. Hexadecimal numerals and exponents are read too, and
+         * the result keeps its subtype: `12345` comes back as an integer, not
+         * as the float a single decimal conversion would give.
+         */
         @kotlin.Throws(IOException::class)
         fun freadnumber(f: File): LuaValue {
             val baos: ByteArrayOutputStream = ByteArrayOutputStream()
             net.blueva.luak.lib.IoLib.Companion.freadchars(f, " \t\r\n", null)
-            net.blueva.luak.lib.IoLib.Companion.freadchars(f, "-+", baos)
-            //freadchars(f,"0",baos);
-            //freadchars(f,"xX",baos);
-            net.blueva.luak.lib.IoLib.Companion.freadchars(f, "0123456789", baos)
-            net.blueva.luak.lib.IoLib.Companion.freadchars(f, ".", baos)
-            net.blueva.luak.lib.IoLib.Companion.freadchars(f, "0123456789", baos)
-            //freadchars(f,"eEfFgG",baos);
-            // freadchars(f,"+-",baos);
-            //freadchars(f,"0123456789",baos);
+            net.blueva.luak.lib.IoLib.Companion.freadone(f, "-+", baos)
+            var hexadecimal = false
+            var digits = 0
+            if (net.blueva.luak.lib.IoLib.Companion.freadone(f, "0", baos)) {
+                if (net.blueva.luak.lib.IoLib.Companion.freadone(f, "xX", baos)) hexadecimal = true else digits = 1
+            }
+            val digitChars = if (hexadecimal) "0123456789abcdefABCDEF" else "0123456789"
+            digits += net.blueva.luak.lib.IoLib.Companion.freadchars(f, digitChars, baos)
+            if (net.blueva.luak.lib.IoLib.Companion.freadone(f, ".", baos)) {
+                digits += net.blueva.luak.lib.IoLib.Companion.freadchars(f, digitChars, baos)
+            }
+            if (digits > 0 &&
+                net.blueva.luak.lib.IoLib.Companion.freadone(f, if (hexadecimal) "pP" else "eE", baos)
+            ) {
+                net.blueva.luak.lib.IoLib.Companion.freadone(f, "-+", baos)
+                net.blueva.luak.lib.IoLib.Companion.freadchars(f, "0123456789", baos)
+            }
             // decodeToString(), not toString(): only the JVM's
             // ByteArrayOutputStream renders its own bytes as text.
             val s: String = baos.toByteArray().decodeToString()
-            return if (s.length > 0) valueOf((s).toDouble()) else NIL
+            return net.blueva.luak.NumberParser.parse(s) ?: NIL
         }
 
+        /** Consumes one character out of [chars], if the next one is in it. */
         @kotlin.Throws(IOException::class)
-        private fun freadchars(f: File, chars: String, baos: ByteArrayOutputStream?) {
+        private fun freadone(f: File, chars: String, baos: ByteArrayOutputStream?): Boolean {
+            val c: Int = f.peek()
+            if (c < 0 || chars.indexOf(c.toChar()) < 0) return false
+            f.read()
+            baos?.write(c)
+            return true
+        }
+
+        private fun freadchars(f: File, chars: String, baos: ByteArrayOutputStream?): Int {
+            var count = 0
             var c: Int
             while (true) {
                 c = f.peek()
-                if (chars.indexOf(c.toChar()) < 0) {
-                    return
+                if (c < 0 || chars.indexOf(c.toChar()) < 0) {
+                    return count
                 }
                 f.read()
                 if (baos != null) baos.write(c)
+                count++
             }
         }
     }

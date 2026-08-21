@@ -79,7 +79,7 @@ class OrphanedThreadTest : TestCase() {
         // The interpreter's generic error hook always attaches a "chunk:line "
         // prefix once an error reaches a LuaClosure's catch, regardless of
         // error()'s own level argument.
-        doTest(LuaValue.FALSE, LuaValue.valueOf("script:4 abnormal condition"))
+        doTest(LuaValue.FALSE, LuaValue.valueOf("script:4: abnormal condition"))
     }
 
     @Throws(Exception::class)

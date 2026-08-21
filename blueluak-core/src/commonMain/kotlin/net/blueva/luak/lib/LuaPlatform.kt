@@ -49,8 +49,8 @@ import net.blueva.luak.compiler.LuaC
 object LuaPlatform {
     /**
      * Creates a [Globals] with the Lua 5.2 standard libraries: `base`,
-     * `package`, `bit32`, `table`, `string`, `coroutine`, `math`, `io`, and
-     * `os`, plus the [LuaC] compiler and the [LoadState] undumper.
+     * `package`, `bit32`, `table`, `string`, `coroutine`, `math`, `utf8`, `io`,
+     * and `os`, plus the [LuaC] compiler and the [LoadState] undumper.
      *
      * @return globals initialized with the standard libraries
      * @see debugGlobals
@@ -64,6 +64,7 @@ object LuaPlatform {
         globals.load(StringLib())
         globals.load(CoroutineLib())
         globals.load(MathLib())
+        globals.load(Utf8Lib())
         globals.load(IoLib())
         globals.load(OsLib())
         LoadState.install(globals)

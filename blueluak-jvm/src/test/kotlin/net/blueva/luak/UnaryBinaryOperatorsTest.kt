@@ -95,8 +95,16 @@ class UnaryBinaryOperatorsTest : TestCase() {
         assertEquals(2.0, sb.neg().todouble())
     }
 
-    fun testDoublesBecomeInts() {
-        // DoubleValue.valueOf should return int
+    /**
+     * A float keeps its subtype even when its value is a whole number.
+     *
+     * `LuaDouble.valueOf` used to hand back a [LuaInteger] whenever the double
+     * had no fractional part, which is how Lua behaved up to 5.2 when there was
+     * only one number type. Since 5.3 the two are distinct: `345.0` is a float
+     * that happens to equal the integer `345`, and it has to stay one, or
+     * `math.type` and `tostring` both answer for the wrong subtype.
+     */
+    fun testDoublesKeepTheirSubtype() {
         val ia: LuaValue = LuaInteger.valueOf(345)!!
         val da: LuaValue = LuaDouble.valueOf(345.0)!!
         val db: LuaValue = LuaDouble.valueOf(345.5)!!
@@ -105,14 +113,20 @@ class UnaryBinaryOperatorsTest : TestCase() {
         val sc: LuaValue = LuaValue.valueOf("-2.0")
         val sd: LuaValue = LuaValue.valueOf("-2")
 
-        assertEquals(ia, da)
         assertTrue(ia is LuaInteger)
-        assertTrue(da is LuaInteger)
+        assertTrue(da is LuaDouble)
         assertTrue(db is LuaDouble)
+        // Equal as Lua numbers, and still of different subtypes.
+        assertTrue(ia.eq_b(da))
+        assertTrue(da.eq_b(ia))
+        assertTrue(ia.isinttype())
+        assertTrue(!da.isinttype())
         TestCase.assertEquals(ia.toint(), 345)
         TestCase.assertEquals(da.toint(), 345)
         assertEquals(da.todouble(), 345.0)
         assertEquals(db.todouble(), 345.5)
+        TestCase.assertEquals("345", ia.tojstring())
+        TestCase.assertEquals("345.0", da.tojstring())
 
         assertTrue(sa is LuaString)
         assertTrue(sb is LuaString)
@@ -122,6 +136,11 @@ class UnaryBinaryOperatorsTest : TestCase() {
         assertEquals(3.0, sb.todouble())
         assertEquals(-2.0, sc.todouble())
         assertEquals(-2.0, sd.todouble())
+        // The numeral a string denotes carries a subtype of its own.
+        assertTrue(!sa.tonumber().isinttype())
+        assertTrue(sb.tonumber().isinttype())
+        assertTrue(!sc.tonumber().isinttype())
+        assertTrue(sd.tonumber().isinttype())
     }
 
 
@@ -551,12 +570,25 @@ class UnaryBinaryOperatorsTest : TestCase() {
         }
     }
 
+    /**
+     * Checks that an arithmetic operation with a [type] operand is rejected.
+     *
+     * Two wordings are accepted because Lua has two. When neither operand is a
+     * string the VM reports the generic "attempt to perform arithmetic"; when
+     * one is, the string metatable's own handler takes over and names both
+     * types instead, as in "attempt to add a 'nil' with a 'string'". Either
+     * way the offending type has to appear in the message.
+     */
     private fun checkArithError(a: LuaValue, b: LuaValue, op: String, type: String) {
         try {
             LuaValue::class.java.getMethod(op, *arrayOf<Class<*>>(LuaValue::class.java)).invoke(a, *arrayOf<Any?>(b))
         } catch (ite: InvocationTargetException) {
             val actual: String = ite.getTargetException().message!!
-            if ((!actual.startsWith("attempt to perform arithmetic")) || actual.indexOf(type) < 0) fail("(" + a.typename() + "," + op + "," + b.typename() + ") reported '" + actual + "'")
+            val recognised = actual.startsWith("attempt to perform arithmetic") ||
+                actual.startsWith("attempt to " + op + " a ")
+            if (!recognised || actual.indexOf(type) < 0) {
+                fail("(" + a.typename() + "," + op + "," + b.typename() + ") reported '" + actual + "'")
+            }
         } catch (e: Exception) {
             fail("(" + a.typename() + "," + op + "," + b.typename() + ") threw " + e)
         }

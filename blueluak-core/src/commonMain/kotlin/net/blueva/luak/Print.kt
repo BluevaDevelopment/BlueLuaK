@@ -78,6 +78,13 @@ class Print : Lua() {
             "CLOSURE",
             "VARARG",
             "EXTRAARG",
+            "IDIV",
+            "BAND",
+            "BOR",
+            "BXOR",
+            "SHL",
+            "SHR",
+            "BNOT",
             null,
         )
 

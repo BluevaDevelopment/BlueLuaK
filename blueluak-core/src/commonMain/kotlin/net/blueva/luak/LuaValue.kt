@@ -2401,7 +2401,7 @@ open class LuaValue : Varargs() {
      * whose value equals val,
      * otherwise false
      */
-    open fun raweq(`val`: Int): Boolean {
+    open fun raweq(`val`: Long): Boolean {
         return false
     }
 
@@ -2451,7 +2451,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .add
      */
-    open fun add(rhs: Int): LuaValue {
+    open fun add(rhs: Long): LuaValue {
         return add(rhs.toDouble())
     }
 
@@ -2502,7 +2502,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .sub
      */
-    open fun sub(rhs: Int): LuaValue? {
+    open fun sub(rhs: Long): LuaValue? {
         return aritherror("sub")
     }
 
@@ -2541,7 +2541,7 @@ open class LuaValue : Varargs() {
      * @see .sub
      * @see .sub
      */
-    open fun subFrom(lhs: Int): LuaValue {
+    open fun subFrom(lhs: Long): LuaValue {
         return subFrom(lhs.toDouble())
     }
 
@@ -2592,7 +2592,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mul
      */
-    open fun mul(rhs: Int): LuaValue {
+    open fun mul(rhs: Long): LuaValue {
         return mul(rhs.toDouble())
     }
 
@@ -2642,7 +2642,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .pow
      */
-    open fun pow(rhs: Int): LuaValue? {
+    open fun pow(rhs: Long): LuaValue? {
         return aritherror("pow")
     }
 
@@ -2678,7 +2678,7 @@ open class LuaValue : Varargs() {
      * @see .pow
      * @see .pow
      */
-    open fun powWith(lhs: Int): LuaValue {
+    open fun powWith(lhs: Long): LuaValue {
         return powWith(lhs.toDouble())
     }
 
@@ -2735,8 +2735,99 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .div
      */
-    open fun div(rhs: Int): LuaValue? {
+    open fun div(rhs: Long): LuaValue? {
         return aritherror("div")
+    }
+
+    /** Floor divide: perform the `//` operation with metatag processing.
+     *
+     * Integer operands produce an integer, rounding towards negative infinity;
+     * if either side is a float the result is a float. Dividing an integer by
+     * an integer zero is an error, while the float form yields an infinity, all
+     * as specified since Lua 5.3.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this // rhs)`
+     * @throws LuaError if either operand is not a number and has no `__idiv`
+     */
+    open fun idiv(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.IDIV, rhs)
+    }
+
+
+    /** Bitwise and: perform the `&` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this & rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__band` metamethod
+     */
+    open fun band(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BAND, rhs)
+    }
+
+    /** Bitwise or: perform the `|` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this | rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__bor` metamethod
+     */
+    open fun bor(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BOR, rhs)
+    }
+
+    /** Bitwise exclusive or: perform the `~` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this ~ rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__bxor` metamethod
+     */
+    open fun bxor(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.BXOR, rhs)
+    }
+
+    /** Bitwise left shift: perform the `<<` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this << rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__shl` metamethod
+     */
+    open fun shl(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.SHL, rhs)
+    }
+
+    /** Bitwise right shift: perform the `>>` operation with metatag processing.
+     *
+     * Both operands must denote integers; see `luaBitwiseOperand`.
+     *
+     * @param rhs the right-hand-side value
+     * @return value of `(this >> rhs)`
+     * @throws LuaError if either operand has no integer representation and
+     *   there is no `__shr` metamethod
+     */
+    open fun shr(rhs: LuaValue): LuaValue {
+        return arithmt(net.blueva.luak.LuaValue.Companion.SHR, rhs)
+    }
+
+    /** Bitwise not: perform the unary `~` operation with metatag processing.
+     *
+     * @return value of `(~this)`
+     * @throws LuaError if this has no integer representation and there is no
+     *   `__bnot` metamethod
+     */
+    open fun bnot(): LuaValue {
+        return arithmtwith(net.blueva.luak.LuaValue.Companion.BNOT, 0.0)
     }
 
     /** Reverse-divide: Perform numeric divide operation into another value
@@ -2810,7 +2901,7 @@ open class LuaValue : Varargs() {
      * @throws LuaError if `this` is not a number or string convertible to number
      * @see .mod
      */
-    open fun mod(rhs: Int): LuaValue? {
+    open fun mod(rhs: Long): LuaValue? {
         return aritherror("mod")
     }
 
@@ -2955,7 +3046,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun lt(rhs: Int): LuaValue? {
+    open fun lt(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -2995,7 +3086,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun lt_b(rhs: Int): Boolean {
+    open fun lt_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3075,7 +3166,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun lteq(rhs: Int): LuaValue? {
+    open fun lteq(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -3115,7 +3206,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun lteq_b(rhs: Int): Boolean {
+    open fun lteq_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3195,7 +3286,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun gt(rhs: Int): LuaValue? {
+    open fun gt(rhs: Long): LuaValue? {
         return compareerror("number")
     }
 
@@ -3235,7 +3326,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun gt_b(rhs: Int): Boolean {
+    open fun gt_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3315,7 +3406,7 @@ open class LuaValue : Varargs() {
      * @see .gteq_b
      * @see .comparemt
      */
-    open fun gteq(rhs: Int): LuaValue? {
+    open fun gteq(rhs: Long): LuaValue? {
         return net.blueva.luak.LuaValue.Companion.valueOf(todouble() >= rhs)
     }
 
@@ -3355,7 +3446,7 @@ open class LuaValue : Varargs() {
      * @see .gteq
      * @see .comparemt
      */
-    open fun gteq_b(rhs: Int): Boolean {
+    open fun gteq_b(rhs: Long): Boolean {
         compareerror("number")
         return false
     }
@@ -3852,6 +3943,35 @@ open class LuaValue : Varargs() {
         val DIV: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__div")
 
+        /** LuaString constant with value "__idiv" for use as metatag  */
+        val IDIV: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__idiv")
+
+
+        /** LuaString constant with value "__band" for use as metatag  */
+        val BAND: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__band")
+
+        /** LuaString constant with value "__bor" for use as metatag  */
+        val BOR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bor")
+
+        /** LuaString constant with value "__bxor" for use as metatag  */
+        val BXOR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bxor")
+
+        /** LuaString constant with value "__shl" for use as metatag  */
+        val SHL: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__shl")
+
+        /** LuaString constant with value "__shr" for use as metatag  */
+        val SHR: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__shr")
+
+        /** LuaString constant with value "__bnot" for use as metatag  */
+        val BNOT: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__bnot")
+
         /** LuaString constant with value "__mul" for use as metatag  */
         val MUL: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__mul")
@@ -3978,6 +4098,19 @@ open class LuaValue : Varargs() {
         @kotlin.jvm.JvmStatic
         fun valueOf(i: Int): LuaInteger {
             return (LuaInteger.valueOf(i))!!
+        }
+
+        /** Convert a long to a [LuaValue].
+         *
+         * Lua's integer subtype is 64 bits wide, so every long is representable
+         * exactly and this never yields a float.
+         *
+         * @param l long value to convert
+         * @return [LuaInteger] instance, possibly pooled, whose value is l
+         */
+        @kotlin.jvm.JvmStatic
+        fun valueOf(l: Long): LuaInteger {
+            return (LuaInteger.valueOf(l))!!
         }
 
         /** Convert java double to a [LuaValue].

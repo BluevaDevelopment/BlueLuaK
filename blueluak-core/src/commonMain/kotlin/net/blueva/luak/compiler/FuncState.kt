@@ -443,12 +443,10 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun numberK(r: LuaValue): Int {
-        var r: LuaValue = r
-        if (r is LuaDouble) {
-            val d: Double = r.todouble()
-            val i = d.toInt()
-            if (d == i.toDouble()) r = LuaInteger.valueOf(i)!!
-        }
+        // A float constant stays a float. Folding 2.0 onto the integer 2 here
+        // was safe while Lua had one number type; since 5.3 it would make the
+        // constant's subtype depend on its value, so `2.0` would report as an
+        // integer and print without its fractional part.
         return this.addk(r)
     }
 
@@ -810,16 +808,33 @@ internal class FuncState internal constructor() : Constants() {
         val v2: LuaValue
         var r: LuaValue? = null
         if (!e1.isnumeral() || !e2.isnumeral()) return false
-        if ((op == OP_DIV || op == OP_MOD) && e2.u.nval()
+        if ((op == OP_DIV || op == OP_MOD || op == OP_IDIV) && e2.u.nval()
                 !!.eq_b(LuaValue.ZERO)
         ) return false /* do not attempt to divide by 0 */
         v1 = e1.u.nval()!!
         v2 = e2.u.nval()!!
+        // A bitwise operand that denotes no integer is a run-time error, not a
+        // compile-time one: leave it for the VM so pcall can catch it.
+        when (op) {
+            OP_BAND, OP_BOR, OP_BXOR, OP_SHL, OP_SHR ->
+                if (!net.blueva.luak.luaHasIntegerRepresentation(v1) ||
+                    !net.blueva.luak.luaHasIntegerRepresentation(v2)
+                ) return false
+
+            OP_BNOT -> if (!net.blueva.luak.luaHasIntegerRepresentation(v1)) return false
+        }
         when (op) {
             OP_ADD -> r = v1.add(v2)
             OP_SUB -> r = v1.sub(v2)
             OP_MUL -> r = v1.mul(v2)
             OP_DIV -> r = v1.div(v2)
+            OP_IDIV -> r = v1.idiv(v2)
+            OP_BAND -> r = v1.band(v2)
+            OP_BOR -> r = v1.bor(v2)
+            OP_BXOR -> r = v1.bxor(v2)
+            OP_SHL -> r = v1.shl(v2)
+            OP_SHR -> r = v1.shr(v2)
+            OP_BNOT -> r = v1.bnot()
             OP_MOD -> r = v1.mod(v2)
             OP_POW -> r = v1.pow(v2)
             OP_UNM -> r = v1.neg()
@@ -831,7 +846,15 @@ internal class FuncState internal constructor() : Constants() {
                 r = null
             }
         }
-        if ((r!!.todouble()).isNaN()) return false /* do not attempt to produce NaN */
+        if (!r!!.isinttype()) {
+            // Neither NaN nor a zero float is folded. NaN has no literal to
+            // fold into, and the constant pool compares floats with `==`, under
+            // which -0.0 and 0.0 are the same key: folding `-0.0` would let it
+            // share a slot with a plain `0.0` elsewhere in the chunk and flip
+            // the sign of whichever one was written second.
+            val d: Double = r.todouble()
+            if (d.isNaN() || d == 0.0) return false
+        }
         e1.u.setNval(r)
         return true
     }
@@ -839,7 +862,9 @@ internal class FuncState internal constructor() : Constants() {
     fun codearith(op: Int, e1: expdesc, e2: expdesc, line: Int) {
         if (constfolding(op, e1, e2)) return
         else {
-            val o2 = if (op != OP_UNM && op != OP_LEN)
+            // The unary opcodes take no C operand; emitting one trips the
+            // operand-mode assertion in codeABC.
+            val o2 = if (op != OP_UNM && op != OP_LEN && op != OP_BNOT)
                 this.exp2RK(e2)
             else
                 0
@@ -875,15 +900,18 @@ internal class FuncState internal constructor() : Constants() {
     }
 
     fun prefix( /* UnOpr */op: Int, e: expdesc, line: Int) {
+        // A stand-in second operand, as upstream keeps, so the unary operators
+        // fold through constfolding and inherit its guards instead of carrying
+        // their own weaker copies.
         val e2: expdesc = expdesc()
         e2.init(LexState.VKNUM, 0)
+        e2.u.setNval(LuaValue.ZERO)
         when (op) {
-            LexState.OPR_MINUS -> {
-                if (e.isnumeral())  /* minus constant? */
-                    e.u.setNval(e.u.nval()!!.neg()) /* fold it */
-                else {
+            LexState.OPR_MINUS, LexState.OPR_BNOT -> {
+                val opcode = if (op == LexState.OPR_MINUS) OP_UNM else OP_BNOT
+                if (!this.constfolding(opcode, e, e2)) {
                     this.exp2anyreg(e)
-                    this.codearith(OP_UNM, e, e2, line)
+                    this.codearith(opcode, e, e2, line)
                 }
             }
 
@@ -911,7 +939,9 @@ internal class FuncState internal constructor() : Constants() {
                 this.exp2nextreg(v) /* operand must be on the `stack' */
             }
 
-            LexState.OPR_ADD, LexState.OPR_SUB, LexState.OPR_MUL, LexState.OPR_DIV, LexState.OPR_MOD, LexState.OPR_POW -> {
+            LexState.OPR_ADD, LexState.OPR_SUB, LexState.OPR_MUL, LexState.OPR_DIV, LexState.OPR_MOD, LexState.OPR_POW,
+            LexState.OPR_IDIV, LexState.OPR_BAND, LexState.OPR_BOR, LexState.OPR_BXOR,
+            LexState.OPR_SHL, LexState.OPR_SHR -> {
                 if (!v.isnumeral()) this.exp2RK(v)
             }
 
@@ -960,6 +990,12 @@ internal class FuncState internal constructor() : Constants() {
             LexState.OPR_SUB -> this.codearith(OP_SUB, e1, e2, line)
             LexState.OPR_MUL -> this.codearith(OP_MUL, e1, e2, line)
             LexState.OPR_DIV -> this.codearith(OP_DIV, e1, e2, line)
+            LexState.OPR_IDIV -> this.codearith(OP_IDIV, e1, e2, line)
+            LexState.OPR_BAND -> this.codearith(OP_BAND, e1, e2, line)
+            LexState.OPR_BOR -> this.codearith(OP_BOR, e1, e2, line)
+            LexState.OPR_BXOR -> this.codearith(OP_BXOR, e1, e2, line)
+            LexState.OPR_SHL -> this.codearith(OP_SHL, e1, e2, line)
+            LexState.OPR_SHR -> this.codearith(OP_SHR, e1, e2, line)
             LexState.OPR_MOD -> this.codearith(OP_MOD, e1, e2, line)
             LexState.OPR_POW -> this.codearith(OP_POW, e1, e2, line)
             LexState.OPR_EQ -> this.codecomp(OP_EQ, 1, e1, e2)

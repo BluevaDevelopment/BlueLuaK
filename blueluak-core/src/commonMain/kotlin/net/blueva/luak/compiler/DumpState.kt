@@ -97,7 +97,11 @@ class DumpState(w: OutputStream?, strip: Boolean) {
 
     @kotlin.Throws(IOException::class)
     fun dumpDouble(d: Double) {
-        val l: Long = (d).toBits()
+        dumpLong((d).toBits())
+    }
+
+    @kotlin.Throws(IOException::class)
+    fun dumpLong(l: Long) {
         if (IS_LITTLE_ENDIAN) {
             dumpInt(l.toInt())
             dumpInt((l shr 32).toInt())
@@ -131,10 +135,16 @@ class DumpState(w: OutputStream?, strip: Boolean) {
                 }
 
                 LuaValue.TNUMBER -> when (NUMBER_FORMAT) {
-                    net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES -> {
-                        writer!!.write(LuaValue.TNUMBER)
-                        dumpDouble(o.todouble())
-                    }
+                    net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES ->
+                        if (o.isinttype()) {
+                            // Tagged apart from a float, or the subtype would
+                            // not survive the round trip.
+                            writer!!.write(net.blueva.luak.LoadState.LUA_TNUMINT)
+                            dumpLong(o.tolong())
+                        } else {
+                            writer!!.write(LuaValue.TNUMBER)
+                            dumpDouble(o.todouble())
+                        }
 
                     net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_INTS_ONLY -> {
                         kotlin.require(!(!net.blueva.luak.compiler.DumpState.Companion.ALLOW_INTEGER_CASTING && !o.isint())) { "not an integer: " + o }

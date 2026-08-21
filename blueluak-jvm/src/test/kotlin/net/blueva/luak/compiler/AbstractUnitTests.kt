@@ -65,6 +65,21 @@ abstract class AbstractUnitTests(zipdir: String?, zipfile: String, dir: String) 
         return inputStreamOfPath(pathOfFile(file))
     }
 
+    /**
+     * Compiles [file], dumps it, reads it back, and checks the two agree.
+     *
+     * This used to also compare against the `.lc` files in the archive, which
+     * `luac` 5.2 produced. That comparison is retired: in 5.2 every numeral was
+     * a float, so now that numerals carry the 5.3 integer subtype, a constant
+     * pool here and one there differ for every script that contains a number -
+     * the skip list had grown to cover most of the corpus and was measuring
+     * the version gap rather than any regression. A reference comparison
+     * becomes meaningful again once the port reaches the 5.5 bytecode format
+     * and can be checked against `luac` 5.5.
+     *
+     * What remains still fails on a crash in the compiler, on a dump the
+     * undumper cannot read, and on any round-trip that loses information.
+     */
     protected open fun doTest(file: String?) {
         try {
             // load source from jar
@@ -75,14 +90,6 @@ abstract class AbstractUnitTests(zipdir: String?, zipfile: String, dir: String) 
             val `is`: InputStream = ByteArrayInputStream(lua)
             val p: Prototype = globals!!.loadPrototype(`is`, "@" + file, "bt")!!
             val actual = protoToString(p)
-
-            // load expected value from jar
-            val luac = bytesFromJar(path.substring(0, path.length - 4) + ".lc")
-            val e = loadFromBytes(luac, file)
-            val expected = protoToString(e)
-
-            // compare results
-            TestCase.assertEquals(expected, actual)
 
             // dump into memory
             val baos = ByteArrayOutputStream()
@@ -116,6 +123,7 @@ abstract class AbstractUnitTests(zipdir: String?, zipfile: String, dir: String) 
         val `is`: InputStream = ByteArrayInputStream(bytes)
         return globals!!.loadPrototype(`is`, script, "b")!!
     }
+
 
     protected fun protoToString(p: Prototype): String? {
         val baos = ByteArrayOutputStream()

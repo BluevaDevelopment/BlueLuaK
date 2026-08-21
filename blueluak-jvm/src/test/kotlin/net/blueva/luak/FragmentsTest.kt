@@ -153,7 +153,8 @@ object FragmentsTest : TestSuite() {
 
         fun testSetListWithOffsetAndVarargs() {
             runFragment(
-                LuaValue.valueOf(1003),
+                // math.sqrt is a float function, so the sum is a float too.
+                LuaValue.valueOf(1003.0),
                 "local bar = {1000, math.sqrt(9)}\n" +
                         "return bar[1]+bar[2]\n"
             )
