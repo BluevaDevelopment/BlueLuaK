@@ -954,10 +954,13 @@ private fun frameFor(t: LuaThread?, f: LuaValue): DebugLib? {
 }
 
 private fun enterForeign(state: LuaThread.State) {
-    if (++state.foreigncalls > LuaThread.State.MAX_HANDLER_CALLS) {
-        LuaValue.error("error in error handling")
-    }
-    if (state.foreigncalls > LuaThread.State.MAX_FOREIGN_CALLS) {
+    if (++state.foreigncalls < LuaThread.State.MAX_FOREIGN_CALLS) return
+    // See LuaClosure.enterforeign: the ceiling is reported once, and the room
+    // above it belongs to whatever is handling that.
+    if (state.foreigncalls == LuaThread.State.MAX_FOREIGN_CALLS) {
         LuaValue.error("C stack overflow")
+    }
+    if (state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
+        LuaValue.error("error in error handling")
     }
 }

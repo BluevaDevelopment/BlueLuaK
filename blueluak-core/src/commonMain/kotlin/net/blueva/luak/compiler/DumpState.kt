@@ -87,6 +87,16 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         }
     }
 
+    /**
+     * Every string written so far, and where it was written.
+     *
+     * A string that appears more than once in a chunk - a constant several
+     * nested functions share, a name repeated in the debug information - is
+     * written once and pointed at afterwards. A chunk of any size is largely
+     * made of repeated names, so this is most of what keeps one small.
+     */
+    private val written: MutableMap<LuaString, Int> = HashMap()
+
     @kotlin.Throws(IOException::class)
     fun dumpString(s: LuaString?) {
         // A chunk that was loaded without debug information has nothing to
@@ -95,10 +105,17 @@ class DumpState(w: OutputStream?, strip: Boolean) {
             dumpInt(0)
             return
         }
+        val already: Int? = written[s]
+        if (already != null) {
+            // Written before: where it was, rather than what it is.
+            dumpInt(-already)
+            return
+        }
         val len: Int = s.len().toint()
         dumpInt(len + 1)
         s.write((writer)!!, 0, len)
         writer!!.write(0)
+        written[s] = written.size + 1
     }
 
     @kotlin.Throws(IOException::class)
@@ -249,17 +266,35 @@ class DumpState(w: OutputStream?, strip: Boolean) {
     }
 
     @kotlin.Throws(IOException::class)
+    /**
+     * The head of a binary chunk, byte for byte as Lua 5.5 writes it.
+     *
+     * After the signature and the two bytes that say which Lua and which
+     * format wrote it comes a run of bytes chosen to be spoiled by anything
+     * that rewrites a file it does not understand, and then one value of each
+     * kind the rest of the chunk is written in: the size each takes and a
+     * known value of it, so a chunk written by a build that counts or orders
+     * bytes differently is refused rather than misread.
+     */
     fun dumpHeader() {
         writer!!.write(LoadState.LUA_SIGNATURE)
         writer!!.write(LoadState.LUAC_VERSION)
         writer!!.write(LoadState.LUAC_FORMAT)
-        writer!!.write(if (IS_LITTLE_ENDIAN) 1 else 0)
-        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INT)
-        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_SIZET)
-        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INSTRUCTION)
-        writer!!.write(SIZEOF_LUA_NUMBER)
-        writer!!.write(NUMBER_FORMAT)
         writer!!.write(LoadState.LUAC_TAIL)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INT)
+        dumpInt(LoadState.LUAC_INT)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_INSTRUCTION)
+        dumpInt(LoadState.LUAC_INST)
+        writer!!.write(net.blueva.luak.compiler.DumpState.Companion.SIZEOF_LUA_INTEGER)
+        dumpLong(LoadState.LUAC_INT.toLong())
+        writer!!.write(SIZEOF_LUA_NUMBER)
+        // A build that keeps every number as an integer has no float to check
+        // with, and says so by the size it just wrote.
+        if (NUMBER_FORMAT == net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_INTS_ONLY) {
+            dumpInt(LoadState.LUAC_INT)
+        } else {
+            dumpDouble(LoadState.LUAC_NUM)
+        }
     }
 
     companion object {
@@ -279,6 +314,9 @@ class DumpState(w: OutputStream?, strip: Boolean) {
         val NUMBER_FORMAT_DEFAULT: Int = net.blueva.luak.compiler.DumpState.Companion.NUMBER_FORMAT_FLOATS_OR_DOUBLES
 
         private const val SIZEOF_INT = 4
+
+        /** How many bytes a Lua integer takes in a chunk. */
+        private const val SIZEOF_LUA_INTEGER = 8
         private const val SIZEOF_SIZET = 4
         private const val SIZEOF_INSTRUCTION = 4
 

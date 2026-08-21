@@ -257,11 +257,16 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // Counted first and left counted if it fails: the tally stays where it
         // was until a protected call puts it back, so an error raised at the
         // ceiling does not make room for the next one on its way out.
-        if (++state.foreigncalls > LuaThread.State.MAX_HANDLER_CALLS) {
-            LuaValue.error("error in error handling")
-        }
-        if (state.foreigncalls > LuaThread.State.MAX_FOREIGN_CALLS) {
+        if (++state.foreigncalls < LuaThread.State.MAX_FOREIGN_CALLS) return
+        // The ceiling itself is where the stack is reported as gone. Above it
+        // is the room an error handler is given to work in, which is why a
+        // call from in there is let through; running out of that room too is
+        // a failure of the handling rather than of the call.
+        if (state.foreigncalls == LuaThread.State.MAX_FOREIGN_CALLS) {
             LuaValue.error("C stack overflow")
+        }
+        if (state.foreigncalls >= LuaThread.State.MAX_HANDLER_CALLS) {
+            LuaValue.error("error in error handling")
         }
     }
 
