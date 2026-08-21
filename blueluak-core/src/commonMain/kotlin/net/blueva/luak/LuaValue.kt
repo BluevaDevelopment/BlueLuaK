@@ -113,6 +113,22 @@ open class LuaValue : Varargs() {
         get() = null
         set(value) {}
 
+    /**
+     * What this value keeps alive by being the key of a weak-key table.
+     *
+     * Such a table holds its value only for as long as the key lives, and it
+     * is the key itself that holds it: an entry whose key can be reached only
+     * through its own value is then a ring that nothing outside refers to, and
+     * goes as a whole. That is what makes a weak-key table an ephemeron table
+     * rather than one that keeps its keys alive through their values.
+     *
+     * Holds one value, or a list of them for a key used in several tables.
+     * Only the kinds that can be a weak key keep one; see [WeakTable].
+     */
+    internal open var pinned: Any?
+        get() = null
+        set(value) {}
+
     // type
     /** Get the enumeration value for the type of this value.
      * @return value for this type, one of

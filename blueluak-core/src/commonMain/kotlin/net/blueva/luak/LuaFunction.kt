@@ -34,6 +34,9 @@ package net.blueva.luak
  */
 abstract
 class LuaFunction : LuaValue() {
+    /** See [LuaValue.pinned]; a function can be a weak key. */
+    internal override var pinned: Any? = null
+
     /**
      * How many pieces of state this function carries: its upvalues.
      *

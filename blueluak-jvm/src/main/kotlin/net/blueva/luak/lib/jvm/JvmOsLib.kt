@@ -45,6 +45,8 @@ import java.io.IOException
 class JvmOsLib
 /** public constructor  */
     : OsLib() {
+    override fun hasshell(): Boolean = true
+
     override fun execute(command: String?): Varargs {
         var exitValue: Int
         try {
@@ -56,8 +58,12 @@ class JvmOsLib
         } catch (t: Throwable) {
             exitValue = EXEC_ERROR
         }
+        // A command that was killed leaves 128 plus the signal behind, which
+        // is the convention every shell reports it by; anything else is an
+        // ordinary exit and the number is the status it exited with.
+        if (exitValue > 128) return varargsOf(NIL, valueOf("signal"), valueOf(exitValue - 128))
         if (exitValue == 0) return LuaValue.varargsOf(TRUE, valueOf("exit"), ZERO!!)
-        return varargsOf(NIL, valueOf("signal"), valueOf(exitValue))
+        return varargsOf(NIL, valueOf("exit"), valueOf(exitValue))
     }
 
     companion object {

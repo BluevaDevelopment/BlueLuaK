@@ -39,6 +39,12 @@ internal object Memory {
     /** What a string costs beyond its own bytes. */
     const val STRING: Long = 24
 
+    /** What a function written in Lua costs before its upvalues. */
+    const val CLOSURE: Long = 32
+
+    /** One upvalue of such a function. */
+    const val UPVALUE: Long = 8
+
     /** What Lua holds with nothing allocated, so a count is never nothing. */
     private const val BASE: Long = 32 * 1024
 
@@ -49,12 +55,27 @@ internal object Memory {
     var accounted: Long = 0
         private set
 
+    /**
+     * Bytes made since the host was last asked to collect.
+     *
+     * Unlike [accounted] this is not reset by a cycle going by on its own:
+     * it says how much has been allocated since anything was actually
+     * reclaimed, which is what decides when a program waiting on a finalizer
+     * is worth interrupting for.
+     */
+    var sincecollect: Long = 0
+        private set
+
+    /** How much may be allocated before the host is asked to collect. */
+    const val COLLECT_EVERY: Long = 1024 * 1024
+
     /** False while `collectgarbage("stop")` is in force. */
     var running: Boolean = true
 
     /** Notes [bytes] just allocated, collecting if that is now overdue. */
     fun account(bytes: Long) {
         accounted += bytes
+        sincecollect += bytes
         // The host reclaims on its own; what happens here is only that the
         // tally starts again, which is what a finished cycle looks like from
         // a program watching the count.
@@ -76,6 +97,7 @@ internal object Memory {
     /** Ends a collection cycle: nothing made since the last one still counts. */
     fun collected() {
         accounted = 0
+        sincecollect = 0
     }
 
     /** Bytes in use, as `collectgarbage("count")` reports them. */

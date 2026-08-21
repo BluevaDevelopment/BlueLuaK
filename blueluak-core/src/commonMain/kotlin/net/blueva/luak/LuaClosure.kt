@@ -105,7 +105,16 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
     lateinit var upValues: Array<UpValue?>
 
-    val globals: Globals?
+    /**
+     * The state this closure belongs to, which is where the debug library,
+     * the running thread and the rest of what a program needs are kept.
+     *
+     * Not the same thing as the table the chunk reads its globals from: a
+     * chunk loaded with an environment of its own still runs in the state
+     * that loaded it, which is what fills this in.
+     */
+    var globals: Globals? = null
+        internal set
 
     /** Create a closure around a Prototype with a specific environment.
      * If the prototype has upvalues, the environment will be written into the first upvalue.
@@ -116,6 +125,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         this.p = p
         this.initupvalue1(env)
         globals = env as? Globals
+        Memory.account(Memory.CLOSURE + Memory.UPVALUE * upValues.size)
+    }
+
+    /** As the two-argument form, for a chunk whose environment is its own. */
+    constructor(p: Prototype, env: LuaValue?, state: Globals?) : this(p, env) {
+        if (globals == null) globals = state
     }
 
     override fun initupvalue1(env: LuaValue?) {
@@ -314,6 +329,26 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         a: Int,
         debuglib: DebugLib?,
     ): Boolean {
+        // Everything above the arguments is free at a call, and what a
+        // finished statement left in those registers would otherwise go on
+        // holding an object nothing else refers to. Lua's collector reaches
+        // the same conclusion by only looking at a stack up to the top of the
+        // call in progress; here the registers are emptied instead.
+        val b: Int = (i ushr 23) and 0x1ff
+        // Nothing written for the count means the arguments run to the top of
+        // what the frame is using, which is not known here.
+        if (b > 0) {
+            var free: Int = a + b
+            while (free < stack.size) {
+                stack[free] = LuaValue.NIL
+                free++
+            }
+        }
+        // A call is a place a collection can happen, which is where anything
+        // waiting to be finalized gets its turn: a loop that allocates
+        // without ever building a table would otherwise never let one run.
+        val g: Globals? = globals
+        if (g != null && g.marksfinalizers) g.runfinalizers()
         // A library function has no frame of its own to push, so the caller
         // pushes one for it: without that a traceback would not name it and
         // the call and return hooks would never fire for it.
@@ -698,6 +733,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                 o.set(offset + j, v.arg(j - m))
                                 j++
                             }
+                            // Let go of what the call handed over: the values
+                            // are in the table now, and holding them here
+                            // would keep alive what the program has finished
+                            // with. See the end of this instruction.
+                            v = NONE!!
                         } else {
                             o.presize(offset + b)
                             var j = 1
@@ -706,6 +746,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                                 j++
                             }
                         }
+                        // Let go of the table: this is the last instruction of
+                        // a constructor, and holding it here would keep alive
+                        // something the program has already finished with.
+                        o = NIL
                         ++pc
                         continue
                     }
@@ -840,7 +884,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * message a plain `pcall` hands back is not what the caller asked for.
      */
     fun errorHook(le: LuaError) {
-        if (globals == null) return
+        val globals: Globals = this.globals ?: return
         val r: LuaThread = globals.running
         if (r.errorfunc == null) return
         val e: LuaValue = r.errorfunc!!
@@ -1087,11 +1131,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         var line = -1
         run {
             var frame: CallFrame? = null
-            if (globals != null && globals.debuglib != null) {
+            val debuglib: net.blueva.luak.lib.DebugLib? = globals?.debuglib
+            if (debuglib != null) {
                 // The library function that raised has already been popped, so
                 // level 1 - the function the error is reported against - is
                 // the frame at the top from here.
-                frame = globals.debuglib!!.getCallFrame(le.level - 1)
+                frame = debuglib.getCallFrame(le.level - 1)
                 if (frame != null) {
                     val src: String? = frame.shortsource()
                     file = if (src != null) src else "?"
@@ -1268,6 +1313,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             }
             ++j
         }
+        // Making a function is an allocation like any other, and so a place a
+        // collection can happen; see callFixedArity.
+        val g: Globals? = globals
+        if (g != null && g.marksfinalizers) g.runfinalizers()
         return ncl
     }
 

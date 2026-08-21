@@ -62,7 +62,28 @@ class JvmProcess private constructor(
         stdin: InputStream?,
         stdout: OutputStream?,
         stderr: OutputStream?
-    ) : this(Runtime.getRuntime().exec(cmd), stdin, stdout, stderr)
+    ) : this(shell(cmd), stdin, stdout, stderr)
+
+    private companion object {
+        /**
+         * Runs [cmd] the way a command line would.
+         *
+         * The text is a command as a shell reads it - pipes, redirections and
+         * all - rather than a program and its arguments, which is what Lua
+         * hands over and what a reference build passes to `system`.
+         */
+        fun shell(cmd: String?): Process {
+            val command: String = cmd ?: ""
+            val windows: Boolean = System.getProperty("os.name")
+                ?.lowercase()?.contains("windows") == true
+            val parts: Array<String> = if (windows) {
+                arrayOf("cmd", "/c", command)
+            } else {
+                arrayOf("/bin/sh", "-c", command)
+            }
+            return ProcessBuilder(*parts).start()
+        }
+    }
 
     init {
         input =

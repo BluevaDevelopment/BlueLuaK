@@ -22,6 +22,9 @@ open class LuaUserdata : LuaValue {
     /** See [LuaValue.gckeeper]; a userdata is one of the two kinds that can have one. */
     internal override var gckeeper: Any? = null
 
+    /** See [LuaValue.pinned]; a value of this kind can be a weak key. */
+    internal override var pinned: Any? = null
+
     var m_instance: Any
     var m_metatable: LuaValue? = null
 

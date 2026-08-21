@@ -174,8 +174,19 @@ class Globals : LuaTable() {
      */
     internal fun runfinalizers() {
         if (!marksfinalizers || finalizing) return
-        val due: List<LuaValue> = takeFinalized(finalized)
-        if (due.isEmpty()) return
+        var due: List<LuaValue> = takeFinalized(finalized)
+        if (due.isEmpty()) {
+            // Nothing reclaimed yet. Where enough has been allocated that Lua
+            // would have run a cycle of its own by now, the host is asked for
+            // one: a program waiting for a finalizer to run has nothing else
+            // to wait for, and the host collects when it sees fit rather than
+            // when Lua would.
+            if (Memory.sincecollect < Memory.COLLECT_EVERY) return
+            Memory.collected()
+            platformCollectGarbage()
+            due = takeFinalized(finalized)
+            if (due.isEmpty()) return
+        }
         finalizing = true
         try {
             for (target in due) {
@@ -321,7 +332,12 @@ class Globals : LuaTable() {
     fun load(`is`: InputStream, chunkname: String?, mode: String, environment: LuaValue?): LuaValue? {
         try {
             val p: Prototype? = loadPrototype(`is`, chunkname, mode)
-            return loader!!.load(p, chunkname, environment)
+            val loaded: LuaValue? = loader!!.load(p, chunkname, environment)
+            // A chunk given an environment of its own still runs in this
+            // state: what it reads its globals from and what it runs in are
+            // two different things.
+            if (loaded is LuaClosure && loaded.globals == null) loaded.globals = this
+            return loaded
         } catch (l: LuaError) {
             throw l
         } catch (e: Exception) {

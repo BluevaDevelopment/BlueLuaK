@@ -177,6 +177,16 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         protected abstract fun copy(next: Slot?): WeakSlot?
     }
 
+    /**
+     * An entry of a table whose keys are weak, which is to say an ephemeron.
+     *
+     * The value is held weakly here and strongly by the key, so that it lives
+     * exactly as long as the key does. Holding it here instead would keep
+     * alive every key its value happens to refer to, which is the difference
+     * between a weak-key table and one that is merely inconvenient: a chain
+     * of entries each pointing at the key of the next would then never go,
+     * however little else referred to it. See [LuaValue.pinned].
+     */
     internal class WeakKeySlot : WeakSlot {
         private val keyhash: Int
 
@@ -184,8 +194,13 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
             key: LuaValue,
             value: LuaValue?,
             next: Slot?
-        ) : super(net.blueva.luak.WeakTable.Companion.weaken(key), value, next) {
+        ) : super(
+            net.blueva.luak.WeakTable.Companion.weaken(key),
+            net.blueva.luak.WeakTable.Companion.weaken(value!!),
+            next,
+        ) {
             keyhash = key.hashCode()
+            net.blueva.luak.WeakTable.Companion.pin(key, value)
         }
 
         protected constructor(copyFrom: WeakKeySlot, next: Slot?) : super(copyFrom.key, copyFrom.value, next) {
@@ -197,12 +212,24 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
         }
 
         override fun set(value: LuaValue?): Slot? {
-            this.value = value
+            val key: LuaValue? = strongkey()
+            if (key != null) {
+                net.blueva.luak.WeakTable.Companion.unpin(
+                    key,
+                    net.blueva.luak.WeakTable.Companion.strengthen(this.value),
+                )
+                if (value != null) net.blueva.luak.WeakTable.Companion.pin(key, value)
+            }
+            this.value = if (value == null) null else net.blueva.luak.WeakTable.Companion.weaken(value)
             return this
         }
 
         override fun strongkey(): LuaValue? {
             return net.blueva.luak.WeakTable.Companion.strengthen(key)
+        }
+
+        override fun strongvalue(): LuaValue? {
+            return net.blueva.luak.WeakTable.Companion.strengthen(value)
         }
 
         override fun copy(rest: Slot?): WeakSlot {
@@ -378,6 +405,45 @@ class WeakTable(private val weakkeys: Boolean, private val weakvalues: Boolean, 
          * @param value value to convert
          * @return [LuaValue] that is a strong or weak reference, depending on type of `value`
          */
+        /**
+         * Has [key] hold [value] for as long as it lives; see [WeakKeySlot].
+         *
+         * A key used in more than one table holds a list of what it keeps.
+         */
+        @Suppress("UNCHECKED_CAST")
+        internal fun pin(key: LuaValue, value: LuaValue) {
+            when (val held: Any? = key.pinned) {
+                null -> key.pinned = value
+                is ArrayList<*> -> (held as ArrayList<LuaValue>).add(value)
+                else -> {
+                    val list: ArrayList<LuaValue> = ArrayList(2)
+                    list.add(held as LuaValue)
+                    list.add(value)
+                    key.pinned = list
+                }
+            }
+        }
+
+        /** Undoes one [pin]; the entry it belonged to is gone or replaced. */
+        @Suppress("UNCHECKED_CAST")
+        internal fun unpin(key: LuaValue, value: LuaValue?) {
+            if (value == null) return
+            val held: Any? = key.pinned
+            if (held === value) {
+                key.pinned = null
+            } else if (held is ArrayList<*>) {
+                val list: ArrayList<LuaValue> = held as ArrayList<LuaValue>
+                var i = 0
+                while (i < list.size) {
+                    if (list[i] === value) {
+                        list.removeAt(i)
+                        return
+                    }
+                    i++
+                }
+            }
+        }
+
         protected fun weaken(value: LuaValue): LuaValue {
             when (value.type()) {
                 LuaValue.TFUNCTION, LuaValue.TTHREAD, LuaValue.TTABLE -> return net.blueva.luak.WeakTable.WeakValue(

@@ -139,7 +139,12 @@ open class OsLib
                         )
                     )
 
-                    net.blueva.luak.lib.OsLib.Companion.EXECUTE -> return execute(args.optjstring(1, null))
+                    net.blueva.luak.lib.OsLib.Companion.EXECUTE -> {
+                        // Asked with nothing to run, the question is only
+                        // whether there is anything to run commands with.
+                        val command: String? = args.optjstring(1, null)
+                        return if (command == null) valueOf(hasshell())!! else execute(command)
+                    }
                     net.blueva.luak.lib.OsLib.Companion.EXIT -> {
                         exit(args.optint(1, 0))
                         return (NONE)!!
@@ -271,6 +276,14 @@ open class OsLib
     protected open fun execute(command: String?): Varargs {
         return varargsOf(NIL, valueOf("exit"), (ONE)!!)
     }
+
+    /**
+     * True where the host can run a command for `os.execute`.
+     *
+     * Answered by `os.execute()` with nothing to run, which is how a program
+     * asks whether running anything is possible at all.
+     */
+    protected open fun hasshell(): Boolean = false
 
     /**
      * Calls the C function exit, with an optional code, to terminate the host program.

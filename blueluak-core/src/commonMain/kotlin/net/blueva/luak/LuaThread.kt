@@ -92,6 +92,9 @@ internal fun enterForeignCall(state: LuaThread.State) {
 }
 
 class LuaThread : LuaValue {
+    /** See [LuaValue.pinned]; a coroutine can be a weak key. */
+    internal override var pinned: Any? = null
+
     val state: State
 
     /** Thread-local used by DebugLib to store debugging state.

@@ -65,6 +65,9 @@ open class LuaTable : LuaValue, Metatable {
     /** See [LuaValue.gckeeper]; a table is one of the two kinds that can have one. */
     internal override var gckeeper: Any? = null
 
+    /** See [LuaValue.pinned]; a value of this kind can be a weak key. */
+    internal override var pinned: Any? = null
+
     /** the array values  */
     protected lateinit var array: Array<LuaValue?>
 
