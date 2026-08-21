@@ -3988,6 +3988,10 @@ open class LuaValue : Varargs() {
         val UNM: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__unm")
 
+        /** LuaString constant with value "__close" for use as metatag  */
+        val CLOSE: LuaString
+            get() = net.blueva.luak.LuaValue.Companion.valueOf("__close")
+
         /** LuaString constant with value "__len" for use as metatag  */
         val LEN: LuaString
             get() = net.blueva.luak.LuaValue.Companion.valueOf("__len")

@@ -85,10 +85,8 @@ open class MathLib : TwoArgFunction() {
         math.set("asin", net.blueva.luak.lib.MathLib.asin())
         val atan: LuaValue = net.blueva.luak.lib.MathLib.atan()
         math.set("atan", atan)
-        math.set("atan2", atan)
         math.set("ceil", net.blueva.luak.lib.MathLib.ceil())
         math.set("cos", net.blueva.luak.lib.MathLib.cos())
-        math.set("cosh", net.blueva.luak.lib.MathLib.cosh())
         math.set("deg", net.blueva.luak.lib.MathLib.deg())
         math.set("exp", net.blueva.luak.lib.MathLib.exp())
         math.set("floor", net.blueva.luak.lib.MathLib.floor())
@@ -103,19 +101,19 @@ open class MathLib : TwoArgFunction() {
         math.set("min", net.blueva.luak.lib.MathLib.min())
         math.set("modf", net.blueva.luak.lib.MathLib.modf())
         math.set("pi", kotlin.math.PI)
-        math.set("pow", net.blueva.luak.lib.MathLib.pow())
         val r: random?
         math.set("random", net.blueva.luak.lib.MathLib.random().also { r = it })
         math.set("randomseed", net.blueva.luak.lib.MathLib.randomseed((r)!!))
         math.set("rad", net.blueva.luak.lib.MathLib.rad())
         math.set("sin", net.blueva.luak.lib.MathLib.sin())
-        math.set("sinh", net.blueva.luak.lib.MathLib.sinh())
         math.set("sqrt", net.blueva.luak.lib.MathLib.sqrt())
         math.set("tan", net.blueva.luak.lib.MathLib.tan())
         math.set("tointeger", net.blueva.luak.lib.MathLib.tointeger())
         math.set("type", net.blueva.luak.lib.MathLib.type())
         math.set("ult", net.blueva.luak.lib.MathLib.ult())
-        math.set("tanh", net.blueva.luak.lib.MathLib.tanh())
+        // math.atan2, math.cosh, math.pow, math.sinh and math.tanh were
+        // deprecated in 5.3 and removed in 5.4; the classes behind them stay
+        // for embedders that want to put them back.
         env!!.set("math", math)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("math", math)
         return math
@@ -368,31 +366,87 @@ open class MathLib : TwoArgFunction() {
         }
     }
 
-    internal class random : LibFunction() {
+    /**
+     * `math.random ([m [, n]])`.
+     *
+     * With no argument a float in `[0,1)`; with one, an integer in `[1,m]`;
+     * with two, one in `[m,n]`. The whole 64-bit range is available, so
+     * `math.random(1, math.maxinteger)` works, and `math.random(0)` answers an
+     * integer with every bit drawn at random.
+     */
+    internal class random : VarArgFunction() {
         var random: Random = Random.Default
-        override fun call(): LuaValue? {
-            return valueOf(random.nextDouble())
+
+        override fun invoke(args: Varargs): Varargs {
+            val low: Long
+            val high: Long
+            when (args.narg()) {
+                0 -> return valueOf(random.nextDouble())!!
+                1 -> {
+                    val m: Long = args.checklong(1)
+                    // random(0) is the one case that is not a range: it asks
+                    // for an integer with all of its bits set at random.
+                    if (m == 0L) return valueOf(random.nextLong())!!
+                    low = 1L
+                    high = m
+                }
+
+                2 -> {
+                    low = args.checklong(1)
+                    high = args.checklong(2)
+                }
+
+                else -> return LuaValue.error("wrong number of arguments")!!
+            }
+            args.argcheck(low <= high, 1, "interval is empty")
+            return valueOf(low + project(random.nextLong(), high - low))!!
         }
 
-        override fun call(a: LuaValue?): LuaValue? {
-            val m: Int = a!!.checkint()
-            if (m < 1) argerror(1, "interval is empty")
-            return valueOf(1 + random.nextInt(m))
-        }
-
-        override fun call(a: LuaValue?, b: LuaValue?): LuaValue? {
-            val m: Int = a!!.checkint()
-            val n: Int = b!!.checkint()
-            if (n < m) argerror(2, "interval is empty")
-            return valueOf(m + random.nextInt(n + 1 - m))
+        /**
+         * An unbiased draw in `[0, span]`, treating both as unsigned.
+         *
+         * Taking a remainder would favour the low end of the range, so the
+         * draw is masked down to the next power of two minus one and retried
+         * until it lands inside, as upstream does.
+         */
+        private fun project(draw: Long, span: Long): Long {
+            if (span and (span + 1) == 0L) return draw and span // span + 1 is a power of two
+            var limit = span
+            limit = limit or (limit ushr 1)
+            limit = limit or (limit ushr 2)
+            limit = limit or (limit ushr 4)
+            limit = limit or (limit ushr 8)
+            limit = limit or (limit ushr 16)
+            limit = limit or (limit ushr 32)
+            var value = draw and limit
+            while (value.toULong() > span.toULong()) value = random.nextLong() and limit
+            return value
         }
     }
 
-    internal class randomseed(val random: MathLib.random) : OneArgFunction() {
-        override fun call(arg: LuaValue?): LuaValue? {
-            val seed: Long = arg!!.checklong()
-            random.random = kotlin.random.Random(seed)
-            return (NONE)!!
+    /**
+     * `math.randomseed ([x [, y]])`.
+     *
+     * Seeds the generator and answers the two halves of the seed it used, so a
+     * run that wants to be repeatable can record them. With no argument the
+     * seed comes from the clock, which is as unpredictable as this runtime can
+     * be without a platform entropy source.
+     */
+    internal class randomseed(val random: MathLib.random) : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val x: Long
+            val y: Long
+            if (args.isnoneornil(1)) {
+                // Kotlin's default generator is already seeded by the host, so
+                // it is the entropy source here.
+                x = Random.Default.nextLong()
+                y = Random.Default.nextLong()
+            } else {
+                x = args.checklong(1)
+                y = args.optlong(2, 0L)
+            }
+            random.random = kotlin.random.Random(x xor (y * 0x9E3779B97F4A7C15uL.toLong()))
+            return varargsOf(valueOf(x), valueOf(y))!!
         }
     }
 

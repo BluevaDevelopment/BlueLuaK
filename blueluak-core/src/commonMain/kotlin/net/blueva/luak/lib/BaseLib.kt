@@ -86,6 +86,9 @@ import net.blueva.luak.io.platformStandardInput
 open class BaseLib : TwoArgFunction(), ResourceFinder {
     var globals: Globals? = null
 
+    /** Whether `warn` currently emits anything; warnings start switched off. */
+    internal var warningsOn: Boolean = false
+
 
     /** Perform one-time initialization on the library by adding base functions
      * to the supplied environment, and returning it as the return value.
@@ -101,6 +104,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         env!!.set("_VERSION", Lua._VERSION)
         env!!.set("assert", net.blueva.luak.lib.BaseLib._assert())
         env!!.set("collectgarbage", net.blueva.luak.lib.BaseLib.collectgarbage())
+        env!!.set("warn", warn(this))
         env!!.set("dofile", dofile())
         env!!.set("error", net.blueva.luak.lib.BaseLib.error())
         env!!.set("getmetatable", net.blueva.luak.lib.BaseLib.getmetatable())
@@ -175,7 +179,40 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
     }
 
     // "collectgarbage", // ( opt [,arg] ) -> value
+    /**
+     * `warn (msg1, ...)`, from Lua 5.4.
+     *
+     * Emits a warning built by joining the arguments. Warnings start switched
+     * off and are turned on and off by the control messages `"@on"` and
+     * `"@off"`, which are single arguments beginning with `@` and are never
+     * shown themselves.
+     */
+    internal class warn(private val baselib: BaseLib) : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val n: Int = args.narg()
+            for (i in 1..n) args.checkstring(i)
+            if (n == 1) {
+                val control: String = args.checkjstring(1)!!
+                if (control.startsWith("@")) {
+                    if (control == "@on") baselib.warningsOn = true
+                    else if (control == "@off") baselib.warningsOn = false
+                    return NONE!!
+                }
+            }
+            if (!baselib.warningsOn) return NONE!!
+            val message: StringBuilder = StringBuilder("Lua warning: ")
+            for (i in 1..n) message.append(args.checkjstring(i))
+            baselib.globals!!.STDERR!!.println(message.toString())
+            return NONE!!
+        }
+    }
+
     internal class collectgarbage : VarArgFunction() {
+        companion object {
+            /** The collector mode last asked for; 5.5 starts generational. */
+            var mode: String = "generational"
+        }
+
         override fun invoke(args: Varargs): Varargs {
             val s: String? = args.optjstring(1, "collect")
             if ("collect".equals(s)) {
@@ -187,6 +224,19 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             } else if ("step".equals(s)) {
                 platformCollectGarbage()
                 return (LuaValue.TRUE)!!
+            } else if ("isrunning".equals(s)) {
+                // The host collector is always on; there is no way to stop it
+                // from here, so "stop" and "restart" are accepted and ignored.
+                return (LuaValue.TRUE)!!
+            } else if ("stop".equals(s) || "restart".equals(s)) {
+                return (ZERO)!!
+            } else if ("generational".equals(s) || "incremental".equals(s)) {
+                // The host collector picks its own strategy, so the mode is
+                // only remembered, not applied. Lua answers the mode that was
+                // in force before the call.
+                val previous: String = net.blueva.luak.lib.BaseLib.collectgarbage.mode
+                net.blueva.luak.lib.BaseLib.collectgarbage.mode = s!!
+                return valueOf(previous)!!
             } else {
                 argerror(1, "invalid option '" + s + "'")
             }
@@ -209,12 +259,73 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
         }
     }
 
+    /**
+     * Names the function in a bare "bad argument #N" message.
+     *
+     * A protected call reaches its callee directly, so there is no call site
+     * for the interpreter to read a name from and the message arrives without
+     * one. Lua falls back to the name the function goes by in
+     * `package.loaded`, which is how `pcall(string.pack, ...)` still reports
+     * "bad argument #2 to 'string.pack'".
+     */
+    internal fun nameArgumentError(failure: LuaError, called: LuaValue) {
+        // An index may already have been stamped on; a name has not, and that
+        // is what is missing when the call came in through here.
+        if (failure.argMessageOverride?.contains(" to '") == true) return
+        val message: String = failure.message ?: return
+        val match = Regex("^bad argument #(\\d+): ([\\s\\S]*)$").find(message) ?: return
+        val name: String = loadedName(called) ?: "?"
+        failure.argMessageOverride =
+            "bad argument #" + match.groupValues[1] + " to '" + name + "' (" + match.groupValues[2] + ")"
+    }
+
+    /**
+     * The name [target] goes by in `package.loaded`, such as `"string.pack"`.
+     *
+     * Only the modules themselves and their immediate fields are searched, as
+     * upstream searches, and a function of `_G` keeps its bare name.
+     */
+    private fun loadedName(target: LuaValue): String? {
+        val loaded: LuaValue = globals?.get("package")?.get("loaded") ?: return null
+        if (!loaded.istable()) return null
+        var moduleKey: Varargs = loaded.next(NIL)!!
+        while (!moduleKey.arg1()!!.isnil()) {
+            val key: LuaValue = moduleKey.arg1()!!
+            val module: LuaValue = moduleKey.arg(2)!!
+            if (key.isstring()) {
+                val prefix: String = key.tojstring()
+                if (module === target) return prefix
+                if (module.istable()) {
+                    var fieldKey: Varargs = module.next(NIL)!!
+                    while (!fieldKey.arg1()!!.isnil()) {
+                        if (fieldKey.arg(2) === target && fieldKey.arg1()!!.isstring()) {
+                            val field: String = fieldKey.arg1()!!.tojstring()
+                            return if (prefix == "_G") field else prefix + "." + field
+                        }
+                        fieldKey = module.next(fieldKey.arg1()!!)!!
+                    }
+                }
+            }
+            moduleKey = loaded.next(key)!!
+        }
+        return null
+    }
+
     // "error", // ( message [,level] ) -> ERR
     internal class error : TwoArgFunction() {
         override fun call(arg1: LuaValue?, arg2: LuaValue?): LuaValue? {
             if (arg1!!.isnil()) throw LuaError(NIL)
-            if (!arg1!!.isstring() || arg2!!.optint(1) === 0) throw LuaError(arg1)
-            throw LuaError(arg1!!.tojstring(), arg2!!.optint(1))
+            val level: Int = arg2!!.optint(1)
+            if (!arg1.isstring()) throw LuaError(arg1)
+            if (level == 0) {
+                // Level 0 asks for the message exactly as written, with no
+                // position added to it - not even by the interpreter's own
+                // error hook, which is what the level records for it.
+                val failure = LuaError(arg1)
+                failure.level = 0
+                throw failure
+            }
+            throw LuaError(arg1.tojstring(), level)
         }
     }
 
@@ -283,6 +394,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             try {
                 return (varargsOf(TRUE, (func.invoke((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
+                nameArgumentError(le, func)
                 val m: LuaValue? = le.messageObject
                 return (varargsOf(FALSE, if (m != null) m else NIL))!!
             } catch (e: Exception) {
@@ -308,6 +420,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
             try {
                 return (varargsOf(TRUE, (func.invokeSuspend((args.subargs(2))!!))!!))!!
             } catch (le: LuaError) {
+                nameArgumentError(le, func)
                 val m: LuaValue? = le.messageObject
                 return (varargsOf(FALSE, if (m != null) m else NIL))!!
             } catch (e: Exception) {
@@ -457,6 +570,7 @@ open class BaseLib : TwoArgFunction(), ResourceFinder {
                 try {
                     return (varargsOf(TRUE, (args.arg1()!!.invoke((args.subargs(3))!!))!!))!!
                 } catch (le: LuaError) {
+                    nameArgumentError(le, args.arg1()!!)
                     if (le.traceback == null) {
                         // Error raised directly from native/library code (e.g. calling a
                         // non-function) never passed through a LuaClosure's error hook, so

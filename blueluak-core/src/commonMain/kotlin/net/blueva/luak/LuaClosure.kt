@@ -289,6 +289,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // TODO: use linked list.
         val openups: Array<UpValue?>? = if (p.p!!.size > 0) arrayOfNulls<UpValue>(stack.size) else null
 
+        // Stack slots holding to-be-closed variables, outermost first. Stays
+        // null for the overwhelming majority of functions, which declare none.
+        var tbc: ArrayList<Int>? = null
+
 
         // Resolved once per frame rather than per instruction: the per-opcode
         // "globals != null && globals.debuglib != null" reload was two field
@@ -569,7 +573,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         pc += (i ushr 14) - 0x1ffff
                         if (a > 0) {
                             --a
-                            b = openups!!.size
+                            if (tbc != null) closeToBeClosed(tbc, stack, a, NIL)
+                            if (openups == null) {
+                                ++pc
+                                continue
+                            }
+                            b = openups.size
                             while (--b >= 0) {
                                 if (openups[b] != null && openups[b]!!.index >= a) {
                                     openups[b]!!.close()
@@ -684,6 +693,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
 
                     Lua.OP_RETURN -> {
                         b = i ushr 23
+                        // Before the results are read off the stack, as upstream
+                        // closes at the return rather than after it.
+                        if (tbc != null) closeToBeClosed(tbc, stack, 0, NIL)
                         when (b) {
                             0 -> return varargsOf(stack, a, top - v.narg() - a, v)
                             1 -> return NONE
@@ -803,6 +815,18 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                         continue
                     }
 
+                    Lua.OP_TBC -> {
+                        tbc = markToBeClosed(tbc, stack[a], a, p, pc)
+                        ++pc
+                        continue
+                    }
+
+                    Lua.OP_ERRNNIL -> {
+                        if (!stack[a].isnil()) errorAlreadyDefined(k, i ushr 14)
+                        ++pc
+                        continue
+                    }
+
                     Lua.OP_EXTRAARG -> throw IllegalArgumentException("Uexecutable opcode: OP_EXTRAARG")
 
                     else -> throw IllegalArgumentException("Illegal opcode: " + (i and 0x3f))
@@ -810,8 +834,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 ++pc
             }
         } catch (le: LuaError) {
+            // Unwinding past a to-be-closed variable still closes it, and the
+            // handler is told which error it is unwinding from.
+            if (tbc != null) closeToBeClosed(tbc, stack, 0, le.messageObject ?: NIL)
             if (le.traceback == null) {
-                enrichArgError(le, p, pc)
+                enrichArgError(le, p, pc, stack)
                 processErrorHooks(le, p, pc)
             }
             throw le
@@ -820,6 +847,7 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             processErrorHooks(le, p, pc)
             throw le
         } finally {
+            if (tbc != null) closeToBeClosed(tbc, stack, 0, NIL)
             if (openups != null) {
                 var u = openups.size
                 while (--u >= 0) {
@@ -862,17 +890,25 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
      * CALL/TAILCALL instruction that invoked the failing callee, since the
      * throw unwound before the loop's `++pc`.
      */
-    private fun enrichArgError(le: LuaError, p: Prototype, pc: Int) {
-        val m = le.message ?: return
-        val match = Regex("^bad argument #(\\d+): ([\\s\\S]*)$").find(m) ?: return
+    private fun enrichArgError(le: LuaError, p: Prototype, pc: Int, stack: Array<LuaValue>) {
+        var m = le.message ?: return
         val code = p.code ?: return
         if (pc < 0 || pc >= code.size) return
         val instr = code[pc]
         val opcode = Lua.GET_OPCODE(instr)
         if (opcode != Lua.OP_CALL && opcode != Lua.OP_TAILCALL) return
+        val a = Lua.GETARG_A(instr)
+        // A check made on a value alone cannot know which argument it came
+        // from. For a function that takes one argument there is only one it
+        // could have been, so the index can be filled in here.
+        if (m.startsWith("bad argument: ") && a < stack.size &&
+            stack[a] is net.blueva.luak.lib.OneArgFunction
+        ) {
+            m = "bad argument #1: " + m.removePrefix("bad argument: ")
+        }
+        val match = Regex("^bad argument #(\\d+): ([\\s\\S]*)$").find(m) ?: return
         var argIndex = match.groupValues[1].toIntOrNull() ?: return
         val detail = match.groupValues[2]
-        val a = Lua.GETARG_A(instr)
         val nw = net.blueva.luak.lib.DebugLib.getobjname(p, pc, a)
         if (nw != null && nw.namewhat == "method") {
             argIndex--
@@ -886,6 +922,12 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
     }
 
     private fun processErrorHooks(le: LuaError, p: Prototype, pc: Int) {
+        // A level of zero says the message is complete as it stands, which is
+        // what `error(msg, 0)` asks for.
+        if (le.level <= 0) {
+            le.traceback = errorHook(le.message, le.level)
+            return
+        }
         var file: String? = "?"
         var line = -1
         run {
@@ -899,7 +941,9 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
                 }
             }
             if (frame == null) {
-                file = if (p.source != null) p.source!!.tojstring() else "?"
+                // Shortened the way Lua shortens it, so a long path or a chunk
+                // given as text does not run away with the message.
+                file = p.shortsource()
                 line = if (p.lineinfo != null && pc >= 0 && pc < p.lineinfo!!.size) p.lineinfo!![pc] else -1
             }
         }
@@ -914,6 +958,71 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
             LuaValue.error("bad 'for' " + what + " (number expected, got " + value.typename() + ")")
         }
         return number
+    }
+
+    /**
+     * Reports a `global x = v` declaration for a global that already has one.
+     *
+     * @param bx the name's constant index plus one, or zero if it did not fit
+     */
+    private fun errorAlreadyDefined(k: Array<LuaValue?>, bx: Int): Nothing {
+        val name: String = if (bx > 0 && bx - 1 < k.size) k[bx - 1]!!.tojstring() else "?"
+        LuaValue.error("global '" + name + "' already defined")
+        throw IllegalStateException()
+    }
+
+    /**
+     * Registers R([slot]) as a to-be-closed variable, from `local x <close>`.
+     *
+     * A false or nil value is not closed and not remembered, which is what lets
+     * `local f <close> = io.open(...)` be written without a separate check.
+     * Anything else has to answer a `__close` metamethod, and the complaint
+     * comes at the declaration rather than at the end of the block.
+     *
+     * @return the list to keep, which is created on the first such variable
+     */
+    private fun markToBeClosed(
+        list: ArrayList<Int>?,
+        value: LuaValue,
+        slot: Int,
+        p: Prototype,
+        pc: Int,
+    ): ArrayList<Int>? {
+        if (!value.toboolean()) return list
+        if (value.metatag(LuaValue.CLOSE).isnil()) {
+            val name: LuaString? = p.getlocalname(slot + 1, pc)
+            LuaValue.error(
+                "variable '" + (name?.tojstring() ?: "?") + "' got a non-closable value",
+            )
+        }
+        val out: ArrayList<Int> = list ?: ArrayList(1)
+        out.add(slot)
+        return out
+    }
+
+    /**
+     * Closes the to-be-closed variables at or above [level], innermost first.
+     *
+     * Each is dropped from the list as it is closed, so a later pass - the
+     * `finally` after an error has already unwound one - does not close it
+     * twice.
+     *
+     * @param error the error being propagated, or nil on an ordinary exit
+     */
+    private fun closeToBeClosed(
+        list: ArrayList<Int>,
+        stack: Array<LuaValue>,
+        level: Int,
+        error: LuaValue,
+    ) {
+        var index = list.size
+        while (--index >= 0) {
+            val slot: Int = list[index]
+            if (slot < level) return
+            list.removeAt(index)
+            val value: LuaValue = stack[slot]
+            value.metatag(LuaValue.CLOSE).call(value, error)
+        }
     }
 
     private fun findupval(stack: Array<LuaValue>, idx: Short, openups: Array<UpValue?>): UpValue? {

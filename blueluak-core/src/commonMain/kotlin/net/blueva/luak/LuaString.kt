@@ -430,13 +430,14 @@ class LuaString private constructor(
     }
 
     override fun checkinteger(): LuaInteger? {
-        return valueOf(checkint())
+        return net.blueva.luak.LuaInteger.valueOf(checklong())
     }
 
     override fun checklong(): Long {
         // Through the numeral rather than through a double, so a 64-bit
-        // integer written out in full does not lose its low bits on the way.
-        return checknumeral(null).tolong()
+        // integer written out in full does not lose its low bits on the way,
+        // and a fractional one is rejected rather than truncated.
+        return checknumeral(null).checklong()
     }
 
     override fun checkdouble(): Double {

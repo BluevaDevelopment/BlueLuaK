@@ -85,6 +85,8 @@ class Print : Lua() {
             "SHL",
             "SHR",
             "BNOT",
+            "TBC",
+            "ERRNNIL",
             null,
         )
 

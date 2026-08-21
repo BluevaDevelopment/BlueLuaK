@@ -744,7 +744,8 @@ object FragmentsTest : TestSuite() {
         }
 
         fun testReturnValueForTableRemove() {
-            runFragment(LuaValue.NONE!!, "return table.remove({ })")
+            // One value, which happens to be nil - not an absence of values.
+            runFragment(LuaValue.NIL, "return table.remove({ })")
         }
 
         fun testTypeOfTableRemoveReturnValue() {

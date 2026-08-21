@@ -123,14 +123,49 @@ class Prototype {
         return null /* not found */
     }
 
+    /**
+     * The source name as it appears in an error message or a traceback.
+     *
+     * This is upstream's `luaO_chunkid`. A name given as `@file` or `=text`
+     * loses its marker and is shortened from the front or the back as needed;
+     * anything else is the chunk's own text, which is quoted as
+     * `[string "..."]` and cut at the first newline so a message stays on one
+     * line.
+     */
     fun shortsource(): String {
-        var name: String = source?.tojstring() ?: "?"
-        if (name.startsWith("@") || name.startsWith("=")) name = name.substring(1)
-        else if (name.startsWith("\u001b")) name = "binary string"
-        return name
+        val name: String = source?.tojstring() ?: "?"
+        if (name.isEmpty()) return "?"
+        var budget = MAX_SOURCE_LENGTH
+        when (name[0]) {
+            '=' -> {
+                val body = name.substring(1)
+                return if (body.length + 1 <= budget) body else body.substring(0, budget - 1)
+            }
+
+            '@' -> {
+                val body = name.substring(1)
+                if (body.length + 1 <= budget) return body
+                budget -= ELLIPSIS.length
+                return ELLIPSIS + body.substring(body.length - budget)
+            }
+
+            else -> {
+                val newline = name.indexOf('\n')
+                budget -= PREFIX.length + ELLIPSIS.length + SUFFIX.length + 1
+                if (newline < 0 && name.length < budget) return PREFIX + name + SUFFIX
+                val end = if (newline >= 0) minOf(newline, budget) else budget
+                return PREFIX + name.substring(0, end) + ELLIPSIS + SUFFIX
+            }
+        }
     }
 
     companion object {
+        /** Upstream's `LUA_IDSIZE`: the room a source name gets in a message. */
+        private const val MAX_SOURCE_LENGTH = 60
+        private const val ELLIPSIS = "..."
+        private const val PREFIX = "[string \""
+        private const val SUFFIX = "\"]"
+
         private val NOUPVALUES: Array<Upvaldesc?> = arrayOf<Upvaldesc?>()
         private val NOSUBPROTOS = arrayOf<Prototype?>()
     }

@@ -63,20 +63,27 @@ class StandardGlobalsTest {
 
     @Test
     fun mathLibraryIsComplete() {
-        // These eight used to exist only in the JVM subclass, leaving every
-        // other target with LuaJ's reduced J2ME math library.
-        for (name in arrayOf("acos", "asin", "atan", "atan2", "cosh", "log", "sinh", "tanh")) {
+        // These used to exist only in the JVM subclass, leaving every other
+        // target with LuaJ's reduced J2ME math library.
+        for (name in arrayOf("acos", "asin", "atan", "log")) {
             assertFalse(globals.get("math")!!.get(name)!!.isnil(), "missing math function: $name")
         }
         assertEquals(0.0, eval("return math.acos(1)").checkdouble())
         assertEquals(PI / 2, eval("return math.asin(1)").checkdouble(), 1e-12)
         assertEquals(PI / 4, eval("return math.atan(1)").checkdouble(), 1e-12)
-        assertEquals(PI / 4, eval("return math.atan2(1, 1)").checkdouble(), 1e-12)
-        assertEquals(1.0, eval("return math.cosh(0)").checkdouble(), 1e-12)
-        assertEquals(0.0, eval("return math.sinh(0)").checkdouble(), 1e-12)
-        assertEquals(0.0, eval("return math.tanh(0)").checkdouble(), 1e-12)
+        // atan took over from atan2 when the second argument was added to it.
+        assertEquals(PI / 4, eval("return math.atan(1, 1)").checkdouble(), 1e-12)
         assertEquals(1.0, eval("return math.log(math.exp(1))").checkdouble(), 1e-12)
         assertEquals(3.0, eval("return math.log(8, 2)").checkdouble(), 1e-12)
+    }
+
+    @Test
+    fun theAliasesRemovedIn54AreGone() {
+        // math.atan2, cosh, pow, sinh and tanh were deprecated in 5.3 and
+        // removed in 5.4; a chunk written for 5.5 must not find them.
+        for (name in arrayOf("atan2", "cosh", "pow", "sinh", "tanh")) {
+            assertTrue(globals.get("math")!!.get(name)!!.isnil(), "math.$name should be gone")
+        }
     }
 
     @Test
@@ -84,7 +91,7 @@ class StandardGlobalsTest {
         // The inherited J2ME longhand pow() was off by ~1e-6 here; kotlin.math
         // is exact to the last bits on every target.
         assertEquals(1.4142135623730951, eval("return 2 ^ 0.5").checkdouble(), 1e-15)
-        assertEquals(1024.0, eval("return math.pow(2, 10)").checkdouble(), 1e-12)
+        assertEquals(1024.0, eval("return 2 ^ 10").checkdouble(), 1e-12)
         assertEquals(0.1, eval("return 10 ^ -1").checkdouble(), 1e-15)
     }
 

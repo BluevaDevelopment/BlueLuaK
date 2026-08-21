@@ -30,6 +30,7 @@ import net.blueva.luak.compiler.LexState.expdesc
 internal class FuncState internal constructor() : Constants() {
     internal class BlockCnt {
         var previous: BlockCnt? = null /* chain */
+        var firstglobal: Int = 0 /* number of global declarations outside the block */
         var firstlabel: Short = 0 /* index of first label in this block */
         var firstgoto: Short = 0 /* index of first pending goto in this block */
         var nactvar: Short = 0 /* # active locals outside the breakable structure */
@@ -176,12 +177,43 @@ internal class FuncState internal constructor() : Constants() {
     fun enterblock(bl: BlockCnt, isloop: Boolean) {
         bl.isloop = isloop
         bl.nactvar = nactvar
+        bl.firstglobal = globals.size
         bl.firstlabel = ls!!.dyd.n_label.toShort()
         bl.firstgoto = ls!!.dyd.n_gt.toShort()
         bl.upval = false
         bl.previous = this.bl
         this.bl = bl
         _assert(this.freereg == this.nactvar)
+    }
+
+    /**
+     * One `global` declaration in scope.
+     *
+     * A [name] of `null` is the collective form, `global *`, which declares
+     * every global at once. [readonly] comes from a `<const>` attribute and
+     * makes assignment to the global a compile error.
+     */
+    internal class Globaldesc(val name: LuaString?, val readonly: Boolean)
+
+    /**
+     * The `global` declarations in scope, outermost first.
+     *
+     * Kept apart from the local variables rather than interleaved with them as
+     * upstream does: a declaration takes no register, and the rest of this
+     * compiler reads `nactvar` as the register level.
+     */
+    internal val globals: ArrayList<Globaldesc> = ArrayList()
+
+    /**
+     * Marks the current block as one that has to be left through a closing jump.
+     *
+     * That is the same jump [leaveblock] already emits when a block holds an
+     * upvalue, and reusing it means every way out of the block - falling off
+     * the end, `break`, or a `goto` - passes through the instruction that runs
+     * the pending `__close` handlers.
+     */
+    fun markblocktobeclosed() {
+        this.bl!!.upval = true
     }
 
     fun leaveblock() {
@@ -193,6 +225,7 @@ internal class FuncState internal constructor() : Constants() {
             this.patchtohere(j)
         }
         if (bl.isloop) ls!!.breaklabel() /* close pending breaks */
+        while (globals.size > bl.firstglobal) globals.removeAt(globals.size - 1)
         this.bl = bl.previous
         this.removevars(bl.nactvar.toInt())
         _assert(bl.nactvar == this.nactvar)
@@ -797,6 +830,9 @@ internal class FuncState internal constructor() : Constants() {
 
     fun indexed(t: expdesc, k: expdesc) {
         t.u.ind_t = t.u.info.toShort()
+        // Indexing a read-only global yields an ordinary table access: it is
+        // `t.field` that is being assigned, not the variable `t`.
+        t.readonlyGlobal = null
         t.u.ind_idx = this.exp2RK(k).toShort()
         _assert(t.k === LexState.VUPVAL || net.blueva.luak.compiler.FuncState.Companion.vkisinreg(t.k))
         t.u.ind_vt = (if (t.k === LexState.VUPVAL) LexState.VUPVAL else LexState.VLOCAL).toShort()

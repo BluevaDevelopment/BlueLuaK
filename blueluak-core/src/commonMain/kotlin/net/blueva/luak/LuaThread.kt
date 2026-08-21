@@ -140,6 +140,33 @@ class LuaThread : LuaValue {
         return s.lua_resume(this, args)
     }
 
+    /**
+     * `coroutine.close`: ends this coroutine, running its pending closers.
+     *
+     * A suspended coroutine may be holding to-be-closed variables partway
+     * through its body. Closing it unwinds from the point it yielded at, which
+     * is what runs their `__close` handlers; an error raised by one of those is
+     * reported rather than thrown.
+     *
+     * @return `true`, or `false` plus the error a closer raised
+     */
+    fun close(): Varargs {
+        // Raised rather than reported: there is no coroutine here to have
+        // failed, so this is a mistake in the call itself.
+        if (this.isMainThread) LuaValue.error("cannot close main thread")
+        val s = this.state
+        if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING ||
+            s.status == net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
+        ) {
+            val name = if (s.status == net.blueva.luak.LuaThread.Companion.STATUS_RUNNING) "running" else "normal"
+            return LuaValue.varargsOf(
+                LuaValue.FALSE,
+                LuaValue.valueOf("cannot close a " + name + " coroutine"),
+            )!!
+        }
+        return s.lua_close(this)
+    }
+
     class State internal constructor(globals: Globals, lua_thread: LuaThread, function: LuaValue?) {
         private val globals: Globals
         val lua_thread: WeakReference<LuaThread>
@@ -229,6 +256,38 @@ class LuaThread : LuaValue {
             }
         }
 
+        /** Unwinds a suspended coroutine so its pending closers run. */
+        fun lua_close(closing: LuaThread): Varargs {
+            val continuation = yieldContinuation
+            yieldContinuation = null
+            if (continuation == null) {
+                // Never started, or already finished: nothing is on its stack.
+                status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
+                return LuaValue.TRUE!!
+            }
+            val previous_thread: LuaThread = globals.running
+            try {
+                globals.running = closing
+                previous_thread.state.status = net.blueva.luak.LuaThread.Companion.STATUS_NORMAL
+                status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+                finished = false
+                finalResult = null
+                // An Error rather than an Exception, so the interpreter's
+                // catch-all leaves it alone and only the finally blocks - the
+                // ones that close variables - run on the way out.
+                continuation.resumeWithException(ClosedCoroutine())
+            } finally {
+                status = net.blueva.luak.LuaThread.Companion.STATUS_DEAD
+                globals.running = previous_thread
+                globals.running.state.status = net.blueva.luak.LuaThread.Companion.STATUS_RUNNING
+            }
+            val result = finalResult
+            finalResult = null
+            val failure: Throwable? = result?.exceptionOrNull()
+            if (failure == null || failure is ClosedCoroutine) return LuaValue.TRUE!!
+            return LuaValue.varargsOf(LuaValue.FALSE, LuaValue.valueOf(failure.message))!!
+        }
+
         suspend fun lua_yield(args: Varargs?): Varargs {
             status = net.blueva.luak.LuaThread.Companion.STATUS_SUSPENDED
             pendingYieldValues = args ?: LuaValue.NONE
@@ -236,6 +295,9 @@ class LuaThread : LuaValue {
             return suspendCoroutine { cont -> yieldContinuation = cont }
         }
     }
+
+    /** Thrown into a suspended coroutine by [close] to unwind it. */
+    internal class ClosedCoroutine : Error("coroutine closed")
 
     companion object {
         /** Shared metatable for lua threads.  */

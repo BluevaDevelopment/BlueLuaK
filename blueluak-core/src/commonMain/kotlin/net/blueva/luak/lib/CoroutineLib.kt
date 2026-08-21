@@ -81,6 +81,8 @@ class CoroutineLib : TwoArgFunction() {
         coroutine.set("status", net.blueva.luak.lib.CoroutineLib.status())
         coroutine.set("yield", YieldFunction())
         coroutine.set("wrap", wrap())
+        coroutine.set("close", net.blueva.luak.lib.CoroutineLib.close())
+        coroutine.set("isyieldable", isyieldable())
         env!!.set("coroutine", coroutine)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("coroutine", coroutine)
         return coroutine
@@ -110,6 +112,31 @@ class CoroutineLib : TwoArgFunction() {
         override fun call(t: LuaValue?): LuaValue? {
             val lt: LuaThread = t!!.checkthread()!!
             return valueOf(lt.status)
+        }
+    }
+
+    /**
+     * `coroutine.close (co)`, from Lua 5.4.
+     *
+     * Ends a suspended or dead coroutine, running any to-be-closed variables it
+     * was still holding.
+     */
+    internal class close : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            return args.checkthread(1).close()
+        }
+    }
+
+    /**
+     * `coroutine.isyieldable ([co])`, from Lua 5.2.
+     *
+     * True when [co], or the running coroutine if none is given, could yield -
+     * that is, when it is not the main thread.
+     */
+    internal inner class isyieldable : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs {
+            val thread: LuaThread = if (args.isnoneornil(1)) globals!!.running else args.checkthread(1)
+            return valueOf(!thread.isMainThread)!!
         }
     }
 

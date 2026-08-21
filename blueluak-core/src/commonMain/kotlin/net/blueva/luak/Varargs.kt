@@ -24,7 +24,14 @@ import kotlin.reflect.KClass
  * so it reads like real Lua's "bad argument #N: ...".
  * The interpreter may further enrich it with the calling function's name.
  */
-private inline fun <T> withArgIndex(i: Int, block: () -> T): T {
+/**
+ * Runs [block], stamping argument index [i] onto any argument error it raises.
+ *
+ * A check made on a value alone - `arg.checkdouble()` rather than
+ * `args.checkdouble(1)` - has no way to know which argument the value came
+ * from, so the index is attached here, where it is known.
+ */
+internal inline fun <T> withArgIndex(i: Int, block: () -> T): T {
     try {
         return block()
     } catch (e: LuaError) {

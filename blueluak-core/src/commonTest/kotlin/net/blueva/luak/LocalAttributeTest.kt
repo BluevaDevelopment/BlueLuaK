@@ -25,11 +25,7 @@ import net.blueva.luak.lib.LuaPlatform
  * Local variable attributes, `local x <const>` and `local x <close>`, from
  * Lua 5.4.
  *
- * `<const>` is implemented. `<close>` needs to-be-closed variable support in
- * the VM (upstream's `OP_TBC` and `OP_CLOSE`), which the port has not reached;
- * until then it is rejected with a message that says so rather than being
- * accepted and quietly ignored, which would lose resource cleanup with no
- * warning.
+ * Every expectation was taken from the reference interpreter (`lua-5.5.1`).
  */
 class LocalAttributeTest {
     private lateinit var globals: Globals
@@ -95,12 +91,90 @@ class LocalAttributeTest {
     }
 
     @Test
-    fun closeIsRejectedWithAnExplicitNotImplementedMessage() {
-        val message = compileError("local x <close> = nil")
-            ?: fail("<close> must not compile while the VM cannot honour it")
+    fun closeVariablesAreClosedInReverseOrderOnLeavingTheBlock() {
+        val script = """
+            local log = {}
+            local function res(name)
+                return setmetatable({}, {__close = function() log[#log + 1] = name end})
+            end
+            do
+                local a <close> = res("a")
+                local b <close> = res("b")
+                log[#log + 1] = "body"
+            end
+            return table.concat(log, ",")
+        """.trimIndent()
+        assertEquals("body,b,a", globals.load(script, "close-order")!!.call()!!.tojstring())
+    }
+
+    @Test
+    fun closeHandlersRunWhileAnErrorUnwindsAndSeeIt() {
+        val script = """
+            local seen
+            local ok, err = pcall(function()
+                local a <close> = setmetatable({}, {__close = function(_, e) seen = e end})
+                error("boom", 0)
+            end)
+            return tostring(ok) .. "|" .. tostring(err) .. "|" .. tostring(seen)
+        """.trimIndent()
+        assertEquals("false|boom|boom", globals.load(script, "close-error")!!.call()!!.tojstring())
+    }
+
+    @Test
+    fun breakAndReturnBothCloseOnTheWayOut() {
+        val script = """
+            local log = {}
+            local function res(name)
+                return setmetatable({}, {__close = function() log[#log + 1] = name end})
+            end
+            for i = 1, 3 do
+                local a <close> = res("loop" .. i)
+                if i == 2 then break end
+            end
+            local function f()
+                local a <close> = res("ret")
+                return "value"
+            end
+            local v = f()
+            return v .. "|" .. table.concat(log, ",")
+        """.trimIndent()
+        assertEquals("value|loop1,loop2,ret", globals.load(script, "close-exits")!!.call()!!.tojstring())
+    }
+
+    @Test
+    fun falseAndNilNeedNoCloseMetamethod() {
+        val script = """
+            do
+                local a <close> = nil
+                local b <close> = false
+            end
+            return "ok"
+        """.trimIndent()
+        assertEquals("ok", globals.load(script, "close-falsy")!!.call()!!.tojstring())
+    }
+
+    @Test
+    fun aValueWithNoCloseMetamethodIsRejectedAtTheDeclaration() {
+        val failure = runCatching { globals.load("local x <close> = 42", "close-bad")!!.call() }
+            .exceptionOrNull() as? LuaError
+            ?: fail("a non-closable value must be reported")
         assertTrue(
-            message.contains("close") && message.contains("not implemented"),
-            "message should say the feature is missing, was: $message",
+            failure.message!!.contains("variable 'x' got a non-closable value"),
+            "message should name the variable, was: ${failure.message}",
         )
+    }
+
+    @Test
+    fun onlyOneCloseVariablePerLocalStatement() {
+        val message = compileError("local x <close>, y <close> = a, b")
+            ?: fail("two <close> variables in one statement must not compile")
+        assertTrue(message.contains("multiple to-be-closed variables"), message)
+    }
+
+    @Test
+    fun assigningToACloseLocalIsACompileError() {
+        val message = compileError("local x <close> = nil; x = 1")
+            ?: fail("assigning to a close local must not compile")
+        assertTrue(message.contains("const variable") && message.contains("'x'"), message)
     }
 }

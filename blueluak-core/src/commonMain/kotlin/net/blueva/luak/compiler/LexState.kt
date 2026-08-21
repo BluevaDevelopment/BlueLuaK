@@ -59,6 +59,9 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     internal var dyd: Dyndata = net.blueva.luak.compiler.LexState.Dyndata() /* dynamic structures used by the parser */
     var source: LuaString? = null /* current source name */
     var envn: LuaString? = null /* environment variable name */
+
+    /** The name `global`, recognised as a statement without being reserved. */
+    private val glbn: LuaString = LuaString.valueOf("global")
     var decpoint: Byte = 0 /* locale decimal point */
 
     private fun isalnum(c: Int): Boolean {
@@ -614,11 +617,22 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         val u: U = net.blueva.luak.compiler.LexState.expdesc.U()
         val t: IntPtr = IntPtr() /* patch list of `exit when true' */
         val f: IntPtr = IntPtr() /* patch list of `exit when false' */
+
+        /**
+         * The name of the `global <const>` this expression reads, if any.
+         *
+         * A read-only global is an ordinary `_ENV[name]` index once compiled,
+         * so the only place the restriction survives is here, on the
+         * expression the parser hands to [check_readonly].
+         */
+        var readonlyGlobal: LuaString? = null
+
         fun init(k: Int, i: Int) {
             this.f.i = net.blueva.luak.compiler.LexState.Companion.NO_JUMP
             this.t.i = net.blueva.luak.compiler.LexState.Companion.NO_JUMP
             this.k = k
             this.u.info = i
+            this.readonlyGlobal = null
         }
 
         fun hasjumps(): Boolean {
@@ -630,6 +644,7 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
 
         fun setvalue(other: expdesc) {
+            this.readonlyGlobal = other.readonlyGlobal
             this.f.i = other.f.i
             this.k = other.k
             this.t.i = other.t.i
@@ -808,21 +823,63 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
     }
 
     internal fun singlevar(`var`: expdesc) {
-        val varname: LuaString? = this.str_checkname()
+        val varname: LuaString = this.str_checkname()!!
         val fs: FuncState = this.fs!!
         if (FuncState.singlevaraux(
                 fs,
-                (varname)!!,
+                varname,
                 `var`,
                 1
             ) === net.blueva.luak.compiler.LexState.Companion.VVOID
         ) { /* global name? */
-            val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
-            FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1) /* get environment variable */
-            _assert(`var`.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL || `var`.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL)
-            this.codestring(key, varname) /* key is variable name */
-            fs.indexed(`var`, key) /* env[varname] */
+            val declaration: FuncState.Globaldesc? = this.checkdeclared(fs, varname)
+            this.buildglobal(varname, `var`)
+            if (declaration != null && declaration.readonly) `var`.readonlyGlobal = varname
         }
+    }
+
+    /**
+     * Builds the expression `_ENV[varname]`, which is what a global name is.
+     */
+    private fun buildglobal(varname: LuaString, `var`: expdesc) {
+        val fs: FuncState = this.fs!!
+        val key: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        FuncState.singlevaraux(fs, (this.envn)!!, `var`, 1) /* get environment variable */
+        _assert(`var`.k == net.blueva.luak.compiler.LexState.Companion.VLOCAL || `var`.k == net.blueva.luak.compiler.LexState.Companion.VUPVAL)
+        this.codestring(key, varname) /* key is variable name */
+        fs.indexed(`var`, key) /* env[varname] */
+    }
+
+    /**
+     * Checks [varname] against the `global` declarations in scope.
+     *
+     * With no declaration at all every name is a global, which is how Lua has
+     * always behaved. Once a `global` statement names anything, the rest of the
+     * scope has to declare what it uses - unless a collective `global *` is
+     * also in scope, which puts the default back.
+     *
+     * @return the declaration that covers [varname], or `null` if none does
+     */
+    private fun checkdeclared(fs: FuncState, varname: LuaString): FuncState.Globaldesc? {
+        val declarations: ArrayList<FuncState.Globaldesc> = fs.globals
+        var collective: FuncState.Globaldesc? = null
+        var named = false
+        var index = declarations.size
+        while (--index >= 0) {
+            val declaration: FuncState.Globaldesc = declarations[index]
+            val name: LuaString? = declaration.name
+            if (name == null) {
+                if (collective == null) collective = declaration
+            } else if (name == varname) {
+                return declaration
+            } else {
+                named = true
+            }
+        }
+        if (named && collective == null) {
+            this.semerror("variable '" + varname.tojstring() + "' not declared")
+        }
+        return collective
     }
 
     internal fun adjust_assign(nvars: Int, nexps: Int, e: expdesc) {
@@ -1820,14 +1877,26 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
 
 
     fun localstat() {
-        /* stat -> LOCAL NAME attrib {`,' NAME attrib} [`=' explist1] */
+        /* stat -> LOCAL attrib NAME attrib {`,' NAME attrib} [`=' explist1] */
+        val fs: FuncState = this.fs!!
         var nvars = 0
+        var toclose = -1 /* index, among the new variables, of the <close> one */
         val nexps: Int
         val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        /* an attribute before the names is the default for all of them */
+        val defaultkind: Int = this.getlocalattribute(net.blueva.luak.compiler.LexState.Companion.VDKREG)
         do {
             this.new_localvar(this.str_checkname())
-            val kind = this.getlocalattribute()
+            val kind = this.getlocalattribute(defaultkind)
             this.dyd!!.actvar!![this.dyd!!.n_actvar - 1]!!.kind = kind
+            if (kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE) {
+                // One per statement: closing runs in reverse declaration order,
+                // which a single statement has no way to express for two.
+                if (toclose != -1) {
+                    this.semerror("multiple to-be-closed variables in local list")
+                }
+                toclose = fs.nactvar + nvars
+            }
             ++nvars
         } while (this.testnext(','.code))
         if (this.testnext('='.code)) nexps = this.explist(e)
@@ -1837,6 +1906,13 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
         }
         this.adjust_assign(nvars, nexps, e)
         this.adjustlocalvars(nvars)
+        if (toclose != -1) {
+            // The enclosing block has to be left through a closing jump now,
+            // the same one that closes upvalues, so leaving it by any route
+            // runs the variable's __close.
+            fs.markblocktobeclosed()
+            fs.codeABC(Lua.OP_TBC, toclose, 0, 0)
+        }
     }
 
 
@@ -1844,34 +1920,167 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
      * `attrib -> ['<' NAME '>']`, giving the kind of the local just declared.
      *
      * `<const>` marks the variable read-only, which is enforced in
-     * [check_readonly]. `<close>` additionally needs the to-be-closed machinery
-     * the VM does not have yet, so it is reported as unsupported rather than
-     * silently accepted and ignored.
+     * [check_readonly]. `<close>` does the same and additionally has the value
+     * registered as to-be-closed, so that leaving the block by any route runs
+     * its `__close` metamethod.
      */
-    internal fun getlocalattribute(): Int {
+    /** True when what follows `global` can only be a declaration. */
+    private fun startsglobalstat(): Boolean {
+        this.lookahead()
+        val next: Int = this.lookahead.token
+        return next == '<'.code || next == '*'.code ||
+            next == net.blueva.luak.compiler.LexState.Companion.TK_NAME ||
+            next == net.blueva.luak.compiler.LexState.Companion.TK_FUNCTION
+    }
+
+    /**
+     * `globalstatfunc -> GLOBAL (globalfunc | globalstat)`, from Lua 5.5.
+     *
+     * A `global` declaration says which globals a chunk means to use. Once one
+     * names anything, every other free name in the scope has to be declared as
+     * well, which turns a misspelt global from a silent nil into a compile
+     * error. `global *` declares them all and puts the old default back.
+     */
+    internal fun globalstatfunc(line: Int) {
+        this.next() /* skip 'global' */
+        if (this.testnext(net.blueva.luak.compiler.LexState.Companion.TK_FUNCTION)) this.globalfunc(line)
+        else this.globalstat()
+    }
+
+    /**
+     * `globalstat -> attrib '*' | attrib NAME attrib {',' NAME attrib} ['=' explist]`
+     */
+    private fun globalstat() {
+        val fs: FuncState = this.fs!!
+        /* an attribute before the names is the default for all of them */
+        val defaultkind: Int = this.getglobalattribute(net.blueva.luak.compiler.LexState.Companion.VDKREG)
+        if (this.testnext('*'.code)) {
+            fs.globals.add(
+                FuncState.Globaldesc(null, defaultkind == net.blueva.luak.compiler.LexState.Companion.RDKCONST)
+            )
+            return
+        }
+        val names: ArrayList<LuaString> = ArrayList()
+        val readonly: ArrayList<Boolean> = ArrayList()
+        do {
+            val varname: LuaString = this.str_checkname()!!
+            val kind: Int = this.getglobalattribute(defaultkind)
+            names.add(varname)
+            readonly.add(kind == net.blueva.luak.compiler.LexState.Companion.RDKCONST)
+        } while (this.testnext(','.code))
+        if (this.testnext('='.code)) this.initglobal(names, 0, this.linenumber)
+        /* the names come into scope only after their own initializers */
+        for (i in names.indices) fs.globals.add(FuncState.Globaldesc(names[i], readonly[i]))
+    }
+
+    /**
+     * Assigns an initializer list to freshly declared globals.
+     *
+     * The targets have to be built before the values are read, and the values
+     * are then taken off the stack from the top down, so the recursion walks
+     * out to the last name, reads the expression list there, and assigns on the
+     * way back.
+     */
+    private fun initglobal(names: ArrayList<LuaString>, index: Int, line: Int) {
+        if (index == names.size) {
+            val e: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+            val nexps: Int = this.explist(e)
+            this.adjust_assign(names.size, nexps, e)
+            return
+        }
+        val fs: FuncState = this.fs!!
+        val target: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(names[index], target)
+        this.enterlevel()
+        this.initglobal(names, index + 1, line)
+        this.leavelevel()
+        this.checkglobal(names[index], line)
+        val value: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        value.init(net.blueva.luak.compiler.LexState.Companion.VNONRELOC, fs.freereg - 1)
+        fs.storevar(target, value)
+    }
+
+    /**
+     * Emits the check that a global being declared with a value is still unset.
+     *
+     * Declaring the same global twice is nearly always a mistake, and it can
+     * only be caught when the chunk runs, since another chunk may have set it.
+     */
+    private fun checkglobal(varname: LuaString, line: Int) {
+        val fs: FuncState = this.fs!!
+        val `var`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(varname, `var`)
+        val nameindex: Int = fs.stringK(varname)
+        fs.exp2anyreg(`var`)
+        fs.fixline(line)
+        fs.codeABx(
+            Lua.OP_ERRNNIL,
+            `var`.u.info,
+            if (nameindex >= Lua.MAXARG_Bx) 0 else nameindex + 1,
+        )
+        fs.fixline(line)
+        fs.freeexp(`var`)
+    }
+
+    /** `globalfunc -> GLOBAL FUNCTION NAME body` */
+    private fun globalfunc(line: Int) {
+        val fs: FuncState = this.fs!!
+        val fname: LuaString = this.str_checkname()!!
+        fs.globals.add(FuncState.Globaldesc(fname, false))
+        val `var`: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.buildglobal(fname, `var`)
+        val b: expdesc = net.blueva.luak.compiler.LexState.expdesc()
+        this.body(b, false, this.linenumber)
+        this.checkglobal(fname, line)
+        fs.storevar(`var`, b)
+    }
+
+    /**
+     * `attrib` on a global, which accepts `<const>` but not `<close>`.
+     *
+     * There is no scope for a global to be closed at the end of, so `<close>`
+     * is rejected rather than quietly treated as `<const>`.
+     */
+    private fun getglobalattribute(default: Int): Int {
+        if (this.t.token != '<'.code) return default
+        val kind: Int = this.getlocalattribute(default)
+        if (kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE) {
+            this.semerror("global variables cannot be to-be-closed")
+        }
+        return kind
+    }
+
+    internal fun getlocalattribute(default: Int): Int {
         if (this.testnext('<'.code)) {
             val attribute: String? = this.str_checkname()?.tojstring()
             this.checknext('>'.code)
             if ("const" == attribute) return net.blueva.luak.compiler.LexState.Companion.RDKCONST
-            if ("close" == attribute) {
-                this.lexerror(
-                    "to-be-closed variables ('<close>') are not implemented yet",
-                    net.blueva.luak.compiler.LexState.Companion.TK_NAME
-                )
-            }
+            if ("close" == attribute) return net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE
             this.lexerror("unknown attribute '" + attribute + "'", net.blueva.luak.compiler.LexState.Companion.TK_NAME)
         }
-        return net.blueva.luak.compiler.LexState.Companion.VDKREG
+        return default
     }
 
-    /** Rejects an assignment to a `<const>` local. */
+    /** Rejects an assignment to a `<const>` or `<close>` local, or a `<const>` global. */
     internal fun check_readonly(e: expdesc) {
+        val globalname: LuaString? = e.readonlyGlobal
+        if (globalname != null) {
+            this.lexerror(
+                "attempt to assign to const variable '" + globalname.tojstring() + "'",
+                net.blueva.luak.compiler.LexState.Companion.TK_NAME
+            )
+        }
         if (e.k != net.blueva.luak.compiler.LexState.Companion.VLOCAL) return
         val fs: FuncState = this.fs!!
         val index: Int = fs.firstlocal + e.u.info
         val vars: Array<Vardesc?> = this.dyd?.actvar ?: return
         if (index < 0 || index >= vars.size) return
-        if (vars[index]?.kind == net.blueva.luak.compiler.LexState.Companion.RDKCONST) {
+        // A <close> variable is read-only too: the value it holds is the one
+        // that will be closed, so it must be the one it was given.
+        val kind: Int = vars[index]?.kind ?: return
+        if (kind == net.blueva.luak.compiler.LexState.Companion.RDKCONST ||
+            kind == net.blueva.luak.compiler.LexState.Companion.RDKTOCLOSE
+        ) {
             val name: String = fs.getlocvar(e.u.info).varname?.tojstring() ?: "?"
             this.lexerror(
                 "attempt to assign to const variable '" + name + "'",
@@ -2020,6 +2229,17 @@ internal class LexState internal constructor(state: LuaC.CompileState?, stream: 
             net.blueva.luak.compiler.LexState.Companion.TK_BREAK, net.blueva.luak.compiler.LexState.Companion.TK_GOTO -> {
                 /* stat -> breakstat */
                 this.gotostat(fs!!.jump())
+            }
+
+            net.blueva.luak.compiler.LexState.Companion.TK_NAME -> {
+                // 'global' is a statement, not a reserved word: a program that
+                // already uses it as a name keeps working, and only the shapes
+                // a declaration can take are read as one.
+                if (this.t.seminfo.ts == this.glbn && this.startsglobalstat()) {
+                    this.globalstatfunc(line)
+                } else {
+                    this.exprstat()
+                }
             }
 
             else -> {

@@ -100,20 +100,23 @@ class LuaDouble
         return v
     }
 
+    // The opt forms differ from the check forms only in what a missing
+    // argument does, which cannot happen once there is a value here, so they
+    // hold this float to the same standard.
     override fun optint(defval: Int): Int {
-        return v.toLong().toInt()
+        return checkint()
     }
 
     override fun optinteger(defval: LuaInteger?): LuaInteger {
-        return (LuaInteger.valueOf(v.toLong().toInt()))!!
+        return checkinteger()
     }
 
     override fun optlong(defval: Long): Long {
-        return v.toLong()
+        return checklong()
     }
 
     override fun checkinteger(): LuaInteger {
-        return (LuaInteger.valueOf(v.toLong().toInt()))!!
+        return (LuaInteger.valueOf(checklong()))!!
     }
 
     // unary operators
@@ -409,11 +412,19 @@ class LuaDouble
     }
 
     override fun checkint(): Int {
-        return v.toLong().toInt()
+        return checklong().toInt()
     }
 
+    /**
+     * The integer this float denotes, or an error if it denotes none.
+     *
+     * Truncating silently would let `string.rep("x", 2.5)` mean `2`, where Lua
+     * requires a value that is exactly an integer.
+     */
     override fun checklong(): Long {
-        return v.toLong()
+        val whole: Long = v.toLong()
+        if (whole.toDouble() != v) LuaValue.error("number has no integer representation")
+        return whole
     }
 
     override fun checknumber(): LuaNumber {

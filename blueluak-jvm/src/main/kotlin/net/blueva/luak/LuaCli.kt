@@ -16,6 +16,7 @@
  ******************************************************************************/
 package net.blueva.luak
 
+import net.blueva.luak.lib.OneArgFunction
 import net.blueva.luak.lib.jvm.asLuaReader
 import net.blueva.luak.lib.jvm.JvmPlatform
 import net.blueva.luak.luajc.LuaJC
@@ -184,9 +185,33 @@ object LuaCli {
             }
             if (print && c.isclosure()) Print.print(c.checkclosure()!!.p)
             val scriptargs = setGlobalArg(chunkname, args, firstarg, globals!!)
+            installMessageHandler(globals!!)
             c.invoke(scriptargs!!)
+        } catch (e: LuaError) {
+            // The shape the standalone interpreter uses: the message, then the
+            // traceback the handler captured while the stack was still up.
+            // The message already carries the handler's traceback, if one ran.
+            System.err.println("blueluak: " + e.message)
         } catch (e: Exception) {
             e.printStackTrace(System.err)
+        }
+    }
+
+    /**
+     * Installs the standalone interpreter's message handler.
+     *
+     * `lua.c` runs the script under a handler that appends a traceback to the
+     * error message, which is the only point at which the stack is still there
+     * to walk. Without one an uncaught error can only report where it was
+     * raised, not how the program got there.
+     */
+    private fun installMessageHandler(globals: Globals) {
+        val debuglib = globals.debuglib ?: return
+        globals.running.errorfunc = object : OneArgFunction() {
+            override fun call(arg: LuaValue?): LuaValue {
+                val message: String = arg?.tojstring() ?: "?"
+                return LuaValue.valueOf(message + "\n" + debuglib.traceback(1))
+            }
         }
     }
 

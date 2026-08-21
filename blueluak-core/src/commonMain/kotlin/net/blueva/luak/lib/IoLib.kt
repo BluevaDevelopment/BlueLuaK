@@ -463,6 +463,12 @@ open class IoLib : TwoArgFunction() {
 
 
         // return the table
+        // The three standard streams, which Lua exposes as ready-made file
+        // handles rather than only through io.read and io.write.
+        t.set("stdin", ioopenfile(net.blueva.luak.lib.IoLib.Companion.FTYPE_STDIN, "-", "r")!!)
+        t.set("stdout", ioopenfile(net.blueva.luak.lib.IoLib.Companion.FTYPE_STDOUT, "-", "w")!!)
+        t.set("stderr", ioopenfile(net.blueva.luak.lib.IoLib.Companion.FTYPE_STDERR, "-", "w")!!)
+
         env!!.set("io", t)
         if (!env!!.get("package")!!.isnil()) env!!.get("package")!!.get("loaded")!!.set("io", t)
         return t

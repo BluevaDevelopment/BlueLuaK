@@ -313,14 +313,16 @@ open class LuaTable : LuaValue, Metatable {
         var pos = pos
         val n = length()
         if (pos == 0) pos = n
-        else if (pos > n) return NONE
+        // Removing at #t+1 is allowed and answers what was there, which is
+        // nil - a value, not an absence, so the caller still gets one result.
+        else if (pos > n) return get(pos)
         val v: LuaValue = get(pos)
         var r: LuaValue = v
         while (!r.isnil()) {
             r = get(pos + 1)
             set(pos++, r)
         }
-        return if (v.isnil()) NONE else v
+        return v
     }
 
     /** Insert an element at a position in a list-table

@@ -28,11 +28,15 @@ open class Lua {
     companion object {
     /** The Lua *language* version this runtime implements, as scripts see it in
      * the `_VERSION` global. Lua programs branch on this
-     * (`if _VERSION == "Lua 5.4" then ...`) and the reference test suite reads
-     * it, so it must name the language and not the implementation. Bump it as
-     * the port to 5.5 lands, and see [BLUELUAK_VERSION] for BlueLuaK's own
-     * release number.  */
-    val _VERSION: String = "Lua 5.2"
+     * (`if _VERSION == "Lua 5.5" then ...`) and the reference test suite reads
+     * it, so it must name the language and not the implementation. See
+     * [BLUELUAK_VERSION] for BlueLuaK's own release number.
+     *
+     * One 5.5 language feature is still missing behind this: a named vararg
+     * parameter, `function f(...t)`, whose table shares storage with `...` and
+     * so needs the 5.5 vararg model rather than the 5.2-shaped one the port is
+     * still on.  */
+    val _VERSION: String = "Lua 5.5"
 
     /** BlueLuaK's own release, such as `"BlueLuaK 26.5"`. This is what tooling
      * should report as the *engine* version; [_VERSION] is the language.  */
@@ -245,7 +249,19 @@ open class Lua {
     const val OP_SHR: Int = 45 /*	A B C	R(A) := RK(B) >> RK(C)				*/
     const val OP_BNOT: Int = 46 /*	A B	R(A) := ~R(B)					*/
 
-    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_BNOT + 1
+    /** `A` - mark R(A) as a to-be-closed variable, from Lua 5.4's `<close>`. */
+    const val OP_TBC: Int = 47 /*	A	mark R(A) "to be closed"			*/
+
+    /**
+     * `A Bx` - raise an error if R(A) is not nil, from Lua 5.5's `global`.
+     *
+     * A `global x = v` declaration checks that the global is still unset
+     * before assigning it. `Kst(Bx - 1)` is the global's name, and `Bx == 0`
+     * means the name did not fit in the constant table.
+     */
+    const val OP_ERRNNIL: Int = 48 /*	A Bx	if R(A) ~= nil then error		*/
+
+    val NUM_OPCODES: Int = net.blueva.luak.Lua.OP_ERRNNIL + 1
 
     /* pseudo-opcodes used in parsing only.  */
     const val OP_GT: Int = 63 // >
@@ -336,6 +352,8 @@ open class Lua {
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHL */
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgK shl 4) or (net.blueva.luak.Lua.OpArgK shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_SHR */
         (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgR shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_BNOT */
+        (0 shl 7) or (1 shl 6) or (net.blueva.luak.Lua.OpArgN shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABC),  /* OP_TBC */
+        (0 shl 7) or (0 shl 6) or (net.blueva.luak.Lua.OpArgN shl 4) or (net.blueva.luak.Lua.OpArgN shl 2) or (net.blueva.luak.Lua.iABx),  /* OP_ERRNNIL */
     )
 
     fun getOpMode(m: Int): Int {

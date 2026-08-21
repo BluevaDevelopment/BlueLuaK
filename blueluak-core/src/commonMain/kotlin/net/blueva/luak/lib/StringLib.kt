@@ -90,7 +90,10 @@ open class StringLib
         string.set("len", net.blueva.luak.lib.StringLib.len())
         string.set("lower", net.blueva.luak.lib.StringLib.lower())
         string.set("match", net.blueva.luak.lib.StringLib.match())
+        string.set("pack", net.blueva.luak.lib.StringLib.pack())
+        string.set("packsize", net.blueva.luak.lib.StringLib.packsize())
         string.set("rep", net.blueva.luak.lib.StringLib.rep())
+        string.set("unpack", net.blueva.luak.lib.StringLib.unpack())
         string.set("reverse", net.blueva.luak.lib.StringLib.reverse())
         string.set("sub", net.blueva.luak.lib.StringLib.sub())
         string.set("upper", net.blueva.luak.lib.StringLib.upper())
@@ -114,6 +117,21 @@ open class StringLib
             LuaString.s_metatable = metatable
         }
         return string
+    }
+
+    /** `string.pack (fmt, v1, v2, ...)`, from Lua 5.3. */
+    internal class pack : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = net.blueva.luak.lib.StringPack.pack(args)
+    }
+
+    /** `string.packsize (fmt)`, from Lua 5.3. */
+    internal class packsize : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = net.blueva.luak.lib.StringPack.packsize(args)
+    }
+
+    /** `string.unpack (fmt, s [, pos])`, from Lua 5.3. */
+    internal class unpack : VarArgFunction() {
+        override fun invoke(args: Varargs): Varargs = net.blueva.luak.lib.StringPack.unpack(args)
     }
 
     /**
