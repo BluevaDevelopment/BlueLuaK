@@ -136,6 +136,16 @@ class Globals : LuaTable() {
     var debuglib: DebugLib? = null
 
     /**
+     * What the host lets one resumption run, or null for no ceiling at all.
+     *
+     * Attaching a [Budget] is how a host bounds untrusted code without
+     * loading [DebugLib] to get at its count hook; see [Budget] for what the
+     * ceiling covers and what happens when it is reached. Null - the default
+     * - costs the interpreter one null check per instruction.
+     */
+    var budget: Budget? = null
+
+    /**
      * Objects the host has reclaimed whose `__gc` handler has still to run.
      *
      * Filled by the host, off whatever thread it reclaims on, and emptied here

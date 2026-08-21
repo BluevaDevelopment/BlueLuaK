@@ -252,6 +252,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // A call in from outside is a protected boundary of its own, so the
         // tally goes back to what it was however this ends.
         val outer: Int = state.foreigncalls
+        // A call in with nothing already running is a resumption, which is
+        // what a budget's ceiling is measured over; one made from inside Lua
+        // spends the ceiling already in force. See Budget.
+        if (outer == 0) globals?.budget?.refill()
         state.noyield++
         try {
             enterforeign(state)
@@ -442,6 +446,11 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // loads and two branches on the hottest path in the interpreter.
         val debuglib: DebugLib? = globals?.debuglib
 
+        // Resolved once per frame for the same reason, and null unless the
+        // host asked for a ceiling: what the loop below pays for a state
+        // with no budget is the one null check.
+        val budget: Budget? = globals?.budget
+
         // With the debug library watching a vararg function, the arguments get
         // storage of their own so debug.setlocal can write through to what
         // '...' reads. Nothing else pays for it.
@@ -461,6 +470,10 @@ class LuaClosure(p: Prototype, env: LuaValue?) : LuaFunction() {
         // process instructions
         try {
             while (true) {
+                // One decrement, and the ceiling is the interrupt as well:
+                // Budget.interrupt() puts the count on the floor so that both
+                // arrive through this branch. See Budget.
+                if (budget != null && --budget.left <= 0L) budget.spent()
                 if (debuglib != null) debuglib.onInstruction(pc, v, top)
 
 
