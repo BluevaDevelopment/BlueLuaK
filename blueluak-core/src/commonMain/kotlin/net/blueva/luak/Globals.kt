@@ -237,6 +237,70 @@ class Globals : LuaTable() {
     var textonly: Boolean = false
 
     /**
+     * Compiles [script] once, for [bind] to hand to any number of states.
+     *
+     * This is what makes a new lane cheap. Building the nine standard
+     * libraries is not the expensive part of starting one - it is tens of
+     * microseconds, and the function objects it makes cannot be shared
+     * between lanes anyway: `math.random` carries a generator, `io` carries
+     * open files, `package` carries what has been required, and a lane that
+     * reached into another's would be no sandbox at all. Compiling the plugin
+     * is the expensive part, by more than an order of magnitude, and unlike
+     * the libraries it produces something there is no reason not to share: a
+     * [Prototype] is the compiled code and its constants, finished and never
+     * written to again.
+     *
+     * ```kotlin
+     * val plugin: Prototype = template.compile(source, "@plugin.lua")
+     * for (lane in lanes) lane.bind(plugin).call()   // compiled once
+     * ```
+     *
+     * The state this is called on lends its compiler and nothing else; the
+     * result belongs to no state until [bind] gives it one.
+     *
+     * @throws LuaError if the script does not compile
+     */
+    fun compile(script: String, chunkname: String?): Prototype =
+        try {
+            compilePrototype(net.blueva.luak.Globals.StrReader(script), chunkname)!!
+        } catch (l: LuaError) {
+            throw l
+        } catch (e: Exception) {
+            throw LuaError("load " + chunkname + ": " + e, e)
+        }
+
+    /**
+     * Makes a callable function of [prototype] in this state.
+     *
+     * The prototype may have been compiled by any state, or by this one; what
+     * it reads as globals, and what its `__gc` handlers and errors belong to,
+     * is this one. See [compile].
+     *
+     * The name errors point at is the one the prototype was compiled under -
+     * it is written into the compiled code, and every lane shares it.
+     *
+     * @param prototype compiled code, from [compile] or [loadPrototype]
+     * @param environment what the chunk sees as its globals, this state by
+     *   default
+     * @throws LuaError if no loader is installed in this state
+     */
+    fun bind(prototype: Prototype, environment: LuaValue? = this): LuaFunction {
+        val install: Loader = loader ?: throw LuaError("No loader.")
+        val name: String? = prototype.source?.tojstring()
+        // The closure belongs to the state it is being bound into, whichever
+        // state ran last; see Memory.current.
+        return Memory.charging(memory) {
+            try {
+                install.load(prototype, name, environment)!!
+            } catch (l: LuaError) {
+                throw l
+            } catch (e: Exception) {
+                throw LuaError("load " + name + ": " + e, e)
+            }
+        }
+    }
+
+    /**
      * Seeds this state's `math.random`, as `math.randomseed(x, y)` would.
      *
      * A fresh state seeds itself from the host's own generator, which is
