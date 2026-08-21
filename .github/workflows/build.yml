@@ -76,13 +76,6 @@ jobs:
           - target: Linux x64
             os: ubuntu-latest
             task: linuxX64Test
-          - target: Linux ARM64
-            os: ubuntu-24.04-arm
-            # Kotlin gives a Native target a <target>Test task only where it is
-            # also a supported host, and linuxArm64 is not one, so the test
-            # executable is linked here and run by the step below.
-            task: linuxArm64TestBinaries
-            binary: blueluak-core/build/bin/linuxArm64/debugTest/test.kexe
           - target: Windows x64
             os: windows-latest
             task: mingwX64Test
@@ -104,9 +97,51 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
       - name: Run ${{ matrix.target }} tests
         run: ./gradlew :blueluak-core:${{ matrix.task }} --no-daemon --stacktrace
-      - name: Run the ${{ matrix.target }} test executable
-        if: matrix.binary != ''
-        run: ${{ matrix.binary }}
+
+  # Linux ARM64 takes two runners rather than one. The Kotlin/Native compiler
+  # does not run on a linux-aarch64 host at all - it builds for that target
+  # only from Linux x64, Windows x64, or macOS - so an ARM runner cannot
+  # compile the tests, and an x64 one cannot run them. The x64 runner links the
+  # test executable and the ARM one runs it, which is the only way to get the
+  # tests onto the hardware they are meant to prove.
+  native-linux-arm64-link:
+    name: Native Linux ARM64 (link)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Link the Linux ARM64 tests
+        run: ./gradlew :blueluak-core:linuxArm64TestBinaries --no-daemon --stacktrace
+      - name: Upload the test executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: linuxArm64-test
+          path: blueluak-core/build/bin/linuxArm64/debugTest/test.kexe
+          if-no-files-found: error
+          retention-days: 1
+
+  native-linux-arm64:
+    name: Native Linux ARM64
+    runs-on: ubuntu-24.04-arm
+    needs: native-linux-arm64-link
+    steps:
+      - name: Download the test executable
+        uses: actions/download-artifact@v8
+        with:
+          name: linuxArm64-test
+      # A Kotlin/Native binary carries everything it needs, so there is no JDK
+      # or Gradle on this runner; the artifact does not keep its mode bit.
+      - name: Run Linux ARM64 tests
+        run: |
+          chmod +x test.kexe
+          ./test.kexe
 
   publication:
     name: Verify publications
