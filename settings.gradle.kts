@@ -7,9 +7,9 @@ pluginManagement {
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
-rootProject.name = "BlueLuaK"
+rootProject.name = "luak"
 
 include(
-    "blueluak-core",
-    "blueluak-jvm"
+    "luak-core",
+    "luak-jvm"
 )

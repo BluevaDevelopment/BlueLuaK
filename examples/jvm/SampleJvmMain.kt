@@ -1,5 +1,5 @@
-import net.blueva.luak.LuaValue
-import net.blueva.luak.lib.jvm.JvmPlatform
+import org.basaltmc.luak.LuaValue
+import org.basaltmc.luak.lib.jvm.JvmPlatform
 
 /** Minimal Kotlin/JVM program that loads and executes a Lua script. */
 fun main() {

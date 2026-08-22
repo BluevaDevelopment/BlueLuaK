@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: release
@@ -48,12 +48,12 @@ jobs:
           # Badge, Gradle dependency coordinates, and the Maven <version> tag.
           sed -i \
             -e "s|version-[^-]*-blue|version-$REVISION-blue|" \
-            -e "s|net.blueva:blueluak-jvm:[^\"]*|net.blueva:blueluak-jvm:$REVISION|" \
-            -e "s|net.blueva:blueluak-core:[^\"]*|net.blueva:blueluak-core:$REVISION|" \
+            -e "s|org.basaltmc:luak-jvm:[^\"]*|org.basaltmc:luak-jvm:$REVISION|" \
+            -e "s|org.basaltmc:luak-core:[^\"]*|org.basaltmc:luak-core:$REVISION|" \
             -e "s|<version>[^<]*</version>|<version>$REVISION</version>|" \
             README.md
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
-          echo "Releasing BlueLuaK $REVISION"
+          echo "Releasing Luak $REVISION"
 
       # Pushes made with GITHUB_TOKEN don't retrigger this workflow, so
       # [skip ci] is just extra insurance.
@@ -73,10 +73,10 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v${{ steps.version.outputs.revision }}" --title "BlueLuaK ${{ steps.version.outputs.revision }}" --generate-notes
+        run: gh release create "v${{ steps.version.outputs.revision }}" --title "Luak ${{ steps.version.outputs.revision }}" --generate-notes
 
   publish:
-    name: Publish to repo.blueva.net
+    name: Publish to repo.luaklang.org
     needs: release
     runs-on: macos-15
     permissions:
@@ -94,8 +94,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Publish KMP and JVM artifacts
-        run: ./gradlew publishAllPublicationsToBluevaRepoRepository --no-daemon --stacktrace
+        run: ./gradlew publishAllPublicationsToLuakRepoRepository --no-daemon --stacktrace
         env:
           RELEASE_VERSION: ${{ needs.release.outputs.revision }}
-          BLUEVA_REPO_USERNAME: ${{ secrets.BLUEVA_REPO_USERNAME }}
-          BLUEVA_REPO_SECRET: ${{ secrets.BLUEVA_REPO_SECRET }}
+          LUAK_REPO_USERNAME: ${{ secrets.LUAK_REPO_USERNAME }}
+          LUAK_REPO_SECRET: ${{ secrets.LUAK_REPO_SECRET }}

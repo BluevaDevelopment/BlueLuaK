@@ -1,6 +1,6 @@
-import net.blueva.luak.LuaValue
-import net.blueva.luak.lib.OneArgFunction
-import net.blueva.luak.lib.TwoArgFunction
+import org.basaltmc.luak.LuaValue
+import org.basaltmc.luak.lib.OneArgFunction
+import org.basaltmc.luak.lib.TwoArgFunction
 import kotlin.math.cosh
 import kotlin.math.sinh
 

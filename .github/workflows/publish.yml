@@ -24,7 +24,7 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   publish:
-    name: Publish to repo.blueva.net
+    name: Publish to repo.luaklang.org
     needs: test
     runs-on: macos-15
     steps:
@@ -43,7 +43,7 @@ jobs:
           RAW_VERSION: ${{ inputs.version || github.ref_name }}
         run: echo "RELEASE_VERSION=${RAW_VERSION#v}" >> "$GITHUB_ENV"
       - name: Publish KMP and JVM artifacts
-        run: ./gradlew publishAllPublicationsToBluevaRepoRepository --no-daemon --stacktrace
+        run: ./gradlew publishAllPublicationsToLuakRepoRepository --no-daemon --stacktrace
         env:
-          BLUEVA_REPO_USERNAME: ${{ secrets.BLUEVA_REPO_USERNAME }}
-          BLUEVA_REPO_SECRET: ${{ secrets.BLUEVA_REPO_SECRET }}
+          LUAK_REPO_USERNAME: ${{ secrets.LUAK_REPO_USERNAME }}
+          LUAK_REPO_SECRET: ${{ secrets.LUAK_REPO_SECRET }}

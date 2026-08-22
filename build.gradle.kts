@@ -8,7 +8,7 @@ val releaseVersion = providers.gradleProperty("version")
     .orElse("3.0.2")
 
 allprojects {
-    group = "net.blueva"
+    group = "org.basaltmc"
     version = releaseVersion.get()
 
     repositories {
